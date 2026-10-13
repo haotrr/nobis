@@ -1,0 +1,50 @@
+docs/tech/T-261013-QTW1Q-report-performance/TODO.md
+  s_b801c6f4883cd7::t_6a8c59705951a3 18-20,25-30
+  s_b801c6f4883cd7::t_84265c706b52a3 5,24
+  s_b801c6f4883cd7::t_8152561f526c50 2,4,6,12-14,21-23
+  s_b801c6f4883cd7::t_4883cff1be5d6f 1,3,7-11,15-17
+Sources/FamilyCore/FinancialReportIndex.swift
+  s_b801c6f4883cd7::t_8152561f526c50 1-33
+Sources/FamilyCore/FamilyCore.swift
+  s_b801c6f4883cd7::t_3356be1697547e 43-44,50,53-55
+Sources/FamilyCore/FinancialChartData.swift
+  s_b801c6f4883cd7::t_8152561f526c50 16-18,21,23,34-42,44-45
+docs/roadmap.md
+  s_b801c6f4883cd7::t_6a8c59705951a3 23,36
+  s_b801c6f4883cd7::t_84265c706b52a3 43
+Sources/FamilyCore/LifeWorkspace.swift
+  s_b801c6f4883cd7::t_3356be1697547e 39-43
+Tests/FamilyCoreTests/LegacyReportScan.swift
+  s_b801c6f4883cd7::t_3356be1697547e 1-63
+docs/architecture.md
+  s_b801c6f4883cd7::t_6a8c59705951a3 64-67
+docs/verification.md
+  s_b801c6f4883cd7::t_6a8c59705951a3 173-188
+Sources/FamilyCore/FinancialReports.swift
+  s_b801c6f4883cd7::t_8152561f526c50 85-106,110-112,114,148-150,154,176,192
+  s_b801c6f4883cd7::t_9db61392464e54 74-76,79,167-175,177-191,193
+docs/feature-inventory.md
+  s_b801c6f4883cd7::t_6a8c59705951a3 18
+Sources/NobisUI/Features/Finance/FinancialCharts.swift
+  s_b801c6f4883cd7::t_3337f9655db068 92,95,103,131,155,157,170,172,175,177-182
+Sources/NobisUI/Features/Finance/FinancialDashboard.swift
+  s_b801c6f4883cd7::t_1a873a1618a39b 194-199,202,206,257-262,274,276-277,280,285,298,300
+Tests/FamilyCoreTests/ReportPerformanceTests.swift
+  s_b801c6f4883cd7::t_a7fcff952925bc 1-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2389bf772d875b8f2247f24d9600af34a3752418",
+  "prompts": {},
+  "sessions": {
+    "s_b801c6f4883cd7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13435-bac4-76b2-82f2-015690654c1b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
