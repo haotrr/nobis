@@ -34,24 +34,36 @@ import FamilyCore
             try encoder.encode(spaces).write(to: catalogURL, options: LocalMetadataFile.writingOptions)
         }
     }
-    public func load() throws -> Snapshot {
-        let context = container.viewContext
-        var snapshot = Snapshot()
-        let roots = try context.fetch(NSFetchRequest<NSManagedObject>(entityName: "SpaceRoot"))
-        for root in roots {
+    public func loadSpaces() throws -> [Space] {
+        try container.viewContext.fetch(NSFetchRequest<NSManagedObject>(entityName: "SpaceRoot")).map { root in
             guard let data = root.value(forKey: "payload") as? Data else { throw NobisError.corruptBackup }
             let space = try decoder.decode(Space.self, from: data)
             guard stores[space.id] == root.objectID.persistentStore else { throw NobisError.corruptBackup }
-            snapshot.spaces.append(space)
+            return space
         }
-        for entity in ["RecordRevision", "AuditEvent"] {
-            for object in try context.fetch(NSFetchRequest<NSManagedObject>(entityName: entity)) {
-                guard let data = object.value(forKey: "payload") as? Data else { throw NobisError.corruptBackup }
-                if entity == "RecordRevision" {
-                    let revision = try decoder.decode(Revision.self, from: data)
-                    guard stores[revision.spaceID] == object.objectID.persistentStore else { throw NobisError.corruptBackup }
-                    snapshot.revisions.append(revision)
-                } else { snapshot.audits.append(try decoder.decode(AuditEvent.self, from: data)) }
+    }
+    public func load() throws -> Snapshot {
+        guard !container.viewContext.hasChanges else { throw NobisError.validation("本地存储有未完成的更改，请完成保存后重试。") }
+        var snapshot = Snapshot(spaces: try loadSpaces())
+        // Fetch payloads in bulk: no managed-object fault per historical revision or audit.
+        // Store scoping preserves the physical-space integrity check without materializing object IDs.
+        for (spaceID, store) in stores {
+            for entity in ["RecordRevision", "AuditEvent"] {
+                let request = NSFetchRequest<NSDictionary>(entityName: entity)
+                request.resultType = .dictionaryResultType; request.propertiesToFetch = ["payload"]
+                request.affectedStores = [store]
+                for row in try container.viewContext.fetch(request) {
+                    guard let data = row["payload"] as? Data else { throw NobisError.corruptBackup }
+                    if entity == "RecordRevision" {
+                        let revision = try decoder.decode(Revision.self, from: data)
+                        guard revision.spaceID == spaceID else { throw NobisError.corruptBackup }
+                        snapshot.revisions.append(revision)
+                    } else {
+                        let audit = try decoder.decode(AuditEvent.self, from: data)
+                        guard audit.spaceID == spaceID else { throw NobisError.corruptBackup }
+                        snapshot.audits.append(audit)
+                    }
+                }
             }
         }
         return snapshot
@@ -62,7 +74,10 @@ import FamilyCore
         guard Set(current.spaces.map(\.id)) == Set(snapshot.spaces.map(\.id)), current.spaces.allSatisfy({ snapshot.spaces.contains($0) }) else { throw NobisError.validation("空间配置不可通过记录写入修改。") }
         let oldRevisions = Dictionary(uniqueKeysWithValues: current.revisions.map { ($0.id, $0) })
         let oldAudits = Dictionary(uniqueKeysWithValues: current.audits.map { ($0.id, $0) })
-        guard current.revisions.allSatisfy({ snapshot.revisions.contains($0) }), current.audits.allSatisfy({ snapshot.audits.contains($0) }) else { throw NobisError.validation("历史记录不能覆盖或物理删除。") }
+        let revisionsByID = Dictionary(snapshot.revisions.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let auditsByID = Dictionary(snapshot.audits.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        guard revisionsByID.count == snapshot.revisions.count, auditsByID.count == snapshot.audits.count,
+              current.revisions.allSatisfy({ revisionsByID[$0.id] == $0 }), current.audits.allSatisfy({ auditsByID[$0.id] == $0 }) else { throw NobisError.validation("历史记录不能覆盖或物理删除。") }
         let additions = snapshot.revisions.filter { oldRevisions[$0.id] == nil }
         let audits = snapshot.audits.filter { oldAudits[$0.id] == nil }
         guard Set(additions.map(\.spaceID) + audits.map(\.spaceID)).count <= 1 else { throw NobisError.validation("单次写入只能属于一个物理空间。") }

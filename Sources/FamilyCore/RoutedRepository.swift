@@ -11,8 +11,13 @@ import FamilyDomain
         guard Set(a.spaces.map(\.id)).isDisjoint(with: b.spaces.map(\.id)) else { throw NobisError.conflict }
         return Snapshot(spaces: a.spaces + b.spaces, revisions: a.revisions + b.revisions, audits: a.audits + b.audits)
     }
+    public func loadSpaces() throws -> [Space] {
+        let a = try local.loadSpaces(), b = try shared.loadSpaces()
+        guard Set(a.map(\.id)).isDisjoint(with: b.map(\.id)) else { throw NobisError.conflict }
+        return a + b
+    }
     public func requireWrite(spaceID: UUID, actorID: UUID) throws {
-        if try local.load().spaces.contains(where: { $0.id == spaceID }) { try local.requireWrite(spaceID: spaceID, actorID: actorID) }
+        if try local.loadSpaces().contains(where: { $0.id == spaceID }) { try local.requireWrite(spaceID: spaceID, actorID: actorID) }
         else { try shared.requireWrite(spaceID: spaceID, actorID: actorID) }
     }
     public func save(_ snapshot: Snapshot) throws {

@@ -3,11 +3,14 @@ import FamilyDomain
 
 @MainActor public protocol Repository {
     func load() throws -> Snapshot
+    func loadSpaces() throws -> [Space]
     /// Must atomically save business revisions and their audit events.
     func save(_ snapshot: Snapshot) throws
     func requireWrite(spaceID: UUID, actorID: UUID) throws
 }
-public extension Repository { func requireWrite(spaceID: UUID, actorID: UUID) throws {} }
+public extension Repository {
+    func loadSpaces() throws -> [Space] { try load().spaces }
+    func requireWrite(spaceID: UUID, actorID: UUID) throws {} }
 @MainActor public final class MemoryRepository: Repository {
     public var snapshot: Snapshot
     public init(_ snapshot: Snapshot = Snapshot()) { self.snapshot = snapshot }
@@ -41,7 +44,7 @@ public struct LedgerSummary: Codable, Sendable {
     }
     public init(repository: any Repository, session: AccessSession) { self.repository = repository; self.session = session }
     func authorizedSpaces(in snapshot: Snapshot) -> [Space] { snapshot.spaces.filter { space in session.allowedSpaceIDs.contains(space.id) && space.members.contains { $0.id == session.actorID(in: space.id) } && (space.kind != .personal || space.ownerID == session.actorID(in: space.id)) } }
-    public func spaces() throws -> [Space] { authorizedSpaces(in: try repository.load()) }
+    public func spaces() throws -> [Space] { authorizedSpaces(in: Snapshot(spaces: try repository.loadSpaces())) }
     public func space(_ id: UUID) throws -> Space {
         guard let value = try spaces().first(where: { $0.id == id }) else { throw NobisError.forbidden }; return value
     }
@@ -209,8 +212,12 @@ public struct LedgerSummary: Codable, Sendable {
         }
     }
     public func ledger(spaceID: UUID, from: LocalDay? = nil, through: LocalDay? = nil) throws -> [LedgerSummary] {
+        try Self.ledger(records: records(spaceID: spaceID), from: from, through: through)
+    }
+    public static func ledger(records: [Record], from: LocalDay? = nil, through: LocalDay? = nil) throws -> [LedgerSummary] {
         if let from, let through, through < from { throw NobisError.validation("统计结束日期早于开始日期。") }
-        let entries = try records(spaceID: spaceID).filter { record in
+        let entries = records.filter { record in
+            !record.deleted &&
             record.body.sharedDestination == nil && record.body.kind == .transaction && record.heads.contains { revision in
                 revision.body.date.map { (from == nil || $0 >= from!) && (through == nil || $0 <= through!) } ?? true
             }
@@ -224,42 +231,16 @@ public struct LedgerSummary: Codable, Sendable {
                 }
                 continue
             }
-            guard let money = record.body.money else { continue }
-            var group = groups[money.currency] ?? LedgerSummary(currency: money.currency)
-            if record.conflicted || record.body.status == .draft { group.unresolvedCount += 1; groups[money.currency] = group; continue }
-            guard record.body.status == .confirmed else { continue }
-            group.sourceIDs.append(record.id)
-            switch record.body.transactionKind {
-            case .expense: group.expense = try Money.sum([group.expense, money.minor])
-            case .refund: group.refund = try Money.sum([group.refund, money.minor])
-            case .income: group.income = try Money.sum([group.income, money.minor])
-            case .settlement: break
-            }
-            if let payer = record.body.memberID, record.body.accountingMode == .sharedSettlement, record.body.transactionKind != .income {
-                let sign: Int64 = record.body.transactionKind == .refund ? -1 : 1
-                group.balances[payer.uuidString] = try Money.sum([group.balances[payer.uuidString] ?? 0, sign * money.minor])
-                for split in record.body.splits {
-                    group.balances[split.memberID.uuidString] = try Money.sum([group.balances[split.memberID.uuidString] ?? 0, -sign * split.minor])
-                }
-            }
-            group.netExpense = try Money.sum([group.expense, -group.refund])
-            groups[money.currency] = group
+            guard let money = record.body.money, record.body.status == .draft || record.body.status == .confirmed else { continue }
+            try groups[money.currency, default: LedgerSummary(currency: money.currency)].include(record, money: money)
         }
         return groups.values.sorted { $0.currency.rawValue < $1.currency.rawValue }
     }
     /// Catch up on foreground; the same subscription + occurrence never creates two review tasks.
     public func reconcileRenewals(spaceID: UUID, today: LocalDay = LocalDay(date: Date())) throws {
-        let records = try records(spaceID: spaceID, includeDeleted: true).filter { $0.body.sharedDestination == nil }
-        for subscription in records where !subscription.deleted && !subscription.conflicted && subscription.body.kind == .subscription && subscription.body.status == .active {
-            guard let due = subscription.body.date, due <= today.addingDays(subscription.body.reminderDays.max() ?? 0) else { continue }
-            let key = "renewal:\(subscription.id.uuidString):\(due)"
-            if records.contains(where: { $0.body.kind == .task && ($0.body.occurrenceKey == key || $0.body.notes == key) }) { continue }
-            var task = RecordBody(kind: .task, title: "复核续费 · \(subscription.body.title)")
-            task.date = due; task.memberID = subscription.body.memberID; task.subscriptionID = subscription.id; task.projectIDs = subscription.body.projectIDs
-            task.occurrenceKey = key; task.notes = "确认继续订阅、已取消或需要处理。此任务不表示已经扣款。"
-            try save(task, spaceID: spaceID)
-        }
+        _ = try workspaceRecords(spaceIDs: [spaceID], renewingSpaceIDs: [spaceID], today: today)
     }
+
     public func publishCopy(_ recordID: UUID, from sourceSpace: UUID, to targetSpace: UUID, title: String, notes: String) throws -> Revision {
         let source = try record(recordID, spaceID: sourceSpace)
         guard try space(sourceSpace).kind == .personal, try space(targetSpace).kind == .family,
@@ -269,5 +250,28 @@ public struct LedgerSummary: Codable, Sendable {
         body.startAt = source.body.startAt; body.endAt = source.body.endAt; body.allDay = source.body.allDay; body.timeZone = source.body.timeZone
         // No source ID, notes, member mapping, related record or project reference is copied implicitly.
         return try save(body, spaceID: targetSpace)
+    }
+}
+
+private extension LedgerSummary {
+    mutating func include(_ record: Record, money: Money) throws {
+        if record.conflicted || record.body.status == .draft { unresolvedCount += 1; return }
+        guard record.body.status == .confirmed else { return }
+        sourceIDs.append(record.id)
+        switch record.body.transactionKind {
+        case .expense: expense = try Money.sum([expense, money.minor])
+        case .refund: refund = try Money.sum([refund, money.minor])
+        case .income: income = try Money.sum([income, money.minor])
+        case .settlement: break
+        }
+        if let payer = record.body.memberID, record.body.accountingMode == .sharedSettlement, record.body.transactionKind != .income {
+            let sign: Int64 = record.body.transactionKind == .refund ? -1 : 1
+            balances[payer.uuidString] = try Money.sum([balances[payer.uuidString] ?? 0, sign * money.minor])
+            for split in record.body.splits {
+                balances[split.memberID.uuidString] = try Money.sum([balances[split.memberID.uuidString] ?? 0, -sign * split.minor])
+            }
+        }
+        netExpense = try Money.sum([expense, -refund])
+
     }
 }

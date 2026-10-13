@@ -108,18 +108,19 @@ import FamilyPersistence
     }
     private func open(member: Member) throws {
         let repository = try CoreDataRepository(directory: directory.appendingPathComponent("Stores"))
-        _ = try repository.load()
+        let snapshot = try repository.load()
         localRepository = repository; memberID = member.id
-        ready = true; setupRequired = false; rebind()
+        ready = true; setupRequired = false; rebind(initialSnapshot: snapshot)
     }
-    public var localMemberName: String { (try? localRepository?.load().spaces.first { $0.kind == .personal }?.members.first?.name) ?? "我" }
-    public func rebind() {
+    public var localMemberName: String { (try? localRepository?.loadSpaces().first { $0.kind == .personal }?.members.first?.name) ?? "我" }
+    public func rebind() { rebind(initialSnapshot: nil) }
+    private func rebind(initialSnapshot: Snapshot?) {
         guard let localRepository, let memberID else { return }
         records = []; summaries = []
         perform {
-            let local = try localRepository.load()
+            let localSpaces = try localRepository.loadSpaces()
             let repository: any Repository
-            var ids = Set(local.spaces.map(\.id)); var mapping: [UUID: UUID] = [:]
+            var ids = Set(localSpaces.map(\.id)); var mapping: [UUID: UUID] = [:]
             if let shared = cloud.repository, let grant = cloud.grant {
                 repository = RoutedRepository(local: localRepository, shared: shared)
                 ids.insert(grant.spaceID); mapping[grant.spaceID] = grant.accountID
@@ -127,7 +128,7 @@ import FamilyPersistence
             core = FamilyCore(repository: repository, session: AccessSession(memberID: memberID, allowedSpaceIDs: ids, memberIDsBySpace: mapping))
             spaces = try core!.spaces().sorted { a, b in a.kind == b.kind ? a.name < b.name : a.kind == .personal }
             selectedSpaceID = workspace.commonID
-            refresh()
+            refresh(initialSnapshot: cloud.repository == nil ? initialSnapshot : nil)
         }
     }
     private func invalidateCloudUI(spaceID: UUID?) {
@@ -180,17 +181,14 @@ import FamilyPersistence
         if scope == .all && !pendingShares.isEmpty { throw NobisError.validation("有分享待完成，请在设置中核对后查看全部合计。") }
         return try core.reportView(spaceIDs: workspace.ids(scope))
     }
-    public func refresh() {
+    public func refresh() { refresh(initialSnapshot: nil) }
+    private func refresh(initialSnapshot: Snapshot?) {
         guard let core, let id = selectedSpaceID else { return }
         records = []; summaries = []
         perform {
-            var combined: [Record] = []
-            for source in workspace.ids(.all) {
-                if canWrite(spaceID: source) { try core.reconcileRenewals(spaceID: source) }
-                combined += try core.records(spaceID: source, includeDeleted: true)
-            }
-            records = combined.sorted { $0.latest.createdAt > $1.latest.createdAt }
-            summaries = try core.ledger(spaceID: id)
+            let ids = workspace.ids(.all)
+            records = try core.workspaceRecords(spaceIDs: ids, renewingSpaceIDs: Set(ids.filter { canWrite(spaceID: $0) }), initialSnapshot: initialSnapshot)
+            summaries = try FamilyCore.ledger(records: records.filter { $0.latest.spaceID == id })
         }
     }
     public func perform(_ action: () throws -> Void) {

@@ -18,7 +18,7 @@ NobisSharingSpike → 独立 NSPersistentCloudKitContainer → private / shared
 
 应用支持目录 `Nobis/identity.json` 保存本地创建的成员标识，不是 Apple ID 凭据。`Stores/spaces.json` 是空间目录；`Stores/<space UUID>.sqlite` 保存该空间的根、修订与审计。Mac 沙盒运行时路径位于应用容器中。
 
-SpaceRoot 的 payload 保存空间元数据；RecordRevision、AuditEvent 通过 optional inverse 关系连接根。每个实体包含逻辑 ID 与 Codable JSON 二进制 payload。未使用 CloudKit 不支持的唯一约束；本地库不参与云同步，共享家庭使用独立云存储。大型 payload 与全量扫描需要后续性能测量，不能当作 1 万条性能指标已经通过。
+SpaceRoot 的 payload 保存空间元数据；RecordRevision、AuditEvent 通过 optional inverse 关系连接根。每个实体包含逻辑 ID 与 Codable JSON 二进制 payload。未使用 CloudKit 不支持的唯一约束；本地库不参与云同步，共享家庭使用独立云存储。十万条普通财务 payload 和十万修订已做隔离测量；大附件／大 payload 仍待验证。
 
 本地一次写入只改变一个物理 Store；新增修订和审计同事务落盘，失败 rollback。库层拒绝覆盖历史。业务层校验父版本集合；投影以无子节点的修订为 head。多 head 为冲突，墓碑抑制自动复活。财务冲突排除正式合计，并报告各受影响币种的待核对数量。UI 选择版本会形成引用全部 head 的新修订。
 
@@ -65,3 +65,9 @@ Apple 的系统面板更新 share 后，主应用调用 persistUpdatedShare 更�
 ## 报表计算与规模
 
 单次报表使用授权快照创建 `FinancialReportIndex`，按所有修订头的年份／月份建立候选集合，冲突在各受影响期间计数且同一期间不重复。CSV 与图表复用索引，来源记录走 ID 字典；币种分组就地累加，避免来源数组重复复制。期末资产和资产历史按持有人／币种／日期分组。索引不跨刷新保留，导出重新授权及读取；`records` 与 `reportView` 的权限判断和投影使用同一次 Repository 加载。未引入磁盘索引、schema 升级或长期结果缓存；首次投影仍需全库读取与 JSON 解码，长修订历史仍可能成为瓶颈。
+
+## 首次加载与历史投影
+
+本地 `loadSpaces()` 只解码空间根；云仓库保留默认完整读取及授权检查。完整加载按物理空间批量读取修订／审计 payload，校验所属空间，遇到未保存的 Core Data 上下文拒绝读取。启动同步复用刚解码的快照，普通刷新重新读取授权快照；续费复核、列表、账本共享一次投影，新增续费任务后再读取，不跨刷新缓存。
+
+投影通过父版本 ID 集合筛出并去重修订头，保留所有历史、分叉与删除语义；保存使用 ID 字典验证不可变历史，拒绝重复 ID、覆盖或物理删除。没有数据库 schema 变更，首次读取仍需全库 JSON 解码。十万条范围与测量限制见[验证状态](verification.md)。

@@ -195,17 +195,24 @@ public struct Revision: Codable, Identifiable, Equatable, Sendable {
 public struct Record: Identifiable, Sendable {
     public var id: UUID { latest.recordID }
     public let heads: [Revision]
-    public var latest: Revision { heads.sorted { $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt }.last! }
+    public var latest: Revision { heads.max { $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt }! }
     public var body: RecordBody { latest.body }
     public var conflicted: Bool { heads.count > 1 }
     public var deleted: Bool { heads.contains { $0.deleted } }
     public static func project(_ revisions: [Revision]) -> [Record] {
-        Dictionary(grouping: revisions, by: \.recordID).values.compactMap { versions in
-            let parents = Set(versions.flatMap(\.parents))
-            let unique = Dictionary(grouping: versions, by: \.id).compactMap { $0.value.first }
-            let heads = unique.filter { !parents.contains($0.id) }
-            return heads.isEmpty ? nil : Record(heads: heads)
-        }.sorted { $0.latest.createdAt > $1.latest.createdAt }
+        var parents: [UUID: Set<UUID>] = [:]
+        for revision in revisions where !revision.parents.isEmpty {
+            parents[revision.recordID, default: []].formUnion(revision.parents)
+        }
+        var heads: [UUID: [UUID: Revision]] = [:]
+        for revision in revisions where parents[revision.recordID]?.contains(revision.id) != true {
+            if heads[revision.recordID]?[revision.id] == nil { heads[revision.recordID, default: [:]][revision.id] = revision }
+        }
+        // Resolve latest once per record, not on every comparison during the final sort.
+        return heads.values.map { values in
+            let record = Record(heads: Array(values.values))
+            return (record, record.latest.createdAt)
+        }.sorted { $0.1 > $1.1 }.map { $0.0 }
     }
 }
 public struct AuditEvent: Codable, Identifiable, Equatable, Sendable {
