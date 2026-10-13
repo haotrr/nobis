@@ -7,23 +7,24 @@ public struct PeriodStatement: Encodable, Sendable {
     public var refund: Int64 = 0
     public var cashIncome: Int64 = 0
     public var monthlyNet: Int64 = 0
+    public var nonMonthlyNet: Int64 = 0
     public var gross: Int64 = 0
     public var knownTax: Int64 = 0
     public var unknownTaxCount = 0
     public var categories: [String: Int64] = [:]
     public var consumption: [String: Int64] = [:]
     public var sourceIDs: [UUID] = []
-    private enum CodingKeys: String, CodingKey { case currency, expense, refund, cashIncome, monthlyNet, gross, knownTax, unknownTaxCount, categories, consumption, sourceIDs, netExpense, income, surplus }
+    private enum CodingKeys: String, CodingKey { case currency, expense, refund, cashIncome, monthlyNet, nonMonthlyNet, gross, knownTax, unknownTaxCount, categories, consumption, sourceIDs, netExpense, income, surplus }
     public func encode(to encoder: any Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(currency, forKey: .currency); try c.encode(expense, forKey: .expense); try c.encode(refund, forKey: .refund)
-        try c.encode(cashIncome, forKey: .cashIncome); try c.encode(monthlyNet, forKey: .monthlyNet); try c.encode(gross, forKey: .gross)
+        try c.encode(cashIncome, forKey: .cashIncome); try c.encode(monthlyNet, forKey: .monthlyNet); try c.encode(nonMonthlyNet, forKey: .nonMonthlyNet); try c.encode(gross, forKey: .gross)
         try c.encode(knownTax, forKey: .knownTax); try c.encode(unknownTaxCount, forKey: .unknownTaxCount)
         try c.encode(categories, forKey: .categories); try c.encode(consumption, forKey: .consumption); try c.encode(sourceIDs, forKey: .sourceIDs)
         try c.encode(netExpense, forKey: .netExpense); try c.encode(income, forKey: .income); try c.encode(surplus, forKey: .surplus)
     }
     public var netExpense: Int64 { get throws { try Money.sum([expense, -refund]) } }
-    public var income: Int64 { get throws { try Money.sum([cashIncome, monthlyNet]) } }
+    public var income: Int64 { get throws { try Money.sum([cashIncome, monthlyNet, nonMonthlyNet]) } }
     public var surplus: Int64 { get throws { try Money.sum([income, -netExpense]) } }
 }
 public struct FinancialReport: Encodable, Sendable {
@@ -53,21 +54,27 @@ public struct SubscriptionCosts: Codable, Sendable {
     public let unresolvedCount: Int
 }
 public extension FamilyCore {
-    func financialReport(spaceID: UUID, year: Int, month: Int? = nil) throws -> FinancialReport {
+    func financialReport(spaceID: UUID, year: Int, month: Int? = nil, through: LocalDay? = nil) throws -> FinancialReport {
+        try Self.financialReport(records: records(spaceID: spaceID), year: year, month: month, through: through)
+    }
+    /// Reuse one authorized projection when building several chart periods.
+    static func financialReport(records: [Record], year: Int, month: Int? = nil, through: LocalDay? = nil) throws -> FinancialReport {
         _ = try LocalDay(year, month ?? 1, 1)
-        let records = try records(spaceID: spaceID).filter { $0.body.sharedDestination == nil }
+        let records = records.filter { !$0.deleted && $0.body.sharedDestination == nil }
         var groups: [Currency: PeriodStatement] = [:], unresolved = 0
         func inPeriod(_ b: RecordBody) -> Bool {
-            if b.kind == .monthlyIncome, let i = b.incomeMonth { return i.year == year && (month == nil || i.month == month) }
+            if b.kind == .monthlyIncome, let i = b.incomeMonth { return i.year == year && (month == nil || i.month == month) && (through == nil || i.year < through!.year || (i.year == through!.year && (i.isNonMonthly || i.month <= through!.month))) }
             guard b.kind == .transaction, let d = b.date else { return false }
-            return d.year == year && (month == nil || d.month == month)
+            return d.year == year && (month == nil || d.month == month) && (through.map { d <= $0 } ?? true)
         }
         for r in records where r.heads.contains(where: { inPeriod($0.body) }) {
             if r.conflicted || r.body.status == .draft { unresolved += 1; continue }
             let b = r.body
             if b.kind == .monthlyIncome, b.status == .active, let i = b.incomeMonth {
                 var g = groups[i.net.currency] ?? PeriodStatement(currency: i.net.currency)
-                g.monthlyNet = try Money.sum([g.monthlyNet, i.net.minor]); g.gross = try Money.sum([g.gross, i.gross.minor])
+                if i.isNonMonthly { g.nonMonthlyNet = try Money.sum([g.nonMonthlyNet, i.net.minor]) }
+                else { g.monthlyNet = try Money.sum([g.monthlyNet, i.net.minor]) }
+                g.gross = try Money.sum([g.gross, i.gross.minor])
                 if let tax = i.tax { g.knownTax = try Money.sum([g.knownTax, tax.minor]) } else { g.unknownTaxCount += 1 }
                 g.sourceIDs.append(r.id); groups[g.currency] = g
             } else if b.kind == .transaction, b.status == .confirmed, let money = b.money {
@@ -146,7 +153,7 @@ public extension FamilyCore {
             let report = try financialReport(spaceID: spaceID, year: year, month: m)
             rows.append([String(year),m.map(String.init) ?? "", "", "report_status", "",String(report.unresolvedCount)])
             for g in report.totals {
-                var values: [(String, Int64)] = try [("expense",g.expense),("refund",g.refund),("net_expense",g.netExpense),("cash_income",g.cashIncome),("monthly_net_income",g.monthlyNet),("gross_income",g.gross),("known_tax",g.knownTax),("income",g.income),("surplus",g.surplus)]
+                var values: [(String, Int64)] = try [("expense",g.expense),("refund",g.refund),("net_expense",g.netExpense),("cash_income",g.cashIncome),("monthly_net_income",g.monthlyNet),("non_monthly_net_income",g.nonMonthlyNet),("gross_income",g.gross),("known_tax",g.knownTax),("income",g.income),("surplus",g.surplus)]
                 values += g.categories.sorted { $0.key < $1.key }.map { ("category:" + $0.key,$0.value) }
                 values += g.consumption.sorted { $0.key < $1.key }.map { ("consumption:" + $0.key,$0.value) }
                 for (name, value) in values { rows.append([String(year), m.map(String.init) ?? "", g.currency.rawValue, name, (Decimal(value) / Decimal(g.currency.factor)).description, String(report.unresolvedCount)]) }

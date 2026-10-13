@@ -73,7 +73,7 @@ import FamilyPersistence
         #expect(throws: NobisError.self) { try f.core.save(grandchild, spaceID: f.family.id) }
     }
     @Test func batchFailureIsAtomic() throws {
-        let f = Fixture(); let b = try ledgerOnly(f); var invalid = b; invalid.money?.minor = 0
+        let f = Fixture(); let b = try ledgerOnly(f); var invalid = b; invalid.money?.minor = -1
         #expect(throws: NobisError.self) { try f.core.saveBatch([RecordChange(body: b), RecordChange(body: invalid)], spaceID: f.family.id) }
         #expect(f.repository.snapshot.revisions.isEmpty); #expect(f.repository.snapshot.audits.isEmpty)
     }

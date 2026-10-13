@@ -25,11 +25,41 @@ struct ProjectPreview: View {
             else if record.body.status != .active { Text(record.body.status.title).font(.caption).foregroundStyle(.secondary) }
             if let parentID = record.body.parentProjectID, let parent = model.activeRecords.first(where: { $0.id == parentID }) { Label(parent.body.title, systemImage: "folder").font(.caption).foregroundStyle(.secondary) }
             if let date = record.body.date { Label(date.description, systemImage: "calendar").font(.caption).foregroundStyle(.secondary) }
+            if record.body.budget != nil || projectContent.contains(where: { $0.body.kind == .transaction }) {
+                ProjectFinancePreview(model: model, record: record)
+            }
             if total > 0 {
                 ProgressView(value: Double(completed), total: Double(total)).accessibilityHidden(true)
                 Text("已完成 \(completed) / \(total) 项待办").font(.caption).foregroundStyle(.secondary)
             }
         }.padding(24).frame(maxWidth: .infinity, alignment: .leading).lifeCard()
             .contentShape(RoundedRectangle(cornerRadius: 26))
+    }
+}
+
+private struct ProjectFinancePreview: View {
+    let model: AppModel
+    let record: Record
+    var body: some View {
+        if let core = model.core {
+            switch Result(catching: { try core.projectSpending(record.id, spaceID: record.latest.spaceID) }) {
+            case .failure(let error): Text(error.localizedDescription).font(.caption).foregroundStyle(.orange)
+            case .success(let summary):
+                VStack(alignment: .leading, spacing: 6) {
+                    if let budget = record.body.budget {
+                        Text("预算 \(budget.limit.formatted)")
+                        let actual = summary.actual[budget.limit.currency] ?? 0
+                        let remaining = budget.limit.minor.subtractingReportingOverflow(actual)
+                        if !remaining.overflow && remaining.partialValue != Int64.min {
+                            Text("\(remaining.partialValue < 0 ? "超支" : "剩余") \(Money(minor: abs(remaining.partialValue), currency: budget.limit.currency).formatted)")
+                        }
+                    }
+                    ForEach(Currency.allCases, id: \.self) { currency in
+                        if let actual = summary.actual[currency] { Text("已花 \(Money(minor: actual, currency: currency).formatted)") }
+                    }
+                    if summary.unresolvedCount > 0 { Text("\(summary.unresolvedCount) 笔待核对，未计入").foregroundStyle(.orange) }
+                }.font(.caption).monospacedDigit().foregroundStyle(.secondary)
+            }
+        }
     }
 }

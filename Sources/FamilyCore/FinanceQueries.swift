@@ -7,6 +7,7 @@ public struct LedgerFilter: Sendable {
     public var through: LocalDay?
     public var category: String?
     public var projectID: UUID?
+    public var transactionKinds: Set<TransactionKind>?
     public var currency: Currency?
     public var minimum: Int64?
     public var maximum: Int64?
@@ -14,12 +15,13 @@ public struct LedgerFilter: Sendable {
     public var consumer: String?
     public init() {}
     public func matches(_ record: Record) -> Bool {
+        let terms = search.split(whereSeparator: \.isWhitespace).map(String.init)
         // Conflicting branches must remain visible when any branch matches.
-        record.heads.contains { revision in
+        return record.heads.contains { revision in
             let b = revision.body
-            return b.kind == .transaction && (search.isEmpty || [b.title, b.notes, b.category, b.finance?.originalRecorder ?? ""].contains { $0.localizedCaseInsensitiveContains(search) }) &&
+            return b.kind == .transaction && terms.allSatisfy { term in [b.title, b.notes, b.category, b.account, b.finance?.originalRecorder ?? "", b.finance?.consumer ?? ""].contains { $0.localizedCaseInsensitiveContains(term) } } &&
                 (from == nil || b.date.map { $0 >= from! } == true) && (through == nil || b.date.map { $0 <= through! } == true) &&
-                (category == nil || b.category == category) && (projectID == nil || b.projectIDs.contains(projectID!)) &&
+                (category == nil || b.category == category) && (transactionKinds == nil || transactionKinds!.contains(b.transactionKind)) && (projectID == nil || b.projectIDs.contains(projectID!)) &&
                 (currency == nil || b.money?.currency == currency) && (minimum == nil || (b.money?.minor ?? 0) >= minimum!) &&
                 (maximum == nil || (b.money?.minor ?? 0) <= maximum!) &&
                 (consumption == nil || (b.finance?.consumption ?? .unassigned) == consumption) && (consumer == nil || b.finance?.consumer == consumer)
@@ -42,8 +44,10 @@ public extension FamilyCore {
     func saveBatch(_ changes: [RecordChange], spaceID: UUID) throws {
         _ = try space(spaceID)
         try repository.requireWrite(spaceID: spaceID, actorID: session.actorID(in: spaceID))
+        guard !changes.isEmpty else { return }
         let staging = MemoryRepository(try repository.load())
         let core = FamilyCore(repository: staging, session: session)
+        try core.prepareBatchProjection(spaceID: spaceID)
         for change in changes { try core.save(change.body, spaceID: spaceID, recordID: change.id, expected: change.expected) }
         try repository.save(staging.snapshot)
     }

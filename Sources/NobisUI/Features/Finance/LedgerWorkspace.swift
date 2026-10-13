@@ -28,6 +28,32 @@ struct LedgerWorkspace: View {
     @State private var creating = false
     @State private var exporting = false
     @State private var document = CSVDocument(data: Data())
+    init(model: AppModel, period: LedgerPeriod? = nil, category: String? = nil, currency: Currency? = nil) {
+        var initial = LedgerFilter(); initial.category = category; initial.currency = currency
+        if category != nil { initial.transactionKinds = [.expense, .refund] }
+        _filter = State(initialValue: initial)
+        self.model = model
+        if let bounds = try? period?.bounds() {
+            _dates = State(initialValue: true)
+            _from = State(initialValue: bounds.from.date())
+            _through = State(initialValue: bounds.through.date())
+        }
+    }
+    private var months: [LedgerPeriod] {
+        LedgerMonthGroup.groups(model.records(in: scope).filter { $0.body.kind == .transaction }).compactMap(\.period)
+    }
+    private var reportPeriod: LedgerPeriod? {
+        guard dates else { return nil }
+        let first = LocalDay(date: from), last = LocalDay(date: through)
+        guard first.year == last.year else { return nil }
+        return LedgerPeriod(year: first.year, month: first.month == last.month ? first.month : nil)
+    }
+    private func selectPeriod(_ period: LedgerPeriod?) {
+        selected.removeAll()
+        guard let period else { dates = false; return }
+        do { let bounds = try period.bounds(); from = bounds.from.date(); through = bounds.through.date(); dates = true }
+        catch { model.error = error.localizedDescription }
+    }
     private var projects: [Record] { model.records(in: scope).filter { $0.body.kind == .project } }
     private var filterProjects: [Record] { model.records(in: .all).filter { $0.body.kind == .project } }
     private func effectiveFilter() throws -> LedgerFilter {
@@ -45,13 +71,28 @@ struct LedgerWorkspace: View {
     var body: some View {
         LifePage {
             LifeScopeControls(scope: $model.browsingScope)
-            NavigationLink { FinancialDashboard(model: model) } label: {
+            NavigationLink { FinancialDashboard(model: model, period: reportPeriod) } label: {
                 HStack {
                     Label("收入、资产与财务报告", systemImage: "chart.bar.xaxis").font(.headline)
                     Spacer()
                     Image(systemName: "arrow.right").accessibilityHidden(true)
                 }.padding(.vertical, 4).frame(maxWidth: .infinity, alignment: .leading)
             }.buttonStyle(.plain)
+            HStack {
+                Menu {
+                    Button("全部日期") { selectPeriod(nil) }
+                    Button("本月") { let day = LocalDay(date: Date()); selectPeriod(LedgerPeriod(year: day.year, month: day.month)) }
+                    ForEach(Array(Set(months.map(\.year))).sorted(by: >), id: \.self) { year in
+                        Menu("\(String(year)) 年") {
+                            Button("全年") { selectPeriod(LedgerPeriod(year: year)) }
+                            ForEach(months.filter { $0.year == year }, id: \.self) { period in
+                                Button(period.title) { selectPeriod(period) }
+                            }
+                        }
+                    }
+                } label: { Label(dates ? "\(LocalDay(date: from)) 至 \(LocalDay(date: through))" : "全部日期", systemImage: "calendar") }
+                Spacer(minLength: 0)
+            }
             VStack(alignment: .leading, spacing: 14) {
                 DisclosureGroup(isExpanded: $filtersExpanded) {
                     VStack(alignment: .leading, spacing: 16) {
@@ -87,6 +128,9 @@ struct LedgerWorkspace: View {
                         Text(activeFilterCount == 0 ? "全部账单" : "已启用 \(activeFilterCount) 项条件").font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                if activeFilterCount > 0 {
+                    Text(filterDescription).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
                 if activeFilterCount > 0 { Button("清除筛选") { filter = LedgerFilter(); dates = false; minimum = ""; maximum = "" } }
             }.padding(20).frame(maxWidth: .infinity, alignment: .leading).lifeCard()
             switch result {
@@ -103,13 +147,24 @@ struct LedgerWorkspace: View {
                             if activeFilterCount > 0 { filter = LedgerFilter(); dates = false; minimum = ""; maximum = "" } else { creating = true }
                         }
                     }
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(records) { r in HStack {
-                        if selecting { Button { if selected.contains(r.id) { selected.remove(r.id) } else { selected.insert(r.id) } } label: { Image(systemName: selected.contains(r.id) ? "checkmark.circle.fill" : "circle") }.buttonStyle(.borderless).accessibilityLabel("选择 \(r.body.title)") }
-                        RecordLink(model: model, record: r) { RecordRow(model: model, record: r) }.buttonStyle(.plain)
-                    }
-                        if r.id != records.last?.id { Divider().opacity(0.35) }
-                    }
+                    Text("流水收入不含月度及非月度收入记录；完整收入与结余见财务报告。").font(.caption).foregroundStyle(.secondary)
+                    LazyVStack(alignment: .leading, spacing: 18) {
+                        ForEach(LedgerMonthGroup.groups(records)) { group in
+                            LazyVStack(alignment: .leading, spacing: 6) {
+                                Text(group.period?.title ?? "日期待核对").font(.headline)
+                                ForEach(Currency.allCases, id: \.self) { currency in
+                                    let valid = group.records.filter { !$0.conflicted && $0.body.status == .confirmed && $0.body.money?.currency == currency }
+                                    if !valid.isEmpty { LedgerMonthTotals(records: valid, currency: currency) }
+                                }
+                                ForEach(group.records) { r in
+                                    HStack {
+                                        if selecting { Button { if selected.contains(r.id) { selected.remove(r.id) } else { selected.insert(r.id) } } label: { Image(systemName: selected.contains(r.id) ? "checkmark.circle.fill" : "circle") }.buttonStyle(.borderless).accessibilityLabel("选择 \(r.body.title)") }
+                                        RecordLink(model: model, record: r) { RecordRow(model: model, record: r) }.buttonStyle(.plain)
+                                    }.id(r.id)
+                                    if r.id != group.records.last?.id { Divider().opacity(0.35) }
+                                }
+                            }
+                        }
                     }
                     Button("导出当前结果 CSV") { model.perform { document = CSVDocument(data: try CSV.scoped(LedgerImport.expenseCSV(records), scope: scope.rawValue)); exporting = true } }.disabled(records.isEmpty)
                 }
@@ -121,7 +176,7 @@ struct LedgerWorkspace: View {
                     Button("取消选择") { selected.removeAll() }
                 }
             }
-        }.navigationTitle("账本").searchable(text: $filter.search, prompt: "名称、备注、分类、原记录人")
+        }.navigationTitle("账本").searchable(text: $filter.search, prompt: "搜索名称、分类、账户或归属，空格分词")
         .toolbar {
             WorkspaceCreateAction(title: "记一笔") { creating = true }
             ToolbarItemGroup(placement: .automatic) {
@@ -131,9 +186,22 @@ struct LedgerWorkspace: View {
         }
         .onChange(of: scope) { _, _ in selected.removeAll(); target = nil }
         .sheet(isPresented: $creating) { RecordEditor(model: model, kind: .transaction) }
-        .sheet(isPresented: $importing) { NavigationStack { LedgerImportView(model: model, presentedAsSheet: true) } }
+        .sheet(isPresented: $importing) { NavigationStack { LedgerImportView(model: model, presentedAsSheet: true) }.editorDimensions() }
         .fileExporter(isPresented: $exporting, document: document, contentType: .commaSeparatedText, defaultFilename: "Nobis-\(scope.title)-收支-\(LocalDay(date: Date()))") { if case .failure(let error) = $0 { model.error = error.localizedDescription } }
         .confirmationDialog("将所选账单的项目关联替换为目标项目，并清除原计划项关联？金额和历史修订保留。", isPresented: $confirming) { Button("确认调整") { model.perform { guard let core = model.core, let target, let project = model.activeRecords.first(where: { $0.id == target }) else { throw NobisError.forbidden }; try core.reassignProjects(recordIDs: selected, to: target, spaceID: project.latest.spaceID); selected.removeAll(); model.refresh() } } }
+    }
+    private var filterDescription: String {
+        var values: [String] = []
+        if filter.transactionKinds != nil { values.append("仅支出与退款") }
+        if let category = filter.category { values.append("分类：" + category) }
+        if let id = filter.projectID { values.append("项目：" + (filterProjects.first { $0.id == id }?.body.title ?? "不可用")) }
+        if let currency = filter.currency { values.append(currency.rawValue) }
+        if !minimum.isEmpty { values.append("最低 " + minimum) }
+        if !maximum.isEmpty { values.append("最高 " + maximum) }
+        if let consumption = filter.consumption { values.append(consumption.title) }
+        if let consumer = filter.consumer { values.append(consumer) }
+        if !filter.search.isEmpty { values.append("搜索：" + filter.search) }
+        return values.joined(separator: " · ")
     }
     private var activeFilterCount: Int {
         [dates, filter.category != nil, filter.projectID != nil, filter.currency != nil,
@@ -148,9 +216,9 @@ struct LedgerWorkspace: View {
                 return (Money(minor: expense, currency: currency).formatted, Money(minor: income, currency: currency).formatted)
             }) {
             case .success(let values):
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 32) { amountSummary("净支出", value: values.0); amountSummary("收入", value: values.1) }
-                    VStack(alignment: .leading, spacing: 16) { amountSummary("净支出", value: values.0); amountSummary("收入", value: values.1) }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 24, alignment: .leading)], alignment: .leading, spacing: 16) {
+                    amountSummary("净支出", value: values.0)
+                    amountSummary("流水收入", value: values.1)
                 }.padding(.vertical, 10)
             case .failure(let error): InlineIssue(message: error.localizedDescription)
             }
@@ -164,83 +232,6 @@ struct LedgerWorkspace: View {
     }
 
 }
-struct LedgerImportView: View {
-    let model: AppModel
-    var presentedAsSheet = false
-    @Environment(\.dismiss) private var dismiss
-    @State private var choosing = false
-    @State private var preview: ImportPreview?
-    @State private var raw = Data()
-    @State private var filename = ""
-    @State private var spaceID: UUID?
-    @State private var mapping: [String: String] = [:]
-    @State private var error: String?
-    @State private var report: String?
-    @State private var confirming = false
-    private var review: Result<[RecordChange], Error>? {
-        guard let preview, let spaceID, let core = model.core else { return nil }
-        return Result { try core.importChanges(preview, spaceID: spaceID, categoryMap: mapping) }
-    }
-    var body: some View {
-        LifeDetail {
-            LifeFormSection(title: "导入可见性", icon: "eye") {
-                RecordVisibilityField(model: model, spaceID: $spaceID, editable: true)
-                Text("支持支付宝／微信支出 CSV、Minty 支出 CSV，以及专用 Minty JSON 迁移包。确认前不会写入业务数据。").font(.caption)
-                Button("选择文件…") { choosing = true }
-                if !filename.isEmpty { Text(filename).font(.caption) }
-            }
-            if let preview {
-                LifeSection(title: "核对结果", icon: "checkmark.circle") {
-                    Text("可解析 \(preview.entries.count) 条 · 跳过 \(preview.skipped) 条 · 错误 \(preview.issues.count) 条")
-                    ForEach(Array(preview.warnings.enumerated()), id: \.offset) { Text($0.element).font(.caption).foregroundStyle(.orange) }
-                    ForEach(Array(preview.issues.prefix(100).enumerated()), id: \.offset) { Text($0.element).font(.caption).foregroundStyle(.red) }
-                    ForEach(Currency.allCases, id: \.self) { currency in
-                        let amounts = preview.entries.filter { $0.body.kind == .transaction && $0.body.money?.currency == currency }.compactMap { $0.body.money?.minor }
-                        if !amounts.isEmpty { Text(sum(amounts, currency: currency)) }
-                    }
-                    Text("下列为文件内金额；已导入记录会在提交时跳过，不重复入账。").font(.caption)
-                }
-                if let review {
-                    switch review {
-                    case .success(let changes): Text("本次新增 \(changes.count) 条，已导入或已有分类 \(preview.entries.count - changes.count) 条。")
-                    case .failure(let issue): InlineIssue(message: issue.localizedDescription)
-                    }
-                }
-                LifeFormSection(title: "分类映射", icon: "tag") { ForEach(preview.categories, id: \.self) { category in TextField(category, text: Binding(get: { mapping[category] ?? category }, set: { mapping[category] = $0 })) } }
-                LifeSection(title: "记录预览（前 100 条）", icon: "list.bullet.rectangle") { ForEach(preview.entries.prefix(100)) { entry in VStack(alignment: .leading) { Text("\(entry.body.kind.title) · \(entry.body.title)"); Text("\(entry.body.date?.description ?? "") \(entry.body.money?.formatted ?? "")").font(.caption) } } }
-                Button("确认导入…") { confirming = true }.disabled(!preview.issues.isEmpty || preview.entries.isEmpty || spaceID == nil)
-            }
-            if let error { InlineIssue(message: error) }
-            if let report { Text(report).textSelection(.enabled) }
-        }.navigationTitle("导入与迁移").onAppear { if spaceID == nil { spaceID = model.workspace.commonID } }.toolbar {
-            if presentedAsSheet { ToolbarItem(placement: .cancellationAction) { Button("关闭") { dismiss() } } }
-        }.editorDimensions()
-        .fileImporter(isPresented: $choosing, allowedContentTypes: [.commaSeparatedText, .json, .plainText]) { result in
-            do {
-                let url = try result.get(), access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }
-                guard (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) <= 20_000_000 else { throw NobisError.validation("文件超过 20 MB，请分批导入。") }
-                let data = try Data(contentsOf: url)
-                let parsed = try url.pathExtension.lowercased() == "json" ? MintyMigration.preview(data) : LedgerImport.csv(data)
-                raw = data; preview = parsed; filename = url.lastPathComponent; if spaceID == nil { spaceID = model.selectedSpaceID }; mapping = [:]; error = nil; report = nil
-            } catch { self.error = error.localizedDescription; preview = nil }
-        }
-        .confirmationDialog("按所选可见性导入预览中的记录？两人共享的内容将对另一位可见。写入前会保存当前空间备份和迁移源文件；这些显式备份在退出家庭后仍保留。", isPresented: $confirming) { Button("确认导入") { commit() } }
-    }
-    private func sum(_ amounts: [Int64], currency: Currency) -> String { do { return try "支出 \(Money(minor: Money.sum(amounts), currency: currency).formatted)" } catch { return error.localizedDescription } }
-    private func commit() {
-        do {
-            guard let preview, let spaceID, model.workspace.ids(.all).contains(spaceID), let core = model.core else { throw NobisError.forbidden }
-            let folder = model.directory.appendingPathComponent("Migration/\(UUID().uuidString)")
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try core.export(spaceID: spaceID).write(to: folder.appendingPathComponent("before-import.json"), options: .atomic)
-            try raw.write(to: folder.appendingPathComponent("source-" + (filename.lowercased().hasSuffix(".json") ? "minty.json" : "expenses.csv")), options: .atomic)
-            let count = try core.commitImport(preview, spaceID: spaceID, categoryMap: mapping)
-            report = "已新增 \(count) 条，跳过此前已导入的记录。备份与源文件：\(folder.path)"; self.preview = nil; error = nil
-            model.refresh()
-        } catch { self.error = error.localizedDescription }
-    }
-}
-
 private struct LedgerFilterField<Content: View>: View {
     let title: String
     @ViewBuilder let content: Content
@@ -253,5 +244,18 @@ private struct LedgerFilterField<Content: View>: View {
             Text(title).font(.callout).foregroundStyle(.secondary)
             content.frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct LedgerMonthTotals: View {
+    let records: [Record]
+    let currency: Currency
+    var body: some View {
+        switch Result(catching: { try ImportInspection.totals(records.map(\.body), currency: currency) }) {
+        case .failure(let error): InlineIssue(message: error.localizedDescription)
+        case .success(let sums):
+            Text("净支出 \(Money(minor: sums.expense, currency: currency).formatted) · 流水收入 \(Money(minor: sums.income, currency: currency).formatted)")
+                .font(.caption).foregroundStyle(.secondary).monospacedDigit().fixedSize(horizontal: false, vertical: true)
+        }
     }
 }

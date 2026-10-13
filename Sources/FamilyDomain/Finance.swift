@@ -36,6 +36,11 @@ public struct ImportSource: Codable, Equatable, Sendable {
     public init(key: String, originalID: String, originalCreatedAt: String? = nil) { self.key = key; self.originalID = originalID; self.originalCreatedAt = originalCreatedAt }
 }
 public extension RecordBody {
+    /// Zero-cost history is meaningful, but cannot create a settlement or refund.
+    var hasValidTransactionAmount: Bool {
+        guard let money else { return false }
+        return money.minor > 0 || (money.minor == 0 && accountingMode == .ledgerOnly && transactionKind == .expense && splits.isEmpty)
+    }
     // Missing metadata means pre-migration Nobis behavior; never reinterpret existing balances.
     var accountingMode: AccountingMode { finance?.mode ?? .sharedSettlement }
     func validateFinance() throws {

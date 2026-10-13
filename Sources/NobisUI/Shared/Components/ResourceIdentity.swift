@@ -100,7 +100,7 @@ struct FinancialOwnershipBadge: View {
             } else if let id = owner.memberID {
                 MemberIdentityBadge(name: model.space(for: record)?.members.first { $0.id == id }?.name ?? "历史成员 · \(id.uuidString.prefix(4))", identity: id.uuidString, avatarData: model.space(for: record)?.members.first { $0.id == id }?.avatarData)
             } else { Text("归属待确认").font(.caption).foregroundStyle(.secondary) }
-        } else { Label("原整体范围／待确认", systemImage: "questionmark.circle").font(.caption).foregroundStyle(.secondary) }
+        } else { Label(record.body.kind == .monthlyIncome ? "收入归属待确认" : "原整体范围／待确认", systemImage: "questionmark.circle").font(.caption).foregroundStyle(.secondary) }
     }
 }
 

@@ -73,7 +73,7 @@ public enum Backup {
             if let member = revision.body.financialOwner?.memberID, !space.members.contains(where: { $0.id == member }) { throw NobisError.corruptBackup }
             if revision.body.sharedDestination != nil && space.kind != .personal { throw NobisError.corruptBackup }
             if revision.body.kind == .transaction {
-                guard let money = revision.body.money, money.minor > 0, revision.body.date != nil,
+                guard let money = revision.body.money, revision.body.hasValidTransactionAmount, revision.body.date != nil,
                       (revision.body.memberID.map({ id in space.members.contains { $0.id == id } }) ?? (revision.body.accountingMode == .ledgerOnly)),
                       Set(revision.body.splits.map(\.memberID)).count == revision.body.splits.count,
                       revision.body.splits.allSatisfy({ share in share.minor >= 0 && space.members.contains { $0.id == share.memberID } }) else { throw NobisError.corruptBackup }

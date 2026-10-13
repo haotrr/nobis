@@ -22,6 +22,8 @@ xcodebuild -project Nobis.xcodeproj -scheme NobisMac -derivedDataPath DerivedDat
 xcodebuild -project Nobis.xcodeproj -scheme NobisIOS -sdk iphonesimulator -derivedDataPath /tmp/nobis-today-ios CODE_SIGNING_ALLOWED=NO build
 ```
 
+仅 Debug 构建支持 `--nobis-review-directory /绝对路径/隔离目录`，以独立数据目录启动并禁用云连接和通知；目录应由副本验收准备。测试专用应用包还可在 Info.plist 设置 `NobisReviewDirectory`，避免自动重启丢失启动参数。正式构建忽略这两个入口，不把私有副本提交进仓库。
+
 Xcode 工程已包含在仓库；修改 `project.yml` 后使用 `xcodegen generate` 重新生成。
 
 ## 功能与文档

@@ -15,6 +15,14 @@ struct ProjectWorkspace: View {
         let ids = Set([projectID] + children.map(\.id))
         return model.activeRecords.filter { !ids.isDisjoint(with: $0.body.projectIDs) }
     }
+    private var finances: [Record] {
+        content.filter { [.transaction, .subscription].contains($0.body.kind) && $0.body.status != .voided }
+            .sorted { ($0.body.date?.description ?? "") > ($1.body.date?.description ?? "") }
+    }
+    private var financialFirst: Bool {
+        (project?.body.budget != nil || !finances.isEmpty) &&
+        !content.contains { [.task, .document, .event].contains($0.body.kind) && ![.archived, .cancelled, .completed].contains($0.body.status) }
+    }
     private var unfinished: Int { content.filter { $0.body.kind == .task && $0.body.status == .active }.count + NoteChecklistItem.items(in: content).count }
     var body: some View {
         Group {
@@ -30,11 +38,17 @@ struct ProjectWorkspace: View {
                         }
                         NavigationLink("项目信息与预算") { RecordDetail(model: model, recordID: projectID) }
                     }
+                    if financialFirst {
+                        ProjectBudgetSummary(model: model, record: project, allowsManagement: false)
+                        financeSection
+                    }
+                    if unfinished > 0 {
                     LifeSection(title: "待办 · \(unfinished) 项未完成", icon: "checklist") {
                         let tasks = content.filter { $0.body.kind == .task && $0.body.status == .active }
                         ForEach(tasks) { TaskRow(model: model, record: $0, inheritedSpaceID: project.latest.spaceID) }
                         ForEach(NoteChecklistItem.items(in: content)) { NoteChecklistRow(model: model, item: $0, inheritedSpaceID: project.latest.spaceID) }
                         if unfinished == 0 { Text("没有未完成事项").foregroundStyle(.secondary) }
+                    }
                     }
                     let events = content.filter { $0.body.kind == .event && $0.body.status == .active }
                     if !events.isEmpty {
@@ -42,16 +56,22 @@ struct ProjectWorkspace: View {
                             ForEach(events.sorted { ($0.body.startAt ?? $0.body.date?.date() ?? .distantFuture) < ($1.body.startAt ?? $1.body.date?.date() ?? .distantFuture) }) { row($0) }
                         }
                     }
+                    let notes = content.filter { $0.body.kind == .document && $0.body.status != .archived }
+                    if !notes.isEmpty {
                     LifeSection(title: "笔记", icon: "doc.text") {
-                        ForEach(content.filter { $0.body.kind == .document && $0.body.status != .archived }) { row($0) }
+                        ForEach(notes) { row($0) }
                         Button("新建项目笔记", systemImage: "square.and.pencil") { note = true }.disabled(!model.canWrite(spaceID: project.latest.spaceID))
                     }
-                    ProjectBudgetSummary(model: model, record: project, allowsManagement: false)
-                    let finances = content.filter { [.transaction, .subscription].contains($0.body.kind) && $0.body.status != .voided }
-                    if !finances.isEmpty {
-                        LifeSection(title: "费用与订阅", icon: "creditcard") {
-                            ForEach(finances) { row($0) }
-                        }
+                    }
+                    if !financialFirst {
+                        ProjectBudgetSummary(model: model, record: project, allowsManagement: false)
+                        financeSection
+                    }
+                    if unfinished == 0 || notes.isEmpty {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 20) { creationLinks(notesEmpty: notes.isEmpty) }
+                            VStack(alignment: .leading, spacing: 12) { creationLinks(notesEmpty: notes.isEmpty) }
+                        }.disabled(!model.canWrite(spaceID: project.latest.spaceID))
                     }
                     if !children.isEmpty { LifeSection(title: "子项目", icon: "folder") { ForEach(children) { row($0) } } }
                     RelatedResources(model: model, record: project)
@@ -84,6 +104,18 @@ struct ProjectWorkspace: View {
             } else { ContentUnavailableView("项目不可用", systemImage: "folder.badge.questionmark") }
         }
     }
+    @ViewBuilder private func creationLinks(notesEmpty: Bool) -> some View {
+        if unfinished == 0 { Button("添加待办", systemImage: "checklist") { create = .task } }
+        if notesEmpty { Button("新建项目笔记", systemImage: "square.and.pencil") { note = true } }
+    }
+    @ViewBuilder private var financeSection: some View {
+        if !finances.isEmpty {
+            LifeSection(title: "费用与订阅 · \(finances.count) 条", icon: "creditcard") {
+                ForEach(finances.prefix(5)) { row($0) }
+                NavigationLink("查看全部费用与订阅") { ProjectFinanceHistory(model: model, projectID: projectID) }
+            }
+        }
+    }
     private func row(_ record: Record) -> some View { RecordLink(model: model, record: record) { RecordRow(model: model, record: record, inheritedSpaceID: project?.latest.spaceID) }.buttonStyle(.plain) }
 }
 
@@ -107,5 +139,32 @@ private struct AddProjectContent: View {
             }.searchable(text: $search).navigationTitle("加入\(project.body.title)")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } } }
         }.frame(minWidth: 320, minHeight: 400)
+    }
+}
+
+struct ProjectFinanceHistory: View {
+    let model: AppModel
+    let projectID: UUID
+    var planItemID: UUID? = nil
+    @State private var search = ""
+    var body: some View {
+        let project = model.activeRecords.first { $0.id == projectID }
+        let ids = Set([projectID] + model.activeRecords.filter { $0.body.parentProjectID == projectID }.map(\.id))
+        let records = model.activeRecords.filter {
+            !ids.isDisjoint(with: $0.body.projectIDs) && [.transaction, .subscription].contains($0.body.kind) && $0.body.status != .voided &&
+            (planItemID == nil || $0.body.finance?.planItemID == planItemID) &&
+            (search.isEmpty || $0.body.title.localizedCaseInsensitiveContains(search) || $0.body.notes.localizedCaseInsensitiveContains(search))
+        }
+        LifePage {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                ForEach(LedgerMonthGroup.groups(records)) { group in
+                    Section {
+                        ForEach(group.records) { record in
+                            RecordLink(model: model, record: record) { RecordRow(model: model, record: record, inheritedSpaceID: project?.latest.spaceID) }.buttonStyle(.plain)
+                        }
+                    } header: { Text(group.period?.title ?? "日期待核对").font(.headline) }
+                }
+            }
+        }.navigationTitle("费用与订阅").searchable(text: $search, prompt: "名称或备注")
     }
 }

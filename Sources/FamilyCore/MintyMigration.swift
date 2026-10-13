@@ -11,7 +11,13 @@ public enum MintyMigration {
         func text(_ row: [String: Any], _ key: String) -> String { guard let v = row[key], !(v is NSNull) else { return "" }; return v as? String ?? String(describing: v) }
         func key(_ table: String, _ row: [String: Any]) -> String { let uuid = text(row,"uuid"); return "minty:\(source):\(table):\(uuid.isEmpty ? text(row,"id") : uuid)" }
         func id(_ table: String, _ row: [String: Any]) -> UUID { LedgerImport.stableID(key(table,row)) }
-        func amount(_ row: [String: Any], _ field: String) throws -> Money { try Money.parse(text(row,field), currency: .CNY) }
+        func amount(_ row: [String: Any], _ field: String) throws -> Money {
+            do { return try Money.parse(text(row,field), currency: .CNY) }
+            catch {
+                let label = ["pre_tax": "税前金额", "post_tax": "税后金额", "tax_amount": "税额", "amount": "支出金额", "budget_amount": "预算", "planned_amount": "计划金额"][field] ?? field
+                throw NobisError.validation("\(label)：\(error.localizedDescription) 不会自动舍入，请核对来源数据。")
+            }
+        }
         func active(_ table: String) -> [[String: Any]] { (tables[table] ?? []).filter { text($0,"deleted_at").isEmpty } }
         let projects = active("projects"), expenses = active("expenses"), plans = active("project_plan_items")
         var projectMap: [String: UUID] = [:], subscriptionMap: [String: UUID] = [:]
@@ -48,6 +54,8 @@ public enum MintyMigration {
             do {
                 var b = RecordBody(kind: .transaction, title: text(r,"item"), status: .confirmed)
                 b.money = try amount(r,"amount"); b.date = try LedgerImport.day(text(r,"date")); b.category = text(r,"category"); b.notes = text(r,"remark")
+                guard !b.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, (b.money?.minor ?? -1) >= 0 else { throw NobisError.validation("支出须有名称和非负金额。") }
+                if b.money?.minor == 0 { result.warnings.append("支出 \(text(r,"id"))：保留零元历史记录，不产生付款或成员欠款。") }
                 b.finance = FinanceDetails(); b.finance?.originalRecorder = text(r,"recorded_by")
                 if !text(r,"attribution_kind").isEmpty {
                     guard let kind = ConsumptionKind(rawValue: text(r,"attribution_kind")) else { throw NobisError.validation("消费归属无效。") }
@@ -66,8 +74,27 @@ public enum MintyMigration {
             do {
                 guard !text(r,"id").isEmpty || !text(r,"uuid").isEmpty,
                       let year = Int(text(r,"year")), let month = Int(text(r,"month")) else { throw NobisError.validation("收入须有来源 ID 和有效年月。") }
-                let income = IncomeMonth(year: year, month: month, type: text(r,"income_type"), gross: try amount(r,"pre_tax"), net: try amount(r,"post_tax"), tax: text(r,"tax_amount").isEmpty ? nil : try amount(r,"tax_amount"))
-                var b = RecordBody(kind: .monthlyIncome, title: "\(year)-\(String(format: "%02d", month)) · \(income.type)")
+                let gross = try amount(r,"pre_tax"), net = try amount(r,"post_tax")
+                let rawTax = text(r,"tax_amount")
+                var tax: Money?, normalization: String?
+                if !rawTax.isEmpty {
+                    do { tax = try amount(r,"tax_amount") }
+                    catch {
+                        // Minty's repository calculates max(preTax - postTax, 0) using Double.
+                        // Recover only sub-cent binary noise matching that exact relationship.
+                        let expected = max(gross.minor - net.minor, 0)
+                        let exact = Decimal(expected) / 100
+                        guard rawTax.range(of: "^[0-9]+(?:\\.[0-9]+)?$", options: .regularExpression) != nil,
+                              let value = Decimal(string: rawTax, locale: Locale(identifier: "en_US_POSIX")),
+                              abs(value - exact) <= Decimal(string: "0.00000001")! else { throw error }
+                        tax = Money(minor: expected, currency: .CNY)
+                        normalization = "Minty 税额原值 \(rawTax)；按原税前减税后关系恢复为 \(tax!.formatted)，仅消除浮点尾差。"
+                    }
+                }
+                let income = IncomeMonth(year: year, month: month, type: text(r,"income_type"), gross: gross, net: net, tax: tax)
+                var b = RecordBody(kind: .monthlyIncome, title: "\(income.periodTitle) · \(income.type)")
+                if let normalization { b.notes = normalization; result.warnings.append("收入 \(text(r,"id"))：" + normalization) }
+                if income.isNonMonthly { result.warnings.append("收入 \(text(r,"id"))：非月度收入仅计入 \(year) 年年报，不分配月份。") }
                 b.incomeMonth = income; try b.validateStatement(); append("income",r,b)
             } catch { result.issues.append("收入 \(text(r,"id"))：\(error.localizedDescription)") }
         }
@@ -93,9 +120,14 @@ public enum MintyMigration {
             result.entries.append(ImportEntry(id: LedgerImport.stableID(key), body: b, row: 0))
         }
         for plan in plans where projectMap[text(plan,"project_id")] == nil { result.issues.append("计划项 \(text(plan,"id")) 缺少所属项目，不能静默丢弃。") }
-        let deferred = ["config"].map { "\($0)：\(tables[$0]?.count ?? 0) 条" }.joined(separator: "，")
-        result.warnings += ["本批迁入项目、预算计划项、支出、月度收入、资产快照、消费归属、分类及暂停状态的订阅。\(deferred) 保留于原始迁移包，尚未进入 Nobis 业务视图。", "原始金额按 CNY 精确转换，超过两位小数的金额报错，不自动舍入。订阅须核对付款人及计费日期后再启用。"]
+        let otherConfig = active("config").filter { text($0, "key") != "categories.expense" }.count
+        if otherConfig > 0 { result.retained.append("其他配置 \(otherConfig) 条，仅保留在源文件") }
+        let colored = projects.filter { !text($0, "color").isEmpty }.count
+        if colored > 0 { result.retained.append("\(colored) 个项目的原颜色尚未映射") }
+        if !plans.isEmpty { result.retained.append("计划项的原排序字段仅保留在源文件") }
         result.skipped = tables.values.flatMap { $0 }.filter { !text($0,"deleted_at").isEmpty }.count
+        if result.skipped > 0 { result.retained.append("已删除记录 \(result.skipped) 条，不进入有效记录") }
+        result.warnings += ["同来源记录可去重；不同账本中复制过的账单需另外核对。", "支出不推断付款人，不生成成员欠款。收入与资产的持有归属待确认。", "订阅初始暂停，核对周期、续费日期与付款信息后再启用。"]
         return result
     }
 }

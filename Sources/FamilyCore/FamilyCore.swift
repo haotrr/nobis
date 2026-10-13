@@ -30,6 +30,15 @@ public struct LedgerSummary: Codable, Sendable {
 @MainActor public final class FamilyCore {
     public let repository: any Repository
     public let session: AccessSession
+    // Only the short-lived, isolated batch core uses this projection. Live repositories
+    // always reload, so remote revisions and access changes cannot be hidden by a cache.
+    private var batchSpaceID: UUID?
+    private var batchProjection: [UUID: Record] = [:]
+    func prepareBatchProjection(spaceID: UUID) throws {
+        precondition(repository is MemoryRepository)
+        batchProjection = Dictionary(uniqueKeysWithValues: try records(spaceID: spaceID, includeDeleted: true).map { ($0.id, $0) })
+        batchSpaceID = spaceID
+    }
     public init(repository: any Repository, session: AccessSession) { self.repository = repository; self.session = session }
     public func spaces() throws -> [Space] { try repository.load().spaces.filter { space in session.allowedSpaceIDs.contains(space.id) && space.members.contains { $0.id == session.actorID(in: space.id) } && (space.kind != .personal || space.ownerID == session.actorID(in: space.id)) } }
     public func space(_ id: UUID) throws -> Space {
@@ -37,9 +46,17 @@ public struct LedgerSummary: Codable, Sendable {
     }
     public func records(spaceID: UUID, includeDeleted: Bool = false) throws -> [Record] {
         _ = try space(spaceID)
+        if batchSpaceID == spaceID {
+            return batchProjection.values.filter { includeDeleted || !$0.deleted }.sorted { $0.latest.createdAt > $1.latest.createdAt }
+        }
         return Record.project(try repository.load().revisions.filter { $0.spaceID == spaceID }).filter { includeDeleted || !$0.deleted }
     }
     public func record(_ id: UUID, spaceID: UUID) throws -> Record {
+        if batchSpaceID == spaceID {
+            _ = try space(spaceID)
+            guard let value = batchProjection[id] else { throw NobisError.notFound }
+            return value
+        }
         guard let value = try records(spaceID: spaceID, includeDeleted: true).first(where: { $0.id == id }) else { throw NobisError.notFound }; return value
     }
     public func history(_ id: UUID, spaceID: UUID) throws -> [Revision] {
@@ -61,7 +78,7 @@ public struct LedgerSummary: Codable, Sendable {
         }
         // Record IDs cannot be used to relocate or overwrite an object in another space.
         guard !snapshot.revisions.contains(where: { $0.recordID == recordID && $0.spaceID != spaceID }) else { throw NobisError.forbidden }
-        let current = try records(spaceID: spaceID, includeDeleted: true).first { $0.id == recordID }
+        let current = batchSpaceID == spaceID ? batchProjection[recordID] : try records(spaceID: spaceID, includeDeleted: true).first { $0.id == recordID }
         guard Set(current?.heads.map(\.id) ?? []) == expected else { throw NobisError.conflict }
         if let current {
             guard current.body.kind == body.kind else { throw NobisError.validation("记录类型不可更改。") }
@@ -94,6 +111,10 @@ public struct LedgerSummary: Codable, Sendable {
         let revision = Revision(recordID: recordID, spaceID: spaceID, parents: expected.sorted { $0.uuidString < $1.uuidString }, operationID: operationID, actorID: actorID, body: payload, deleted: deleted)
         snapshot.revisions.append(revision); snapshot.audits.append(AuditEvent(revision: revision, action: deleted ? "delete" : current == nil ? "create" : "revise"))
         try repository.save(snapshot)
+        if batchSpaceID == spaceID {
+            // Expected heads were checked above; this revision replaces all current heads.
+            batchProjection[recordID] = Record.project([revision]).first
+        }
         return revision
     }
     func validate(_ body: RecordBody, space: Space, recordID: UUID) throws {
@@ -158,7 +179,7 @@ public struct LedgerSummary: Codable, Sendable {
             else { guard let start = body.startAt, let end = body.endAt, end > start else { throw NobisError.validation("日程结束时间须晚于开始时间。") } }
         }
         if body.kind == .transaction {
-            guard let money = body.money, money.minor > 0, body.date != nil else { throw NobisError.validation("账单须包含正数金额、币种和发生日。") }
+            guard let money = body.money, body.hasValidTransactionAmount, body.date != nil else { throw NobisError.validation("账单须包含有效金额、币种和发生日；零元仅用于只记收支的支出记录。") }
             let payer = body.memberID
             if body.accountingMode == .sharedSettlement && payer == nil { throw NobisError.validation("参与成员结算须指定付款人。") }
             guard Set(body.splits.map(\.memberID)).count == body.splits.count, body.splits.allSatisfy({ members.contains($0.memberID) && $0.minor >= 0 }) else { throw NobisError.validation("分摊成员或金额无效。") }

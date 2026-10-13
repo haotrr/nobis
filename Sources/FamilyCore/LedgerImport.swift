@@ -49,6 +49,7 @@ public struct ImportPreview: Sendable {
     public var issues: [String] = []
     public var warnings: [String] = []
     public var skipped = 0
+    public var retained: [String] = []
     public var categories: [String] { Array(Set(entries.filter { $0.body.kind == .transaction }.map { $0.body.category })).sorted() }
     public init() {}
 }
@@ -122,21 +123,45 @@ public extension FamilyCore {
     private func sourceFingerprint(_ body: RecordBody) throws -> String {
         var value = body; value.importSource?.fingerprint = nil
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
-        return SHA256.hash(data: try encoder.encode(value)).map { String(format: "%02x", $0) }.joined()
+        // Enum-keyed dictionaries encode as alternating arrays; sortedKeys cannot sort those.
+        guard var json = try JSONSerialization.jsonObject(with: encoder.encode(value)) as? [String: Any] else { throw NobisError.validation("来源记录编码无效。") }
+        if let asset = value.assetPosition, var position = json["assetPosition"] as? [String: Any] {
+            position["amounts"] = Dictionary(uniqueKeysWithValues: asset.amounts.map { ($0.key.rawValue, $0.value) })
+            json["assetPosition"] = position
+        }
+        let data = try JSONSerialization.data(withJSONObject: json, options: [.sortedKeys, .fragmentsAllowed])
+        return "v2:" + SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
     func importChanges(_ preview: ImportPreview, spaceID: UUID, categoryMap: [String: String] = [:]) throws -> [RecordChange] {
         guard preview.issues.isEmpty else { throw NobisError.validation("请修正全部错误后重新导入。") }
         guard Set(preview.entries.map(\.id)).count == preview.entries.count else { throw NobisError.validation("迁移记录 ID 重复。") }
         let existing = try records(spaceID: spaceID, includeDeleted: true)
+        let sources = Dictionary(grouping: existing, by: { $0.body.importSource?.key })
         var seen = Set<String>(), changes: [RecordChange] = []
         for entry in preview.entries {
             var body = entry.body
             if body.kind == .transaction, let mapped = categoryMap[body.category] { guard !mapped.trimmingCharacters(in: .whitespaces).isEmpty else { throw NobisError.validation("分类不能为空。") }; body.category = mapped }
             guard let source = body.importSource, seen.insert(source.key).inserted else { throw NobisError.validation("迁移来源 ID 重复。") }
             // A changed source must not silently replace an already reviewed record.
-            if let old = existing.first(where: { $0.body.importSource?.key == source.key }) {
+            let matches = sources[source.key] ?? []
+            guard matches.count <= 1 else { throw NobisError.validation("同一来源存在多条记录：\(body.title)。请先核对重复来源。") }
+            if let old = matches.first {
                 guard !old.conflicted else { throw NobisError.conflict }
-                if let fingerprint = old.body.importSource?.fingerprint, fingerprint != (try sourceFingerprint(entry.body)) { throw NobisError.validation("来源记录已变化：\(body.title)。请核对已有记录，不能静默覆盖或跳过。") }
+                if let fingerprint = old.body.importSource?.fingerprint, fingerprint != (try sourceFingerprint(entry.body)) {
+                    // Legacy fingerprints were order-dependent for asset dictionaries. Compare the
+                    // immutable initial import, never the edited current body, before accepting it.
+                    let initial = try repository.load().revisions.filter { $0.recordID == old.id && $0.spaceID == spaceID && $0.parents.isEmpty && $0.body.importSource?.key == source.key }
+                    let matchesLegacy: Bool
+                    if !fingerprint.hasPrefix("v2:"), initial.count == 1, entry.body.kind == .assetSnapshot {
+                        matchesLegacy = try sourceFingerprint(initial[0].body) == sourceFingerprint(entry.body)
+                    } else {
+                        var legacy = entry.body; legacy.importSource?.fingerprint = nil
+                        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+                        let hash = SHA256.hash(data: try encoder.encode(legacy)).map { String(format: "%02x", $0) }.joined()
+                        matchesLegacy = !fingerprint.hasPrefix("v2:") && fingerprint == hash
+                    }
+                    guard matchesLegacy else { throw NobisError.validation("来源记录已变化：\(body.title)。请核对已有记录，不能静默覆盖或跳过。") }
+                }
                 continue
             }
             body.importSource?.fingerprint = try sourceFingerprint(entry.body)
@@ -147,7 +172,12 @@ public extension FamilyCore {
             changes.append(RecordChange(id: LedgerImport.stableID(spaceID.uuidString + ":" + entry.id.uuidString), body: body))
         }
         // Remap all package-local UUIDs to the destination namespace, including already imported parents.
-        let mapping = Dictionary(uniqueKeysWithValues: preview.entries.map { ($0.id, LedgerImport.stableID(spaceID.uuidString + ":" + $0.id.uuidString)) })
+        let mapping = Dictionary(uniqueKeysWithValues: preview.entries.map { entry in
+            // Restored records may use a recovery namespace; links must follow the actual
+            // destination record identified by source, not a newly guessed UUID.
+            let existingID = entry.body.importSource.flatMap { sources[$0.key]?.first?.id }
+            return (entry.id, existingID ?? LedgerImport.stableID(spaceID.uuidString + ":" + entry.id.uuidString))
+        })
         return changes.map { change in
             var b = change.body
             b.projectIDs = b.projectIDs.map { mapping[$0] ?? $0 }

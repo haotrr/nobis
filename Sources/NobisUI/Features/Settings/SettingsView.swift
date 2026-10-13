@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var importing = false
     @State private var exportConfirmation = false
     @State private var document = BackupDocument(data: Data())
+    @State private var recoveredData: Data?
     @State private var restoreData: Data?
     @State private var restoreSnapshot: Snapshot?
     @State private var restoreReport: String?
@@ -46,6 +47,7 @@ struct SettingsView: View {
                 Divider().opacity(0.35)
                 NavigationLink { LedgerImportView(model: model) } label: { SettingsEntry(title: "导入账单", detail: "支持 CSV 与 Minty 迁移包，导入前可预览", icon: "square.and.arrow.down") }.buttonStyle(.plain)
             }
+            NavigationLink { FinancialReviewView(model: model) } label: { SettingsEntry(title: "成员与资产核对", detail: "确认财务归属，对照旧整体与分项资产", icon: "person.crop.circle.badge.checkmark") }.buttonStyle(.plain)
             LifeSection(title: "数据与恢复", icon: "externaldrive") {
                 DisclosureGroup("导出备份与隔离恢复") {
                 VStack(alignment: .leading, spacing: 16) {
@@ -62,6 +64,7 @@ struct SettingsView: View {
                     Button("取消恢复", role: .cancel) { restoreSnapshot = nil; restoreData = nil }
                 }
                 if let report = restoreReport { Text(report).font(.caption).textSelection(.enabled) }
+                if let recoveredData { NavigationLink("预览恢复数据的合并差异") { RecoveryMergeView(model: model, backupData: recoveredData) } }
                 Text("恢复不会覆盖当前库，不复用云端共享关系。隔离数据需核对后另行迁移。").font(.caption).foregroundStyle(.secondary)
             }
                 }
@@ -107,6 +110,7 @@ struct SettingsView: View {
             switch result { case .success: model.notice = "备份已导出"; case .failure(let error): model.error = error.localizedDescription }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
+            restoreSnapshot = nil; restoreData = nil; recoveredData = nil; restoreReport = nil
             model.perform {
                 let url = try result.get(); let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }
                 let data = try Data(contentsOf: url); restoreSnapshot = try Backup.decode(data); restoreData = data; restoreReport = nil
@@ -133,7 +137,7 @@ struct SettingsView: View {
                 let isolatedCore = FamilyCore(repository: repository, session: AccessSession(memberID: space.ownerID, allowedSpaceIDs: [space.id]))
                 for summary in try isolatedCore.ledger(spaceID: space.id) { lines.append("\(space.name) · 净支出 \(Money(minor: summary.netExpense, currency: summary.currency).formatted) · 待核对 \(summary.unresolvedCount)") }
             }
-            restoreReport = lines.joined(separator: "\n"); restoreSnapshot = nil; restoreData = nil
+            recoveredData = data; restoreReport = lines.joined(separator: "\n"); restoreSnapshot = nil; restoreData = nil
         }
     }
 }
@@ -143,6 +147,9 @@ struct LegacyRecordsView: View {
     let source: Space
     var body: some View {
         LifeDetail {
+            if let targetID = model.workspace.commonID, targetID != source.id {
+                NavigationLink("预览旧成员映射") { MemberMappingView(model: model, source: source, targetID: targetID) }
+            }
             Text("本地草稿未自动迁入云家庭，也不计入共同报告。可在设置中按此范围导出备份后核对；本页只读。")
             if let core = model.core {
                 switch Result(catching: { try core.records(spaceID: source.id) }) {

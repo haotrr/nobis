@@ -2,6 +2,7 @@ import Foundation
 
 public struct IncomeMonth: Codable, Equatable, Sendable {
     public var year: Int
+    /// Zero means an annual, non-monthly income; never invent an occurrence date.
     public var month: Int
     public var type: String
     public var gross: Money
@@ -10,8 +11,10 @@ public struct IncomeMonth: Codable, Equatable, Sendable {
     public init(year: Int, month: Int, type: String, gross: Money, net: Money, tax: Money? = nil) {
         self.year = year; self.month = month; self.type = type; self.gross = gross; self.net = net; self.tax = tax
     }
+    public var isNonMonthly: Bool { month == 0 }
+    public var periodTitle: String { isNonMonthly ? "\(year) 年 · 非月度" : "\(year)-\(String(format: "%02d", month))" }
     public func validate() throws {
-        _ = try LocalDay(year, month, 1)
+        _ = try LocalDay(year, isNonMonthly ? 1 : month, 1)
         guard !type.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, type.count <= 100,
               gross.currency == net.currency, gross.minor >= 0, net.minor >= 0,
               tax.map({ $0.currency == gross.currency && $0.minor >= 0 }) ?? true else { throw NobisError.validation("收入类型必填，税前、税后及税额须为同币种非负金额。") }
@@ -44,9 +47,9 @@ public extension RecordBody {
                   kind != .monthlyIncome || owner.kind == .member else { throw NobisError.validation("财务归属无效。") }
         }
         if kind == .monthlyIncome {
-            guard let incomeMonth, assetPosition == nil, money == nil, date == nil else { throw NobisError.validation("月度收入保留年月，不创建虚构的发生日或重复收入流水。") }
+            guard let incomeMonth, assetPosition == nil, money == nil, date == nil else { throw NobisError.validation("收入记录保留原期间，非月度仅保留年份，不创建虚构发生日或重复流水。") }
             try incomeMonth.validate()
-        } else if incomeMonth != nil { throw NobisError.validation("月度收入字段不适用于此类型。") }
+        } else if incomeMonth != nil { throw NobisError.validation("收入字段不适用于此类型。") }
         if kind == .assetSnapshot {
             guard let assetPosition, date != nil, money == nil else { throw NobisError.validation("资产快照须包含日期及资产负债明细。") }
             try assetPosition.validate()

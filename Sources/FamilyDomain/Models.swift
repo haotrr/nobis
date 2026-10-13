@@ -120,7 +120,7 @@ public struct Space: Codable, Identifiable, Equatable, Sendable {
 }
 public enum RecordKind: String, Codable, CaseIterable, Sendable {
     case project, task, subscription, event, transaction, category, monthlyIncome, assetSnapshot, document, comment
-    public var title: String { switch self { case .document: "笔记"; case .comment: "评注"; case .project: "项目"; case .task: "待办"; case .subscription: "订阅"; case .event: "日程"; case .monthlyIncome: "月度收入"; case .assetSnapshot: "资产快照"; case .category: "分类"; case .transaction: "收支" } }
+    public var title: String { switch self { case .document: "笔记"; case .comment: "评注"; case .project: "项目"; case .task: "待办"; case .subscription: "订阅"; case .event: "日程"; case .monthlyIncome: "收入记录"; case .assetSnapshot: "资产快照"; case .category: "分类"; case .transaction: "收支" } }
     public var icon: String { switch self { case .document: "doc.text"; case .comment: "text.bubble"; case .project: "square.stack.3d.up"; case .task: "checkmark.circle"; case .subscription: "repeat"; case .event: "calendar"; case .monthlyIncome: "banknote"; case .assetSnapshot: "chart.pie"; case .category: "tag"; case .transaction: "creditcard" } }
 }
 public enum RecordStatus: String, Codable, CaseIterable, Sendable {
