@@ -34,15 +34,18 @@ struct MemberIdentityBadge: View {
     let identity: String
     var role: String? = nil
     var avatarData: Data? = nil
-    init(member: Member, role: String? = nil) {
+    var showsAvatar = false
+    init(member: Member, role: String? = nil, showsAvatar: Bool = false) {
+        self.showsAvatar = showsAvatar
         name = member.name; identity = member.id.uuidString; self.role = role; avatarData = member.avatarData
     }
-    init(name: String, identity: String, role: String? = nil, avatarData: Data? = nil) {
+    init(name: String, identity: String, role: String? = nil, avatarData: Data? = nil, showsAvatar: Bool = false) {
+        self.showsAvatar = showsAvatar
         self.name = name; self.identity = identity; self.role = role; self.avatarData = avatarData
     }
     var body: some View {
         HStack(spacing: 7) {
-            IdentityAvatar(name: name, identity: identity, avatarData: avatarData)
+            if showsAvatar { IdentityAvatar(name: name, identity: identity, avatarData: avatarData) }
             Text(name).font(.caption.weight(.medium)).lineLimit(2)
             if let role { Text(role).font(.caption).foregroundStyle(.secondary) }
         }.accessibilityElement(children: .ignore).accessibilityLabel([role, name].compactMap { $0 }.joined(separator: "："))
@@ -54,7 +57,6 @@ struct ResourceOwnership: View {
     let model: AppModel
     let spaceID: UUID
     var detailed = false
-    @Environment(\.dynamicTypeSize) private var textSize
     private var space: Space? { model.spaces.first { $0.id == spaceID } }
     private var name: String {
         guard let space else { return "归属不可用" }
@@ -63,20 +65,6 @@ struct ResourceOwnership: View {
     }
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            if !textSize.isAccessibilitySize {
-            if let space {
-                if space.kind == .personal, let owner = space.members.first(where: { $0.id == space.ownerID }) {
-                    IdentityAvatar(name: owner.name, identity: owner.id.uuidString, avatarData: owner.avatarData)
-                } else if !space.members.isEmpty {
-                    HStack(spacing: -5) {
-                        ForEach(Array(space.members.prefix(2))) { member in
-                            IdentityAvatar(name: member.name, identity: member.id.uuidString, avatarData: member.avatarData)
-                                .background(NobisSurface.canvas, in: Circle())
-                        }
-                    }.accessibilityHidden(true)
-                } else { IdentityAvatar(name: name, identity: space.id.uuidString) }
-            } else { Image(systemName: "person.crop.circle.badge.questionmark").accessibilityHidden(true) }
-            }
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 4) {
                     Text(name).font(.caption.weight(.medium)).fixedSize(horizontal: false, vertical: true)
@@ -108,14 +96,7 @@ struct FinancialOwnershipBadge: View {
     var body: some View {
         if let owner = record.body.financialOwner {
             if owner.kind == .joint {
-                HStack(spacing: 7) {
-                    if let space = model.space(for: record) {
-                        HStack(spacing: -5) {
-                            ForEach(Array(space.members.prefix(2))) { member in IdentityAvatar(name: member.name, identity: member.id.uuidString, avatarData: member.avatarData) }
-                        }
-                    }
-                    Text("共同持有").font(.caption)
-                }.accessibilityElement(children: .combine)
+                Text("共同持有").font(.caption)
             } else if let id = owner.memberID {
                 MemberIdentityBadge(name: model.space(for: record)?.members.first { $0.id == id }?.name ?? "历史成员 · \(id.uuidString.prefix(4))", identity: id.uuidString, avatarData: model.space(for: record)?.members.first { $0.id == id }?.avatarData)
             } else { Text("归属待确认").font(.caption).foregroundStyle(.secondary) }

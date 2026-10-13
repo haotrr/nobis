@@ -23,10 +23,10 @@ struct SettingsView: View {
     @State private var restoreReport: String?
     @State private var exportFilename = "Nobis-backup"
     var body: some View {
-        LifePage(title: "设置", subtitle: "我们的资料、设备与数据。", icon: "slider.horizontal.3") {
+        LifePage {
             LifeSection(title: "我们的生活", icon: "person.2") {
                 if let id = model.selectedSpaceID { ResourceOwnership(model: model, spaceID: id, detailed: true) }
-                ForEach(model.selectedSpace?.members ?? []) { member in MemberIdentityBadge(member: member) }
+                ForEach(model.selectedSpace?.members ?? []) { member in MemberIdentityBadge(member: member, showsAvatar: true) }
                 if model.selectedSpace?.kind == .family && model.selectedSpaceID != model.cloud.grant?.spaceID { Text("这些是本地成员标识，用于分工和账单分摊。尚未发出 iCloud 邀请，也没有对方已收到数据的回执。").font(.caption).foregroundStyle(.secondary) }
             }
             ProfileSettingsSection(model: model)

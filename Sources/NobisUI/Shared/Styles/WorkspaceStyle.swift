@@ -257,20 +257,12 @@ extension View {
 }
 
 struct LifePage<Content: View>: View {
-    let title: String
-    let subtitle: String
-    let icon: String
     @ViewBuilder let content: Content
     @Environment(\.colorScheme) private var scheme
     var body: some View {
         GeometryReader { geometry in
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(title).font(.title.weight(.semibold)).accessibilityAddTraits(.isHeader)
-                    Text(subtitle).font(.callout).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
                 content
             }.frame(maxWidth: 980).padding(geometry.size.width < 560 ? 16 : 24).frame(maxWidth: .infinity)
         }.scrollDismissesKeyboard(.interactively)

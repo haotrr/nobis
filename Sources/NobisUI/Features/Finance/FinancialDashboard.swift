@@ -165,10 +165,6 @@ struct FinancialDashboard: View {
     private var selectedMonth: Int? { annual ? nil : month }
     var body: some View {
         LifeDetail {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("财务报告").font(.largeTitle.weight(.semibold)).accessibilityAddTraits(.isHeader)
-                Text("查看收支、订阅成本与期末资产。").font(.callout).foregroundStyle(.secondary)
-            }.padding(.vertical, 8)
             LifeScopeControls(scope: $model.browsingScope)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 20) {
@@ -243,7 +239,7 @@ struct FinancialDashboard: View {
         case .failure(let e): InlineIssue(message: e.localizedDescription)
         case .success(let report):
             LifeSection(title: "收支与结余", icon: "chart.bar") {
-                Text("收入 = 月度税后到账 + 普通收入流水；同一收入只录一次。成员结算不计收支，退款计入实际发生月。资产变化不视为收入。").font(.caption).foregroundStyle(.secondary)
+                DisclosureGroup("统计口径") { Text("收入 = 月度税后到账 + 普通收入流水；同一收入只录一次。成员结算不计收支，退款计入实际发生月。资产变化不视为收入。").font(.caption).foregroundStyle(.secondary) }
                 if report.totals.isEmpty { Text("此期间暂无已确认收支。") }
                 if report.unresolvedCount > 0 { Text("\(report.unresolvedCount) 条草稿或冲突未计入，合计尚不完整。").foregroundStyle(.orange) }
                 ForEach(report.totals, id: \.currency) { g in
@@ -264,7 +260,7 @@ struct FinancialDashboard: View {
             case .failure(let e): InlineIssue(message: e.localizedDescription)
             case .success(let observations):
                 if observations.isEmpty { Text("暂无截至期末的快照。") }
-                Text("各持有范围分别展示，原整体余额与分人资产不相加。归属待确认时请先核对。").font(.caption).foregroundStyle(.secondary)
+                DisclosureGroup("统计口径") { Text("各持有范围分别展示，原整体余额与分人资产不相加。归属待确认时请先核对。").font(.caption).foregroundStyle(.secondary) }
                 ForEach(observations, id: \.id) { observation in
                     if observation.ambiguous { Text("\(observation.currency.rawValue) 最新日期有重复或冲突快照，请核对；不自动选择其中一份。").foregroundStyle(.orange) }
                     else if let r = observation.record { FinancialOwnershipBadge(model: model, record: r); Text("截至 \(r.body.date?.description ?? "") · \(observation.currency.rawValue)"); FinancialRecordDetails(record: r, embedded: true) }
@@ -278,7 +274,7 @@ struct FinancialDashboard: View {
             case .failure(let e): InlineIssue(message: e.localizedDescription)
             case .success(let costs):
                 Text("当前启用 \(costs.activeCount) 项 · 暂停 \(costs.pausedCount) 项")
-                Text("预计月／年成本按当前价格折算（日／周按每年 365 天），不是扣款日历；实际净支出取所选期间关联的已确认账单。").font(.caption).foregroundStyle(.secondary)
+                DisclosureGroup("统计口径") { Text("预计月／年成本按当前价格折算（日／周按每年 365 天），不是扣款日历；实际净支出取所选期间关联的已确认账单。").font(.caption).foregroundStyle(.secondary) }
                 if costs.unresolvedCount > 0 { Text("\(costs.unresolvedCount) 条待核对，汇总不完整。").foregroundStyle(.orange) }
                 ForEach(costs.totals, id: \.currency) { g in
                     FinancialValueRow("预计每月", value: Money(minor: g.monthly, currency: g.currency).formatted)

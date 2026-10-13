@@ -23,17 +23,17 @@ struct ProjectWorkspace: View {
                     LifeSection(title: "项目概览", icon: "square.stack.3d.up") {
                         ResourceOwnership(model: model, spaceID: project.latest.spaceID, detailed: true)
                         if !project.body.notes.isEmpty { Text(project.body.notes).foregroundStyle(.secondary) }
-                        HStack {
-                            Label("\(unfinished) 项未完成", systemImage: "checklist")
-                            Spacer()
-                            Text(project.body.status.title).foregroundStyle(.secondary)
-                        }.font(.callout)
+                        if project.conflicted {
+                            Label("待核对", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                        } else if project.body.status != .active {
+                            Text(project.body.status.title).font(.callout).foregroundStyle(.secondary)
+                        }
                         NavigationLink("项目信息与预算") { RecordDetail(model: model, recordID: projectID) }
                     }
-                    LifeSection(title: "待办", icon: "checklist") {
+                    LifeSection(title: "待办 · \(unfinished) 项未完成", icon: "checklist") {
                         let tasks = content.filter { $0.body.kind == .task && $0.body.status == .active }
-                        ForEach(tasks) { TaskRow(model: model, record: $0) }
-                        ForEach(NoteChecklistItem.items(in: content)) { NoteChecklistRow(model: model, item: $0) }
+                        ForEach(tasks) { TaskRow(model: model, record: $0, inheritedSpaceID: project.latest.spaceID) }
+                        ForEach(NoteChecklistItem.items(in: content)) { NoteChecklistRow(model: model, item: $0, inheritedSpaceID: project.latest.spaceID) }
                         if unfinished == 0 { Text("没有未完成事项").foregroundStyle(.secondary) }
                     }
                     let events = content.filter { $0.body.kind == .event && $0.body.status == .active }
@@ -84,7 +84,7 @@ struct ProjectWorkspace: View {
             } else { ContentUnavailableView("项目不可用", systemImage: "folder.badge.questionmark") }
         }
     }
-    private func row(_ record: Record) -> some View { RecordLink(model: model, record: record) { RecordRow(model: model, record: record) }.buttonStyle(.plain) }
+    private func row(_ record: Record) -> some View { RecordLink(model: model, record: record) { RecordRow(model: model, record: record, inheritedSpaceID: project?.latest.spaceID) }.buttonStyle(.plain) }
 }
 
 private struct AddProjectContent: View {

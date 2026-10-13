@@ -5,6 +5,7 @@ import FamilyCore
 struct NoteChecklistRow: View {
     let model: AppModel
     let item: NoteChecklistItem
+    var inheritedSpaceID: UUID? = nil
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Button {
@@ -16,7 +17,9 @@ struct NoteChecklistRow: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(item.title).strikethrough(item.completed).foregroundStyle(item.completed ? .secondary : .primary)
                     Label(item.document.body.title, systemImage: "doc.text").font(.caption).foregroundStyle(.secondary)
-                    ResourceOwnership(model: model, spaceID: item.document.latest.spaceID)
+                    if inheritedSpaceID != item.document.latest.spaceID || model.space(for: item.document) == nil {
+                        ResourceOwnership(model: model, spaceID: item.document.latest.spaceID)
+                    }
                 }
             }.buttonStyle(.plain)
         }.padding(.vertical, 5)
@@ -36,7 +39,7 @@ struct ScheduleWorkspace: View {
         NoteChecklistItem.items(in: model.records(in: scope), includeCompleted: completed).filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || $0.document.body.title.localizedCaseInsensitiveContains(search) }
     }
     var body: some View {
-        LifePage(title: "把日子安排好", subtitle: "该做的事记下来，也给自己留一点空闲。", icon: "calendar") {
+        LifePage {
             LifeScopeControls(scope: $model.scheduleScope)
             Picker("查看方式", selection: $mode) { Text("待办").tag("待办"); Text("日历").tag("日历"); Text("订阅").tag("订阅") }
                 .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 320, alignment: .leading)
@@ -134,24 +137,22 @@ struct TodayWorkspace: View {
                     Text(Date().formatted(.dateTime.month().day().weekday(.wide).locale(Locale(identifier: "zh_CN"))))
                         .font(.subheadline).foregroundStyle(.secondary)
                     Text("一起过好今天").font(.largeTitle.weight(.semibold))
-                    Text("一起安排今天，也留一点空闲。")
-                        .font(.body).foregroundStyle(.secondary)
                 }.frame(maxWidth: .infinity).padding(.top, 18).padding(.bottom, 6)
 
-                HStack(spacing: 12) {
-                    Image(systemName: events.isEmpty && dueTasks.isEmpty ? "leaf" : "sun.max")
-                        .font(.title3).foregroundStyle(accent).accessibilityHidden(true)
-                    Text(daySummary).font(.callout).fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
-                }.padding(18).background(.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 20))
+                if events.isEmpty && dueTasks.isEmpty {
+                    Label("今天没有日程和到期待办，按自己的节奏来。", systemImage: "leaf")
+                        .font(.callout).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(18).background(.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 20))
+                }
 
                 if !dueTasks.isEmpty {
-                    TodaySectionCard(title: "需要留意", subtitle: "到期与逾期待办 · \(dueTasks.count) 项", icon: "checkmark.circle", tint: accent) {
+                    TodaySectionCard(title: "到期与逾期待办 · \(dueTasks.count)", icon: "checkmark.circle", tint: accent) {
                         ForEach(dueTasks) { TaskRow(model: model, record: $0) }
                     }
                 }
                 if !events.isEmpty {
-                    TodaySectionCard(title: "今天的安排", subtitle: "按时间，慢慢来", icon: "calendar", tint: accent) {
+                    TodaySectionCard(title: "今天的安排 · \(events.count)", icon: "calendar", tint: accent) {
                         ForEach(events) { record in
                             RecordLink(model: model, record: record) { RecordRow(model: model, record: record) }.buttonStyle(.plain)
                         }
@@ -177,7 +178,7 @@ struct TodayWorkspace: View {
                             }
                         }
                     }
-                    TodaySectionCard(title: "顺手做一点", subtitle: "笔记里的未完成清单", icon: "checklist", tint: accent) {
+                    TodaySectionCard(title: "笔记清单", icon: "checklist", tint: accent) {
                         if checklist.isEmpty {
                             Text("暂时没有未完成的清单。想到什么，先记下来。")
                                 .foregroundStyle(.secondary).padding(.vertical, 8)
@@ -190,7 +191,7 @@ struct TodayWorkspace: View {
                     }
                 }
                 if !pinned.isEmpty {
-                    TodaySectionCard(title: "放在手边", subtitle: "你置顶的内容", icon: "pin", tint: accent) {
+                    TodaySectionCard(title: "置顶", icon: "pin", tint: accent) {
                         ForEach(pinned) { record in
                             RecordLink(model: model, record: record) { RecordRow(model: model, record: record) }.buttonStyle(.plain)
                         }
@@ -200,8 +201,6 @@ struct TodayWorkspace: View {
                     Button { note = true } label: { Label("记下这一刻", systemImage: "square.and.pencil") }
                     Button { create = .event } label: { Label("添个安排", systemImage: "calendar.badge.plus") }
                 }.buttonStyle(.bordered).controlSize(.large).tint(accent)
-                Text("生活里的小事，都值得好好安放。")
-                    .font(.caption).foregroundStyle(.secondary).padding(.bottom, 12)
             }.frame(maxWidth: 980).padding(.horizontal, 24).padding(.vertical, 24)
                 .frame(maxWidth: .infinity)
         }.background { LifeBackground() }
@@ -218,16 +217,12 @@ struct TodayWorkspace: View {
             .navigationDestination(isPresented: $note) { DocumentEditor(model: model, embedded: true).navigationTitle("新建笔记") }
             .sheet(item: $create) { RecordEditor(model: model, kind: $0) }
     }
-    private var daySummary: String {
-        if events.isEmpty && dueTasks.isEmpty { return "今天没有日程和到期待办，按自己的节奏来。" }
-        return "今天有 \(events.count) 项日程，\(dueTasks.count) 项到期或逾期待办。"
-    }
 
 }
 
 private struct TodaySectionCard<Content: View>: View {
     let title: String
-    let subtitle: String
+    var subtitle: String? = nil
     let icon: String
     let tint: Color
     @ViewBuilder let content: Content
@@ -235,7 +230,7 @@ private struct TodaySectionCard<Content: View>: View {
         VStack(alignment: .leading, spacing: 16) {
             Label(title, systemImage: icon).font(.headline).foregroundStyle(tint)
                 .accessibilityAddTraits(.isHeader)
-            Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+            if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(.secondary) }
             VStack(alignment: .leading, spacing: 12) { content }
         }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
             .lifeCard()

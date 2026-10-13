@@ -43,14 +43,14 @@ struct LedgerWorkspace: View {
     }
     private var result: Result<[Record], Error> { Result { if scope == .all && !model.pendingShares.isEmpty { throw NobisError.validation("有分享待完成，请在设置中核对后查看全部合计。") }; let f = try effectiveFilter(); return model.records(in: scope).filter { f.matches($0) }.sorted { ($0.body.date?.description ?? "") > ($1.body.date?.description ?? "") } } }
     var body: some View {
-        LifePage(title: "每一笔，心里有数", subtitle: "记录日常收支，一起照顾好生活。", icon: "creditcard") {
+        LifePage {
             LifeScopeControls(scope: $model.browsingScope)
             NavigationLink { FinancialDashboard(model: model) } label: {
                 HStack {
                     Label("收入、资产与财务报告", systemImage: "chart.bar.xaxis").font(.headline)
                     Spacer()
                     Image(systemName: "arrow.right").accessibilityHidden(true)
-                }.padding(20).frame(maxWidth: .infinity, alignment: .leading).lifeCard()
+                }.padding(.vertical, 4).frame(maxWidth: .infinity, alignment: .leading)
             }.buttonStyle(.plain)
             VStack(alignment: .leading, spacing: 14) {
                 DisclosureGroup(isExpanded: $filtersExpanded) {

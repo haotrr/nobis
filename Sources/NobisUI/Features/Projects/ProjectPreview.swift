@@ -15,21 +15,20 @@ struct ProjectPreview: View {
     private var total: Int { tasks.count + checklist.count }
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "square.stack.3d.up").font(.title2).foregroundStyle(.tint)
-                Spacer()
-                if model.space(for: record)?.kind == .personal { Label("仅自己", systemImage: "lock.fill").font(.caption).foregroundStyle(.secondary) }
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline) {
+                if record.body.isPinned == true { Image(systemName: "pin.fill").font(.caption).foregroundStyle(.secondary).accessibilityLabel("置顶") }
+                Text(record.body.title).font(.title3.weight(.semibold)).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
             }
-            if record.body.isPinned == true { Label("置顶", systemImage: "pin.fill").font(.caption).foregroundStyle(.secondary) }
-            Text(record.body.title).font(.title3.weight(.semibold)).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
             ResourceOwnership(model: model, spaceID: record.latest.spaceID)
+            if record.conflicted { Label("待核对", systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange) }
+            else if record.body.status != .active { Text(record.body.status.title).font(.caption).foregroundStyle(.secondary) }
             if let parentID = record.body.parentProjectID, let parent = model.activeRecords.first(where: { $0.id == parentID }) { Label(parent.body.title, systemImage: "folder").font(.caption).foregroundStyle(.secondary) }
-            Label(record.body.date?.description ?? "日期待定", systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
+            if let date = record.body.date { Label(date.description, systemImage: "calendar").font(.caption).foregroundStyle(.secondary) }
             if total > 0 {
                 ProgressView(value: Double(completed), total: Double(total)).accessibilityHidden(true)
                 Text("已完成 \(completed) / \(total) 项待办").font(.caption).foregroundStyle(.secondary)
-            } else { Text("从第一项计划开始").font(.caption).foregroundStyle(.secondary) }
+            }
         }.padding(24).frame(maxWidth: .infinity, alignment: .leading).lifeCard()
             .contentShape(RoundedRectangle(cornerRadius: 26))
     }

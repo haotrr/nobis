@@ -8,6 +8,6 @@
 | 表面与玻璃 | [Styles](../../Sources/NobisUI/Shared/Styles) | 使用语义颜色，保留旧系统、减少透明度和增强对比度回退 |
 | 表单文本输入 | [LifeNativeTextInput.swift](../../Sources/NobisUI/Shared/Components/LifeNativeTextInput.swift) | iOS 组词期间保留候选、文字与焦点，外观切换不结束组词 |
 | 身份与归属 | [ResourceIdentity.swift](../../Sources/NobisUI/Shared/Components/ResourceIdentity.swift) | 区分可见范围、成员身份和财务归属 |
-| 记录行 | [RecordRows.swift](../../Sources/NobisUI/Shared/Components/RecordRows.swift) | 保留状态、归属与金额，小屏和大字号可重排 |
+| 记录行 | [RecordRows.swift](../../Sources/NobisUI/Shared/Components/RecordRows.swift) | 按上下文省略常态状态与继承归属；保留异常、混合范围身份和金额，小屏和大字号可重排 |
 
 笔记专用编辑器位于 `Sources/NobisUI/Features/Notes/Editor`，业务行为见[笔记文档](../features/documents.md)。新增组件文档应说明适用场景、状态与交互约束，不重复抄写 API 或全局样式规则。

@@ -47,7 +47,7 @@ struct RecordsView: View {
         .sheet(item: $create) { RecordEditor(model: model, kind: $0) }
     }
     private var projectWorkspace: some View {
-        LifePage(title: "一起做的事", subtitle: "把想法变成计划，慢慢完成。", icon: "square.stack.3d.up") {
+        LifePage {
                 LifeScopeControls(scope: $model.projectScope, archived: $showArchived)
                 HStack {
                     Text("\(filtered.count) 个项目").font(.subheadline).foregroundStyle(.secondary)
@@ -130,19 +130,16 @@ struct RecordDetail: View {
         Group {
             if let record {
                 LifeDetail {
-                    LifeSection(title: "记录", icon: "doc.text") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Image(systemName: record.body.kind == .task ? (record.body.status == .completed ? "checkmark.circle.fill" : "checklist") : record.body.kind.icon)
-                                .font(.title2).foregroundStyle(.tint).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 12) {
                             Text(record.body.title).font(.title2.weight(.semibold)).textSelection(.enabled)
-                            Label(record.deleted ? "回收站" : record.conflicted ? "待核对" : record.body.status.title,
-                                  systemImage: record.conflicted ? "exclamationmark.triangle" : "circle.fill")
-                                .font(.caption.weight(.medium)).foregroundStyle(record.conflicted ? Color.orange : Color.secondary)
-                        }.padding(.vertical, 8)
-                    }
+                            if record.deleted || record.conflicted || (record.body.status != .active && record.body.status != .confirmed) {
+                                Label(record.deleted ? "回收站" : record.conflicted ? "待核对" : record.body.status.title,
+                                      systemImage: record.conflicted ? "exclamationmark.triangle" : "circle.fill")
+                                    .font(.caption.weight(.medium)).foregroundStyle(record.conflicted ? Color.orange : Color.secondary)
+                            }
+                    }.padding(.vertical, 8)
                     LifeSection(title: "基本信息", icon: "list.bullet.rectangle") {
-                        LabeledContent("归属") { ResourceOwnership(model: model, spaceID: record.latest.spaceID, detailed: true) }
-                        RecordCreator(model: model, record: record)
+                        LabeledContent("归属") { ResourceOwnership(model: model, spaceID: record.latest.spaceID) }
                         if let member = model.space(for: record)?.members.first(where: { $0.id == record.body.memberID }) { LabeledContent(record.body.kind == .task ? "负责人" : "付款 / 收款人") { MemberIdentityBadge(member: member) } }
                         if let date = record.body.date { LabeledContent(record.body.kind == .subscription ? "下次计费" : "日期", value: date.description) }
                         if let end = record.body.endDate { LabeledContent("结束日期", value: end.description) }
@@ -202,19 +199,10 @@ struct RecordDetail: View {
                     }
                     if record.body.kind == .project {
                         if record.body.sharedDestination == nil { ProjectBudgetSummary(model: model, record: record) }
-                        LifeSection(title: "项目中的记录", icon: "list.bullet.rectangle") {
-                            let linked = model.activeRecords.filter { $0.body.projectIDs.contains(record.id) }
-                            if linked.isEmpty { Text("录入任务、日程或账单时，可以关联此项目。").foregroundStyle(.secondary) }
-                            ForEach(linked) { child in RecordLink(model: model, record: child) { RecordRow(model: model, record: child) } }
-                            let transactions = linked.filter { $0.body.kind == .transaction && $0.body.status == .confirmed && !$0.conflicted }
-                            ForEach(Currency.allCases, id: \.self) { currency in
-                                let values = transactions.filter { $0.body.money?.currency == currency && [.expense, .refund].contains($0.body.transactionKind) }.map { ($0.body.money?.minor ?? 0) * ($0.body.transactionKind == .refund ? -1 : 1) }
-                                if !values.isEmpty { Text("项目净支出：\(netAmount(values, currency: currency))").font(.callout) }
-                            }
-                        }
                     }
-                    LifeSection(title: "记录历史", icon: "clock.arrow.circlepath") {
+                    VStack(alignment: .leading) {
                         DisclosureGroup("修订历史") {
+                        RecordCreator(model: model, record: record)
                         if let history = try? model.core?.history(record.id, spaceID: record.latest.spaceID) {
                             ForEach(history) { revision in VStack(alignment: .leading, spacing: 4) {
                                 Text("\(revision.deleted ? "移入回收站" : revision.body.status.title) · \(revision.createdAt.formatted())")
@@ -225,8 +213,8 @@ struct RecordDetail: View {
                     }
                 }.buttonStyle(.borderless).navigationTitle(onEdit == nil ? record.body.kind.title : "")
                 .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                        if onEdit == nil && !record.deleted && !record.conflicted && record.body.sharedDestination == nil {
+                    if onEdit == nil && !record.deleted && !record.conflicted && record.body.sharedDestination == nil {
+                        ToolbarItem(placement: .primaryAction) {
                             Button("编辑") { editing = true }.disabled(!model.canWrite(spaceID: record.latest.spaceID))
                         }
                     }
@@ -247,6 +235,9 @@ struct RecordDetail: View {
                     }
                     }
                 }
+                #if os(macOS)
+                .toolbar(onEdit != nil && record.body.kind != .project && model.space(for: record)?.kind != .personal ? .hidden : .automatic, for: .windowToolbar)
+                #endif
                 .navigationDestination(isPresented: Binding(get: { editing && record.body.kind == .document }, set: { editing = $0 })) { DocumentEditor(model: model, existing: record, embedded: true).navigationTitle(record.body.title) }
                 .sheet(isPresented: Binding(get: { editing && record.body.kind != .document }, set: { editing = $0 })) { if [.monthlyIncome, .assetSnapshot].contains(record.body.kind) { FinancialRecordEditor(model: model, kind: record.body.kind, existing: record) } else { RecordEditor(model: model, kind: record.body.kind, existing: record) } }
                 .confirmationDialog("归档项目？未完成的待办和笔记清单会继续保留，费用不变。", isPresented: $archivingProject, titleVisibility: .visible) { Button("归档项目") { model.changeStatus(record, to: .archived) } }

@@ -22,7 +22,7 @@ struct DocumentsView: View {
         }
     }
     var body: some View {
-        LifePage(title: "留住生活的片段", subtitle: "想法、清单，还有一起写下的故事。", icon: "doc.text") {
+        LifePage {
             LifeScopeControls(scope: $model.noteScope, archived: $archived, archivedTitle: "显示归档")
             LifeAdaptiveRow {
             Picker("分组", selection: $group) {
@@ -31,8 +31,8 @@ struct DocumentsView: View {
             }.pickerStyle(.menu)
             Toggle(isOn: $pinnedOnly) { Label("置顶", systemImage: "pin") }
                 .toggleStyle(.button).help("只看置顶笔记")
+            Text("\(documents.count) 篇").font(.caption).foregroundStyle(.secondary)
             }.padding(.vertical, 4)
-            Text("\(documents.count) 篇笔记").font(.subheadline).foregroundStyle(.secondary)
             LazyVStack(spacing: 16) {
             if documents.isEmpty {
                 WorkspaceEmptyState(title: search.isEmpty ? "还没有笔记" : "没有匹配的笔记",

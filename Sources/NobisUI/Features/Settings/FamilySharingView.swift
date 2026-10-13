@@ -47,7 +47,7 @@ struct FamilySharingSection: View {
                     if model.cloud.grant == nil { Button("重新打开邀请 / 重试加入") { Task { await model.cloud.retryInvitation() } }.disabled(model.cloud.isBusy) }
                     ForEach(model.cloud.participants) { row in
                         HStack {
-                            VStack(alignment: .leading) { MemberIdentityBadge(name: row.name, identity: row.participant.userIdentity.userRecordID?.recordName ?? row.name); Text(row.status).font(.caption).foregroundStyle(.secondary) }
+                            VStack(alignment: .leading) { MemberIdentityBadge(name: row.name, identity: row.participant.userIdentity.userRecordID?.recordName ?? row.name, showsAvatar: true); Text(row.status).font(.caption).foregroundStyle(.secondary) }
                             Spacer()
                             if model.cloud.isOwner && !row.isOwner { Button("移除…", role: .destructive) { removing = row }.disabled(model.cloud.isBusy) }
                         }

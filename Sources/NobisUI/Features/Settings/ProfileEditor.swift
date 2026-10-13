@@ -95,7 +95,7 @@ struct ProfileSettingsSection: View {
             ForEach(profiles) { profile in
                 Button { selection = profile } label: {
                     HStack {
-                        MemberIdentityBadge(member: profile.member)
+                        MemberIdentityBadge(member: profile.member, showsAvatar: true)
                         Spacer()
                         Text(profile.space.name).font(.caption).foregroundStyle(.secondary)
                         Image(systemName: "chevron.right").font(.caption)
