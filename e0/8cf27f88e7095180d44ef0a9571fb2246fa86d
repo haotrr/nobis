@@ -1,0 +1,403 @@
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisSharingSpike.xcscheme
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 1-91
+Sources/FamilyPersistence/CoreDataRepository.swift
+  s_5731ffb60d29b4::t_6ccb64b1d00b8f 1-17,19-33,35-84,102-119
+  s_946faba70aadad::t_86b26ecab3e1c7 85,87-101
+  s_a0a319c7c398cb::t_87be2824f01957 18,34,86
+Sources/FamilyCore/Backup.swift
+  s_5731ffb60d29b4::t_297aed622e68cf 1-18,23-27,29,33-60,62-64,75-76,78-79,81-94
+  s_946faba70aadad::t_e8818b351aaa43 61
+  s_946faba70aadad::t_1639c5ad09140d 22,28
+  s_5731ffb60d29b4::t_121ef9dc01765e 72
+  s_5731ffb60d29b4::t_4589225ba95fa2 19-21,30-32
+  s_946faba70aadad::t_98874920873134 65-71,73-74,77,80
+Tests/FamilyCoreTests/FamilyCoreTests.swift
+  s_5731ffb60d29b4::t_4589225ba95fa2 136
+  s_5731ffb60d29b4::t_5fe0ad456764f9 19,24-25,37,46,56,64,74-75,88,97,110,112,118,124-126,130,132,141,155-209
+  s_5731ffb60d29b4::t_41f0bf15de9e64 16-18
+  s_5731ffb60d29b4::t_9da0147e37a5d6 20-23
+  s_5731ffb60d29b4::t_24584c0af2f19b 26-28,34-36
+  s_5731ffb60d29b4::t_f67fca4a034b29 38-40,43-45
+  s_5731ffb60d29b4::t_86e3ea61a0e0c2 47-49,53-55
+  s_5731ffb60d29b4::t_9610cebd159e22 57-59,61-63
+  s_5731ffb60d29b4::t_a900770de894f0 65-67,71-73
+  s_5731ffb60d29b4::t_97d89bc92ab149 76-78,85-87
+  s_5731ffb60d29b4::t_d3c7b221aca09f 89-91,94-96
+  s_5731ffb60d29b4::t_0505c13cce9be1 98-100,107-109
+  s_5731ffb60d29b4::t_5c4df57bfb6d3f 111
+  s_5731ffb60d29b4::t_fa9ba9cbf1f49b 113-117
+  s_5731ffb60d29b4::t_59fb9d3bee2b1a 119-123
+  s_5731ffb60d29b4::t_62e3325487b8e1 127-129
+  s_5731ffb60d29b4::t_c20a04900e801a 131
+  s_5731ffb60d29b4::t_7412d1f103517e 133-135
+  s_5731ffb60d29b4::t_f6c641729c682e 137-140
+  s_5731ffb60d29b4::t_63b94ff3c00eb9 142-144,152-154
+  s_5731ffb60d29b4::t_3200e5c9876ecb 1-15,29-33,41-42,50-52,60,68-70,79-84,92-93,101-106,145-151
+Sources/FamilyPersistence/CloudFamilyController.swift
+  s_5731ffb60d29b4::t_b4ac18d7423711 267-268,272,278-281,288,322
+  s_5731ffb60d29b4::t_7c94d422e2c50a 273-274
+  s_5731ffb60d29b4::t_f1d0ea24aefbff 52-54,78-79,242,304-310,321,324-329,340,361-370,374-375
+  s_5731ffb60d29b4::t_d85e924e250779 75
+  s_5731ffb60d29b4::t_e0b644d927cd1e 1-44,46-51,55-57,60-67,69-74,76-77,80-93,97-100,102-107,109-110,112-121,123-156,158-179,181-211,213-241,243-266,269-271,275-277,282-284,289-303,311-320,323,330,332,334-339,341-360,371-373,376-378,380-394
+  s_5731ffb60d29b4::t_6dc116d262f516 45,59,101,108,111,122,180,331,333
+  s_a0a319c7c398cb::t_a3daa365acfa63 58,68,94-96,157,212,285-287,379
+docs/architecture.md
+  s_5731ffb60d29b4::t_fcd3ebf96581c3 1-2,5-8,12-20,22-24,26,28-32,34,36,38-49
+  s_5731ffb60d29b4::t_6a641122b450c3 9-11,21,25,35
+  s_a0a319c7c398cb::t_e2735b37980dcd 27,54-59
+  s_a0a319c7c398cb::t_bba36fa7e094fa 4
+  s_a0a319c7c398cb::t_200b306ed7edf3 33,37,51
+  s_946faba70aadad::t_b6eeb07f3b3811 50,52
+  s_a0a319c7c398cb::t_635e42d974d506 53
+  s_a0a319c7c398cb::t_466c6a4802090d 3
+Sources/FamilyCore/MintyMigration.swift
+  s_5731ffb60d29b4::t_7100b929545768 1-64,66,73,76,84,91-94,98-101
+  s_5731ffb60d29b4::t_d9e7215191ba6a 65,67-72,74-75,77-83,85-90,95-97
+scripts/test_export_minty.py
+  s_5731ffb60d29b4::t_2a7caa422d87e9 1-33
+Apps/Nobis/macOS/CloudInvitationDelegate.swift
+  s_a0a319c7c398cb::t_0b08aaa1983c11 1-9
+Sources/FamilyCore/DocumentDraft.swift
+  s_946faba70aadad::t_896b62ff180d9f 1-21,23-25,27,35-38
+  s_946faba70aadad::t_b62740177c2791 28-30,32-34
+  s_a0a319c7c398cb::t_6cf4d32cc3d21f 22,26,31
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisMac-Cloud.xcscheme
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 1-95
+Tests/FamilyCoreTests/MarkdownEditingTests.swift
+  s_946faba70aadad::t_2ae8533992140b 1-32
+docs/components/README.md
+  s_a0a319c7c398cb::t_635e42d974d506 1-13
+docs/proposal-detailed.md
+  s_a0a319c7c398cb::t_f95ea70bd954e9 11
+  s_a0a319c7c398cb::t_6b55f8abcf5484 1,3,5,7-10,12,14-21,23,25,27-32,34,36,38-42,44,46,48
+  s_a0a319c7c398cb::t_466c6a4802090d 2,4,6,13,22,24,26,33,35,37,43,45,47
+Sources/NobisUI/App/Navigation/AppNavigationView.swift
+  s_a0a319c7c398cb::t_f62eb13ba0d40e 12-90,104
+  s_a0a319c7c398cb::t_83d7219f1005ce 1-11,91-103,105-106
+Sources/FamilyCore/RoutedRepository.swift
+  s_5731ffb60d29b4::t_357c8607cc21c1 1-29
+docs/feature-inventory.md
+  s_a0a319c7c398cb::t_b2161c5feab026 2,4,6
+  s_a0a319c7c398cb::t_466c6a4802090d 1,3,5,7-23,27-28
+  s_a0a319c7c398cb::t_635e42d974d506 24-26
+docs/README.md
+  s_a0a319c7c398cb::t_6b55f8abcf5484 29-30
+  s_a0a319c7c398cb::t_76514831657d60 23
+  s_a0a319c7c398cb::t_1995af5109dad9 24,26,28
+  s_a0a319c7c398cb::t_f95ea70bd954e9 25,27
+  s_a0a319c7c398cb::t_466c6a4802090d 7
+  s_a0a319c7c398cb::t_200b306ed7edf3 1-2,4-6,8-11,20-22
+  s_a0a319c7c398cb::t_635e42d974d506 12-18
+  s_a0a319c7c398cb::t_7c9980c9dba46d 19
+  s_a0a319c7c398cb::t_e8662d2e1bdd9a 3
+docs/features/shared-life-design.md
+  s_a0a319c7c398cb::t_635e42d974d506 1-43
+docs/guides/cloudkit-setup.md
+  s_a0a319c7c398cb::t_635e42d974d506 1-4,6-16,18-26,28-59,61-71
+  s_a0a319c7c398cb::t_e2735b37980dcd 5,17,60
+  s_a0a319c7c398cb::t_e8662d2e1bdd9a 27
+Sources/FamilyDomain/Models.swift
+  s_5731ffb60d29b4::t_121ef9dc01765e 171-172
+  s_5731ffb60d29b4::t_9db6b170dee9f9 169-170
+  s_946faba70aadad::t_e8818b351aaa43 123,142-144
+  s_946faba70aadad::t_d22ee2f6f0e266 122,124,145
+  s_5731ffb60d29b4::t_536877ff0fc399 173-176
+  s_946faba70aadad::t_86b26ecab3e1c7 111-112
+  s_5731ffb60d29b4::t_a298837436f10b 156,166
+  s_5731ffb60d29b4::t_657b04306ff1ef 1-110,113-121,125-141,146-155,157-165,167-168,177-223,229
+  s_5731ffb60d29b4::t_357c8607cc21c1 224-228
+Package.swift
+  s_5731ffb60d29b4::t_657b04306ff1ef 1-11,13
+  s_5731ffb60d29b4::t_057da621d9f1a5 12
+Sources/FamilyCore/SharingPlan.swift
+  s_5731ffb60d29b4::t_a61d4e9ef96cfa 1-6,8-22,24-34,36-43,45-50,52-53,55-68,70-77,79-91,93-105
+  s_946faba70aadad::t_e8818b351aaa43 23,35,44,78
+  s_946faba70aadad::t_110e29fcee7674 7,51,54,69,92
+project.yml
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 10-31,34-50,52-54,56-61,64-74,77-81,83-85,87-153
+  s_a0a319c7c398cb::t_0b08aaa1983c11 32-33,51,55,62-63,76,82,86
+  s_a0a319c7c398cb::t_77996ca51c4000 1-9,75
+AGENTS.md
+  s_a0a319c7c398cb::t_e2735b37980dcd 18
+  s_a0a319c7c398cb::t_466c6a4802090d 1-5,7-17,19-50
+  s_a0a319c7c398cb::t_f95ea70bd954e9 6
+.gitignore
+  s_5731ffb60d29b4::t_657b04306ff1ef 1-8
+  s_5731ffb60d29b4::t_6e38870e572ea0 9-11
+Nobis.xcodeproj/project.pbxproj
+  s_a0a319c7c398cb::t_0b08aaa1983c11 10,13-18,26,28-29,33,64-81,86-89,131-138,252,260,279-289,592,611,632,634,672,674,758,777
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 11-12,23-25,27,30,37-44,46-48,50-52,54-56,58-60,83-85,90-130,139-140,145,147,149-251,253-259,261-274,276-278,290-292,296-586,588-591,593-610,612-631,633,635-671,673,675-752,754-757,759-776,778-882
+  s_a0a319c7c398cb::t_86255d2c0f5c8b 1-9,19-22,31-32,34-36,45,49,53,57,61-63,82,141-144,146,148,275,293-295,587,753,883-886
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisIOS-Cloud.xcscheme
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 1-95
+Sources/FamilyDomain/FinancialStatements.swift
+  s_5731ffb60d29b4::t_121ef9dc01765e 1-40,46-54,68
+  s_5731ffb60d29b4::t_9db6b170dee9f9 41-45,55-67
+Sources/FamilyCore/LedgerImport.swift
+  s_5731ffb60d29b4::t_64e487bc21e78f 1-100,102-164
+  s_5731ffb60d29b4::t_da9fb60be23dcd 101
+README.md
+  s_a0a319c7c398cb::t_76514831657d60 7
+  s_5731ffb60d29b4::t_fcd3ebf96581c3 1-2,4-6,9-16,18-21,23-26,38-39,41-49,51
+  s_a0a319c7c398cb::t_635e42d974d506 17
+  s_a0a319c7c398cb::t_200b306ed7edf3 27,31-34,36-37,52,54
+  s_a0a319c7c398cb::t_b2161c5feab026 28
+  s_a0a319c7c398cb::t_7c9980c9dba46d 30,35
+  s_5731ffb60d29b4::t_e94a876bf07fbf 53,55
+  s_5731ffb60d29b4::t_2e088b34bb45e2 8
+  s_a0a319c7c398cb::t_e2735b37980dcd 3,22,40,50,56
+  s_a0a319c7c398cb::t_466c6a4802090d 29
+Sources/FamilyDomain/Finance.swift
+  s_5731ffb60d29b4::t_07ef2f894337f1 1-56,58,61-62
+  s_5731ffb60d29b4::t_db1b2784ded822 57,59-60
+Sources/FamilyCore/FinancialReports.swift
+  s_5731ffb60d29b4::t_c1bdc3c58b78aa 1-3,5-28,30-41,43-48,50-57,59-95,102,105-108,110-125,129-142,144,154-158
+  s_5731ffb60d29b4::t_ec78e7726e6e7b 4,29,42,49,58,96-101,103-104,109,126-128,143,145-153
+docs/roadmap.md
+  s_a0a319c7c398cb::t_2dc50fcff83cf0 1-2,4-24
+  s_a0a319c7c398cb::t_f95ea70bd954e9 3,25
+Sources/FamilyCore/MarkdownBlock.swift
+  s_946faba70aadad::t_896b62ff180d9f 1-7,16,23-46,49-51,53-62,69-84,91-98
+  s_946faba70aadad::t_1639c5ad09140d 85-90
+  s_946faba70aadad::t_3900cbad299a62 8-15,17-22,47-48,52,63-68
+Sources/FamilyPersistence/CloudFamilyRepository.swift
+  s_5731ffb60d29b4::t_357c8607cc21c1 1-69,76-93,95-104,108-109,112,115,131-162,171,174-184
+  s_946faba70aadad::t_e8818b351aaa43 94,117,120
+  s_5731ffb60d29b4::t_b4ac18d7423711 164,172-173
+  s_5731ffb60d29b4::t_6dc116d262f516 70-75,105-107,113-114,163,165-170
+  s_946faba70aadad::t_86b26ecab3e1c7 110-111,116,118-119,121-130
+docs/verification.md
+  s_2cb36a3bb11b0e::t_4605d2982c5c27 14
+  s_a0a319c7c398cb::t_466c6a4802090d 15
+  s_a0a319c7c398cb::t_86fec1b23bce27 18
+  s_a0a319c7c398cb::t_2dc50fcff83cf0 1,5,9-13,21,27,29-35,37,39,41-43,51,53,55,57,61-74
+  s_a0a319c7c398cb::t_b1fd9b3f6a1a62 25
+  s_2cb36a3bb11b0e::t_94b9c7455b7c02 28,36,38
+  s_a0a319c7c398cb::t_e2735b37980dcd 44-47,49
+  s_a0a319c7c398cb::t_f95ea70bd954e9 3,7,17,19,59
+  s_5731ffb60d29b4::t_fcd3ebf96581c3 2,4,6
+  s_a0a319c7c398cb::t_5d446a70569a49 23-24,26
+  s_2cb36a3bb11b0e::t_756b3ac6d3293a 52,54,56,58,60
+  s_2cb36a3bb11b0e::t_1d27c34f80a039 40,48,50
+  s_2cb36a3bb11b0e::t_47195173fad7f9 16,20,22
+  s_5731ffb60d29b4::t_71f917f326400c 8
+Sources/FamilyDomain/CloudMembership.swift
+  s_5731ffb60d29b4::t_357c8607cc21c1 1-38,40-47
+  s_5731ffb60d29b4::t_6dc116d262f516 39
+Tests/FamilyCoreTests/RecordPanelTests.swift
+  s_5731ffb60d29b4::t_4ba6685e526671 1-11,13-22,24-46,48-52
+  s_5731ffb60d29b4::t_d403d86db3b284 12,23,47
+docs/features/resource-organization.md
+  s_a0a319c7c398cb::t_635e42d974d506 1-4,6-8,10-30,32
+  s_a0a319c7c398cb::t_e2735b37980dcd 5,9,31,33
+docs/guides/minty-migration.md
+  s_a0a319c7c398cb::t_e2735b37980dcd 51
+  s_a0a319c7c398cb::t_635e42d974d506 1-6,8-50,53-66
+  s_a0a319c7c398cb::t_6b55f8abcf5484 7,52
+docs/repository-structure.md
+  s_a0a319c7c398cb::t_6b55f8abcf5484 41
+  s_a0a319c7c398cb::t_bba36fa7e094fa 1-2,4,19-21,23
+  s_a0a319c7c398cb::t_466c6a4802090d 3,5-18,22,24-40,42-43
+  s_a0a319c7c398cb::t_635e42d974d506 44-51
+Tests/FamilyCoreTests/WorkspaceUITests.swift
+  s_2cb36a3bb11b0e::t_1cb1b8f2c69529 5-29,50,68,73,91
+  s_2cb36a3bb11b0e::t_d58cefc6e06e16 1-4,30-49,51-67,69-72,74-90,92
+docs/features/financial-reports.md
+  s_a0a319c7c398cb::t_6b55f8abcf5484 3,21,24-25,27,43,45
+  s_a0a319c7c398cb::t_e2735b37980dcd 5-12
+  s_a0a319c7c398cb::t_635e42d974d506 1-2,4,13-20,22-23,26,28-42,44,46-57
+Sources/NobisUI/Features/Records/RecordEditor.swift
+  s_a0a319c7c398cb::t_f186b890d65cd3 1-244
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisIOS.xcscheme
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 1-91
+Sources/FamilyCore/Documents.swift
+  s_946faba70aadad::t_61dc882c11611f 1-48
+Sources/FamilyCore/WorkspaceQueries.swift
+  s_946faba70aadad::t_e8818b351aaa43 1-53
+docs/proposal.md
+  s_a0a319c7c398cb::t_6b55f8abcf5484 1,3,5,7,9-13,15,17-22,24,26,28-34,36
+  s_a0a319c7c398cb::t_466c6a4802090d 2,4,6,8,14,16,23,25,27,35
+docs/features/documents.md
+  s_a0a319c7c398cb::t_635e42d974d506 2,4,6-34,36,38-40,43,45-71
+  s_a0a319c7c398cb::t_e8662d2e1bdd9a 3,37
+  s_a0a319c7c398cb::t_6b55f8abcf5484 1,5,35,41-42,44
+Tests/FamilyCoreTests/LocalMetadataFileTests.swift
+  s_a0a319c7c398cb::t_1b3dd0ee30adc0 21,23-41,43,46
+  s_a0a319c7c398cb::t_350b5dc272bebb 1-20,22,42,44-45,47
+scripts/export_minty.py
+  s_5731ffb60d29b4::t_7100b929545768 1-45
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisMac.xcscheme
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 1-91
+Sources/FamilyCore/FamilyCore.swift
+  s_5731ffb60d29b4::t_a298837436f10b 232,234-235
+  s_5731ffb60d29b4::t_121ef9dc01765e 108
+  s_5731ffb60d29b4::t_28cb9cf5298d04 1-7,9,11-33,35-50,53-54,60-70,72-76,83-89,93,95-100,113,118,123,126-142,145-151,153-160,162,164,166-174,176-189,193-195,203-213,215-227,229-231,233,236-249
+  s_5731ffb60d29b4::t_357c8607cc21c1 8,10,51-52,59,90,94
+  s_5731ffb60d29b4::t_aeb57da7bce643 55-58,91-92,191-192,196-202
+  s_5731ffb60d29b4::t_9db6b170dee9f9 34,78-81,109-110
+  s_5731ffb60d29b4::t_7100b929545768 152
+  s_946faba70aadad::t_d22ee2f6f0e266 82,143-144
+  s_946faba70aadad::t_e8818b351aaa43 101-106
+  s_946faba70aadad::t_fc746c05a6e90a 71,77,107,111-112,114-117,119-122,124-125,161,163,165,175,190,214,228
+Apps/Nobis/iOS/CloudInvitationDelegate.swift
+  s_a0a319c7c398cb::t_0b08aaa1983c11 1-19
+DESIGN.md
+  s_a0a319c7c398cb::t_7c9980c9dba46d 1-2,4-8,10-41,43-56
+  s_a0a319c7c398cb::t_f95ea70bd954e9 3
+  s_a0a319c7c398cb::t_635e42d974d506 9,42
+Sources/FamilyCore/LifeWorkspace.swift
+  s_5731ffb60d29b4::t_9db6b170dee9f9 1-52,58-59
+  s_5731ffb60d29b4::t_7fcd1c7440bf34 53-57
+Apps/Nobis/Shared/Assets.xcassets/AppIcon.appiconset/Contents.json
+  s_5731ffb60d29b4::t_8a6854a72e9583 1-74
+Apps/Nobis/Shared/Assets.xcassets/Contents.json
+  s_5731ffb60d29b4::t_44c309f635d0bb 1-6
+Apps/Nobis/Shared/NobisApp.swift
+  s_a0a319c7c398cb::t_5e3af5dd6a5e01 1-17
+Apps/Nobis/iOS/Info.plist
+  s_a0a319c7c398cb::t_82d7cc1444942d 1-5
+Apps/Nobis/iOS/NobisIOS.entitlements
+  s_a0a319c7c398cb::t_3ce5fe38b72b31 1-8
+Apps/Nobis/macOS/NobisMac.entitlements
+  s_a0a319c7c398cb::t_64fb7040158951 1-11
+Apps/SharingSpike/SharingSpike.entitlements
+  s_5731ffb60d29b4::t_6787661d65be90 1-7
+Apps/SharingSpike/SharingSpikeApp.swift
+  s_5731ffb60d29b4::t_7ea9802b68eb19 1-119
+Config/Cloud.local.xcconfig.example
+  s_5731ffb60d29b4::t_106e349562d393 1-4
+Config/Cloud.xcconfig
+  s_5731ffb60d29b4::t_2d3e0545487432 1-4
+Nobis.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+  s_5731ffb60d29b4::t_0b8034b3d48b12 1-7
+Sources/FamilyCore/FinanceQueries.swift
+  s_5731ffb60d29b4::t_4edf8e307850c4 1-98
+Sources/FamilyCore/LocalMetadataFile.swift
+  s_a0a319c7c398cb::t_dbd2f7831b60e8 1-29
+Sources/FamilyCore/MarkdownEditing.swift
+  s_946faba70aadad::t_41f77eb9455c24 1-37
+Sources/FamilyPersistence/CloudFailurePolicy.swift
+  s_5731ffb60d29b4::t_e3872fe3fd768d 1-14
+Sources/FamilyPersistence/CloudSharingSpike.swift
+  s_5731ffb60d29b4::t_4a68a194b760e0 1-60
+Sources/NobisCLI/main.swift
+  s_5731ffb60d29b4::t_b216c84fe5dc5f 1-65
+Sources/NobisUI/App/AppModel.swift
+  s_a0a319c7c398cb::t_44fce24449d511 1-285
+Sources/NobisUI/App/Navigation/SectionPage.swift
+  s_a0a319c7c398cb::t_148ab6d3dfcad3 1-9
+Sources/NobisUI/App/RootView.swift
+  s_a0a319c7c398cb::t_d4cdb94709bd9f 1-32
+Sources/NobisUI/App/StartupRecoveryView.swift
+  s_a0a319c7c398cb::t_e681b49026188e 1-39
+Sources/NobisUI/Features/Finance/FinancialDashboard.swift
+  s_a0a319c7c398cb::t_51fb791db2673f 1-414
+Sources/NobisUI/Features/Finance/LedgerWorkspace.swift
+  s_a0a319c7c398cb::t_a5e5e97f852055 1-257
+Sources/NobisUI/Features/Notes/DocumentsView.swift
+  s_a0a319c7c398cb::t_3a063652c4746b 1-654
+Sources/NobisUI/Features/Notes/Editor/DocumentBlocks.swift
+  s_a0a319c7c398cb::t_2dd4c9eac69508 1-129
+Sources/NobisUI/Features/Notes/Editor/MarkdownPreview.swift
+  s_a0a319c7c398cb::t_5978058d767612 1-70
+Sources/NobisUI/Features/Notes/Editor/MarkdownTextEditor.swift
+  s_a0a319c7c398cb::t_7a90017cfc4ce1 1-318
+Sources/NobisUI/Features/Notes/Editor/RichMarkdown.swift
+  s_a0a319c7c398cb::t_5650437803a5f1 1-167
+Sources/NobisUI/Features/Notes/Editor/VisualDocumentEditor.swift
+  s_a0a319c7c398cb::t_f73b3423fe2f4b 1-191
+Sources/NobisUI/Features/Notes/MarkdownDocument.swift
+  s_a0a319c7c398cb::t_22b2141e41b89f 1-17
+Sources/NobisUI/Features/Notes/QuoteSelectionSheet.swift
+  s_a0a319c7c398cb::t_0e341da69a8251 1-71
+Sources/NobisUI/Features/Onboarding/OnboardingView.swift
+  s_a0a319c7c398cb::t_1f5b843db82ea8 1-29
+Sources/NobisUI/Features/Projects/ProjectBudgetView.swift
+  s_a0a319c7c398cb::t_40ab5d0295e82a 1-80
+Sources/NobisUI/Features/Projects/ProjectPreview.swift
+  s_a0a319c7c398cb::t_98446aaefbc438 1-36
+Sources/NobisUI/Features/Projects/ProjectWorkspace.swift
+  s_a0a319c7c398cb::t_290046ca4b7b48 1-111
+Sources/NobisUI/Features/Records/RecordInspector.swift
+  s_a0a319c7c398cb::t_5dd3e6a361b94a 1-165
+Sources/NobisUI/Features/Records/RecordsView.swift
+  s_a0a319c7c398cb::t_6d9b3fd7eda5eb 1-291
+Sources/NobisUI/Features/Settings/FamilySharingView.swift
+  s_a0a319c7c398cb::t_646fd03495b63a 1-143
+Sources/NobisUI/Features/Settings/ProfileEditor.swift
+  s_a0a319c7c398cb::t_9f361a0a7a5116 1-107
+Sources/NobisUI/Features/Settings/SettingsView.swift
+  s_a0a319c7c398cb::t_b67dbc9e2d7c16 1-173
+Sources/NobisUI/Features/Workspace/OrganizationViews.swift
+  s_a0a319c7c398cb::t_34511ced5d859a 1-300
+Sources/NobisUI/Shared/Components/LifeNativeTextInput.swift
+  s_a0a319c7c398cb::t_42d57efb41de0d 1-146
+Sources/NobisUI/Shared/Components/RecordRows.swift
+  s_a0a319c7c398cb::t_bde3e6b7886a6e 1-53
+Sources/NobisUI/Shared/Components/ResourceIdentity.swift
+  s_a0a319c7c398cb::t_e684a2f24d6a36 1-132
+Sources/NobisUI/Shared/Styles/GlassStyle.swift
+  s_a0a319c7c398cb::t_2da4fa4b56efdd 1-50
+Sources/NobisUI/Shared/Styles/NobisSurface.swift
+  s_a0a319c7c398cb::t_0624a260369b07 1-20
+Sources/NobisUI/Shared/Styles/WorkspaceStyle.swift
+  s_a0a319c7c398cb::t_5d1a2214be7098 1-631
+Tests/FamilyCoreTests/CloudSharingTests.swift
+  s_5731ffb60d29b4::t_090f3846aa7894 1-143
+Tests/FamilyCoreTests/DocumentBlockTests.swift
+  s_946faba70aadad::t_339d86a00caf89 1-79
+Tests/FamilyCoreTests/DocumentCompletionTests.swift
+  s_946faba70aadad::t_2ed0167fd3fb6b 1-82
+Tests/FamilyCoreTests/DocumentTests.swift
+  s_946faba70aadad::t_1a57a440c25dcc 1-84
+Tests/FamilyCoreTests/FinancialReportTests.swift
+  s_5731ffb60d29b4::t_9f93c411601477 1-119
+Tests/FamilyCoreTests/LifeWorkspaceTests.swift
+  s_5731ffb60d29b4::t_8e72161a3d241d 1-102
+Tests/FamilyCoreTests/MintyMigrationTests.swift
+  s_5731ffb60d29b4::t_0fee7dfd677b7b 1-146
+Tests/FamilyCoreTests/ResourceOrganizationTests.swift
+  s_946faba70aadad::t_e8c3b93b4bca0d 1-93
+Tests/FamilyCoreTests/RichMarkdownTests.swift
+  s_946faba70aadad::t_5203cc71fe2680 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e08cf27f88e7095180d44ef0a9571fb2246fa86d",
+  "prompts": {},
+  "sessions": {
+    "s_2cb36a3bb11b0e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12da8-11d1-7b63-8962-6a9f54976b07",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    },
+    "s_5731ffb60d29b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12b05-a062-7d31-b552-bc09febd3761",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    },
+    "s_946faba70aadad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12dee-ad77-7b21-9ce8-a196e41cbeb0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    },
+    "s_a0a319c7c398cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12f55-da1d-7631-ac14-58d49fe80f6e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
