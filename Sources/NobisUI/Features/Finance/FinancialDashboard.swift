@@ -191,15 +191,19 @@ struct FinancialDashboard: View {
             switch Result(catching: { try model.report(in: scope) }) {
             case .failure(let error): Text(error.localizedDescription)
             case .success(let view):
-                report(view.core, space: view.spaceID)
-                subscriptions(view.core, space: view.spaceID)
+                switch Result(catching: { FinancialReportIndex(records: try view.core.records(spaceID: view.spaceID)) }) {
+                case .failure(let error): InlineIssue(message: error.localizedDescription)
+                case .success(let index):
+                    report(index)
+                    subscriptions(index.records)
+                }
             }
             ForEach(model.spaces.filter { model.workspace.ids(scope).contains($0.id) }) { source in
-                if let core = model.core {
+                if model.core != nil {
                     ResourceOwnership(model: model, spaceID: source.id, detailed: true).padding(.horizontal, 4)
                     NavigationLink("成员与资产核对") { FinancialReviewView(model: model, spaceID: source.id) }
-                    positions(core, space: source.id)
                     let assets = model.records(in: scope).filter { $0.latest.spaceID == source.id && $0.body.kind == .assetSnapshot }
+                    positions(assets)
                     ForEach(Array(Set(assets.map { $0.body.financialOwner?.key ?? "legacy" })).sorted(), id: \.self) { owner in
                         let group = assets.filter { ($0.body.financialOwner?.key ?? "legacy") == owner && (currency == nil || $0.body.assetPosition?.currency == currency) }
                         if let first = group.first { FinancialOwnershipBadge(model: model, record: first).padding(.horizontal, 4) }
@@ -250,8 +254,12 @@ struct FinancialDashboard: View {
             }
         }
     }
-    @ViewBuilder private func report(_ core: FamilyCore, space: UUID) -> some View {
-        switch Result(catching: { try core.financialReport(spaceID: space, year: year, month: selectedMonth) }) {
+    private func exportCurrentReport() throws -> Data {
+        let view = try model.report(in: scope)
+        return try view.core.financialReportCSV(spaceID: view.spaceID, year: year, month: selectedMonth)
+    }
+    @ViewBuilder private func report(_ index: FinancialReportIndex) -> some View {
+        switch Result(catching: { try index.report(year: year, month: selectedMonth) }) {
         case .failure(let e): InlineIssue(message: e.localizedDescription)
         case .success(let report):
             LifeSection(title: "收支与结余", icon: "chart.bar") {
@@ -263,18 +271,18 @@ struct FinancialDashboard: View {
                     CategorySpendingChart(model: model, value: g, period: LedgerPeriod(year: year, month: selectedMonth))
                 }
                 NavigationLink("查看本期流水明细") { LedgerWorkspace(model: model, period: LedgerPeriod(year: year, month: selectedMonth), currency: currency) }
-                Button("导出报告 CSV") { model.perform { document = CSVDocument(data: try CSV.scoped(core.financialReportCSV(spaceID: space, year: year, month: selectedMonth), scope: scope.rawValue)); exporting = true } }
+                Button("导出报告 CSV") { model.perform { document = CSVDocument(data: try CSV.scoped(exportCurrentReport(), scope: scope.rawValue)); exporting = true } }
             }
-            if annual { AnnualTrend(model: model, core: core, space: space, year: year, currency: currency) }
-            YearComparisonChart(model: model, core: core, space: space, currency: currency)
+            if annual { AnnualTrend(model: model, index: index, year: year, currency: currency) }
+            YearComparisonChart(model: model, index: index, currency: currency)
         }
     }
-    @ViewBuilder private func positions(_ core: FamilyCore, space: UUID) -> some View {
+    @ViewBuilder private func positions(_ assets: [Record]) -> some View {
         LifeSection(title: "期末资产 · 最近完整快照", icon: "chart.pie") {
             switch Result(catching: { () throws -> [PositionObservation] in
                 let start = try LocalDay(year, annual ? 12 : month, 1)
                 let next = try start.nextCycle(unit: .month, count: 1, anchor: start)
-                return try core.positions(spaceID: space, through: min(next.addingDays(-1), LocalDay(date: Date())))
+                return FamilyCore.positions(records: assets, through: min(next.addingDays(-1), LocalDay(date: Date())))
             }) {
             case .failure(let e): InlineIssue(message: e.localizedDescription)
             case .success(let observations):
@@ -287,9 +295,9 @@ struct FinancialDashboard: View {
             }
         }
     }
-    @ViewBuilder private func subscriptions(_ core: FamilyCore, space: UUID) -> some View {
+    @ViewBuilder private func subscriptions(_ records: [Record]) -> some View {
         LifeSection(title: "订阅成本", icon: "arrow.triangle.2.circlepath") {
-            switch Result(catching: { try core.subscriptionCosts(spaceID: space, year: year, month: selectedMonth) }) {
+            switch Result(catching: { try FamilyCore.subscriptionCosts(records: records, year: year, month: selectedMonth) }) {
             case .failure(let e): InlineIssue(message: e.localizedDescription)
             case .success(let costs):
                 Text("当前启用 \(costs.activeCount) 项 · 暂停 \(costs.pausedCount) 项")

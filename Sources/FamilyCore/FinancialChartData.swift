@@ -13,11 +13,14 @@ public enum FinancialChartData {
         try months(records: core.records(spaceID: spaceID), year: year, currency: currency, today: today)
     }
     @MainActor public static func months(records source: [Record], year: Int, currency: Currency, today: LocalDay) throws -> [FinancialMonthPoint] {
+        try months(index: FinancialReportIndex(records: source), year: year, currency: currency, today: today)
+    }
+    @MainActor public static func months(index: FinancialReportIndex, year: Int, currency: Currency, today: LocalDay) throws -> [FinancialMonthPoint] {
         guard year <= today.year else { return [] }
         let last = year == today.year ? today.month : 12
-        let records = Dictionary(uniqueKeysWithValues: source.map { ($0.id, $0.body) })
+        let records = index.bodiesByID
         return try (1...last).map { month in
-            let report = try FamilyCore.financialReport(records: source, year: year, month: month, through: today)
+            let report = try index.report(year: year, month: month, through: today)
             let total = report.totals.first { $0.currency == currency }
             let bodies = (total?.sourceIDs ?? []).compactMap { records[$0] }
             let hasIncome = bodies.contains { $0.kind == .monthlyIncome || ($0.kind == .transaction && $0.transactionKind == .income) }
@@ -28,11 +31,18 @@ public enum FinancialChartData {
     /// Exclude ambiguous dates without substituting an older record as that day's observation.
     public static func snapshots(_ records: [Record], through: LocalDay) -> [Record] {
         let eligible = records.filter { !$0.deleted && $0.body.sharedDestination == nil && $0.body.kind == .assetSnapshot }
-        let dates = Set(eligible.flatMap { $0.heads.compactMap { $0.body.date } }.filter { $0 <= through })
-        return dates.sorted().flatMap { day in
+        var groups: [LocalDay: [Currency: [UUID: Record]]] = [:]
+        for record in eligible {
+            for head in record.heads {
+                guard head.body.status == .active, let day = head.body.date, day <= through,
+                      let currency = head.body.assetPosition?.currency else { continue }
+                groups[day, default: [:]][currency, default: [:]][record.id] = record
+            }
+        }
+        return groups.keys.sorted().flatMap { day in
             Currency.allCases.compactMap { currency -> Record? in
-                let candidates = eligible.filter { $0.heads.contains { $0.body.date == day && $0.body.assetPosition?.currency == currency && $0.body.status == .active } }
-                guard candidates.count == 1, let record = candidates.first, !record.conflicted else { return nil }
+                guard let candidates = groups[day]?[currency], candidates.count == 1,
+                      let record = candidates.values.first, !record.conflicted else { return nil }
                 return record
             }
         }

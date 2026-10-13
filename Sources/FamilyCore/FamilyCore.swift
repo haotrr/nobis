@@ -40,16 +40,19 @@ public struct LedgerSummary: Codable, Sendable {
         batchSpaceID = spaceID
     }
     public init(repository: any Repository, session: AccessSession) { self.repository = repository; self.session = session }
-    public func spaces() throws -> [Space] { try repository.load().spaces.filter { space in session.allowedSpaceIDs.contains(space.id) && space.members.contains { $0.id == session.actorID(in: space.id) } && (space.kind != .personal || space.ownerID == session.actorID(in: space.id)) } }
+    func authorizedSpaces(in snapshot: Snapshot) -> [Space] { snapshot.spaces.filter { space in session.allowedSpaceIDs.contains(space.id) && space.members.contains { $0.id == session.actorID(in: space.id) } && (space.kind != .personal || space.ownerID == session.actorID(in: space.id)) } }
+    public func spaces() throws -> [Space] { authorizedSpaces(in: try repository.load()) }
     public func space(_ id: UUID) throws -> Space {
         guard let value = try spaces().first(where: { $0.id == id }) else { throw NobisError.forbidden }; return value
     }
     public func records(spaceID: UUID, includeDeleted: Bool = false) throws -> [Record] {
-        _ = try space(spaceID)
         if batchSpaceID == spaceID {
+            _ = try space(spaceID)
             return batchProjection.values.filter { includeDeleted || !$0.deleted }.sorted { $0.latest.createdAt > $1.latest.createdAt }
         }
-        return Record.project(try repository.load().revisions.filter { $0.spaceID == spaceID }).filter { includeDeleted || !$0.deleted }
+        let snapshot = try repository.load()
+        guard authorizedSpaces(in: snapshot).contains(where: { $0.id == spaceID }) else { throw NobisError.forbidden }
+        return Record.project(snapshot.revisions.filter { $0.spaceID == spaceID }).filter { includeDeleted || !$0.deleted }
     }
     public func record(_ id: UUID, spaceID: UUID) throws -> Record {
         if batchSpaceID == spaceID {

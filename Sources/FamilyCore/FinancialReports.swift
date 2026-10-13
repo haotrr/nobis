@@ -71,49 +71,47 @@ public extension FamilyCore {
             if r.conflicted || r.body.status == .draft { unresolved += 1; continue }
             let b = r.body
             if b.kind == .monthlyIncome, b.status == .active, let i = b.incomeMonth {
-                var g = groups[i.net.currency] ?? PeriodStatement(currency: i.net.currency)
-                if i.isNonMonthly { g.nonMonthlyNet = try Money.sum([g.nonMonthlyNet, i.net.minor]) }
-                else { g.monthlyNet = try Money.sum([g.monthlyNet, i.net.minor]) }
-                g.gross = try Money.sum([g.gross, i.gross.minor])
-                if let tax = i.tax { g.knownTax = try Money.sum([g.knownTax, tax.minor]) } else { g.unknownTaxCount += 1 }
-                g.sourceIDs.append(r.id); groups[g.currency] = g
-            } else if b.kind == .transaction, b.status == .confirmed, let money = b.money {
-                var g = groups[money.currency] ?? PeriodStatement(currency: money.currency)
-                switch b.transactionKind {
-                case .expense: g.expense = try Money.sum([g.expense, money.minor])
-                case .refund: g.refund = try Money.sum([g.refund, money.minor])
-                case .income: g.cashIncome = try Money.sum([g.cashIncome, money.minor])
-                case .settlement: continue
-                }
-                if [.expense, .refund].contains(b.transactionKind) {
-                    let amount = money.minor * (b.transactionKind == .refund ? -1 : 1)
-                    g.categories[b.category] = try Money.sum([g.categories[b.category] ?? 0, amount])
-                    let attribution = b.finance?.consumption ?? .unassigned
-                    let label = attribution == .personal ? "个人 · \(b.finance?.consumer ?? "未标注")" : attribution.title
-                    g.consumption[label] = try Money.sum([g.consumption[label] ?? 0, amount])
-                }
-                g.sourceIDs.append(r.id); groups[g.currency] = g
+                try groups[i.net.currency, default: PeriodStatement(currency: i.net.currency)].include(income: i, id: r.id)
+            } else if b.kind == .transaction, b.status == .confirmed, let money = b.money, b.transactionKind != .settlement {
+                try groups[money.currency, default: PeriodStatement(currency: money.currency)].include(transaction: b, money: money, id: r.id)
             }
         }
+
         for g in groups.values { _ = try g.surplus }
         return FinancialReport(year: year, month: month, totals: groups.values.sorted { $0.currency.rawValue < $1.currency.rawValue }, unresolvedCount: unresolved)
     }
     /// A snapshot describes the whole space for one currency, not a transaction to sum over time.
     func positions(spaceID: UUID, through: LocalDay) throws -> [PositionObservation] {
-        let all = try records(spaceID: spaceID).filter { $0.body.sharedDestination == nil }.filter { $0.body.kind == .assetSnapshot }
-        let ownerKeys = Set(all.flatMap { $0.heads.map { $0.body.financialOwner?.key ?? "legacy" } }).sorted()
-        return Currency.allCases.flatMap { currency in ownerKeys.compactMap { owner -> PositionObservation? in
-            let candidates = all.filter { r in r.heads.contains { ($0.body.financialOwner?.key ?? "legacy") == owner && $0.body.assetPosition?.currency == currency && $0.body.date.map { $0 <= through } == true && $0.body.status == .active } }
-            guard let latestDay = candidates.flatMap({ $0.heads.compactMap { ($0.body.financialOwner?.key ?? "legacy") == owner && $0.body.assetPosition?.currency == currency && $0.body.status == .active && $0.body.date.map { $0 <= through } == true ? $0.body.date : nil } }).max() else { return nil }
-            let latest = candidates.filter { $0.heads.contains { ($0.body.financialOwner?.key ?? "legacy") == owner && $0.body.assetPosition?.currency == currency && $0.body.date == latestDay && $0.body.status == .active } }
-            let ambiguous = latest.count != 1 || latest.contains(where: \.conflicted)
-            return PositionObservation(currency: currency, ownerKey: owner, record: ambiguous ? nil : latest.first, ambiguous: ambiguous)
-        } }
+        Self.positions(records: try records(spaceID: spaceID), through: through)
+    }
+    static func positions(records: [Record], through: LocalDay) -> [PositionObservation] {
+        let all = records.filter { !$0.deleted && $0.body.sharedDestination == nil && $0.body.kind == .assetSnapshot }
+        var groups: [Currency: [String: (day: LocalDay, records: [UUID: Record])]] = [:]
+        for record in all {
+            for head in record.heads {
+                let body = head.body
+                guard body.status == .active, let day = body.date, day <= through, let currency = body.assetPosition?.currency else { continue }
+                let owner = body.financialOwner?.key ?? "legacy"
+                if let current = groups[currency]?[owner], current.day > day { continue }
+                if groups[currency]?[owner]?.day != day { groups[currency, default: [:]][owner] = (day, [:]) }
+                groups[currency]?[owner]?.records[record.id] = record
+            }
+        }
+        return Currency.allCases.flatMap { currency in
+            (groups[currency] ?? [:]).keys.sorted().map { owner in
+                let candidates = groups[currency]![owner]!.records
+                let ambiguous = candidates.count != 1 || candidates.values.contains(where: \.conflicted)
+                return PositionObservation(currency: currency, ownerKey: owner, record: ambiguous ? nil : candidates.values.first, ambiguous: ambiguous)
+            }
+        }
     }
 
     func subscriptionCosts(spaceID: UUID, year: Int, month: Int? = nil) throws -> SubscriptionCosts {
+        try Self.subscriptionCosts(records: records(spaceID: spaceID), year: year, month: month)
+    }
+    static func subscriptionCosts(records: [Record], year: Int, month: Int? = nil) throws -> SubscriptionCosts {
         _ = try LocalDay(year, month ?? 1, 1)
-        let all = try records(spaceID: spaceID).filter { $0.body.sharedDestination == nil }, subscriptions = all.filter { $0.body.kind == .subscription }
+        let all = records.filter { !$0.deleted && $0.body.sharedDestination == nil }, subscriptions = all.filter { $0.body.kind == .subscription }
         var monthly: [Currency: Decimal] = [:], annual: [Currency: Decimal] = [:], groups: [Currency: SubscriptionEstimate] = [:], unresolved = 0
         var active = 0, paused = 0
         for s in subscriptions {
@@ -147,10 +145,13 @@ public extension FamilyCore {
         return SubscriptionCosts(totals: groups.values.sorted { $0.currency.rawValue < $1.currency.rawValue }, activeCount: active, pausedCount: paused, unresolvedCount: unresolved)
     }
     func financialReportCSV(spaceID: UUID, year: Int, month: Int? = nil) throws -> Data {
+        try Self.financialReportCSV(index: FinancialReportIndex(records: records(spaceID: spaceID)), year: year, month: month)
+    }
+    static func financialReportCSV(index: FinancialReportIndex, year: Int, month: Int? = nil) throws -> Data {
         let months: [Int?] = month.map { [$0] } ?? ([nil] + (1...12).map { Optional($0) })
         var rows = [["year", "month", "currency", "metric", "amount", "unresolved_count"]]
         for m in months {
-            let report = try financialReport(spaceID: spaceID, year: year, month: m)
+            let report = try index.report(year: year, month: m)
             rows.append([String(year),m.map(String.init) ?? "", "", "report_status", "",String(report.unresolvedCount)])
             for g in report.totals {
                 var values: [(String, Int64)] = try [("expense",g.expense),("refund",g.refund),("net_expense",g.netExpense),("cash_income",g.cashIncome),("monthly_net_income",g.monthlyNet),("non_monthly_net_income",g.nonMonthlyNet),("gross_income",g.gross),("known_tax",g.knownTax),("income",g.income),("surplus",g.surplus)]
@@ -161,5 +162,32 @@ public extension FamilyCore {
             }
         }
         return CSV.encode(rows)
+    }
+}
+
+private extension PeriodStatement {
+    // Mutate the dictionary value in place so each appended source ID does not copy the preceding array.
+    mutating func include(income: IncomeMonth, id: UUID) throws {
+        if income.isNonMonthly { nonMonthlyNet = try Money.sum([nonMonthlyNet, income.net.minor]) }
+        else { monthlyNet = try Money.sum([monthlyNet, income.net.minor]) }
+        gross = try Money.sum([gross, income.gross.minor])
+        if let tax = income.tax { knownTax = try Money.sum([knownTax, tax.minor]) } else { unknownTaxCount += 1 }
+        sourceIDs.append(id)
+    }
+    mutating func include(transaction b: RecordBody, money: Money, id: UUID) throws {
+        switch b.transactionKind {
+        case .expense: expense = try Money.sum([expense, money.minor])
+        case .refund: refund = try Money.sum([refund, money.minor])
+        case .income: cashIncome = try Money.sum([cashIncome, money.minor])
+        case .settlement: return
+        }
+        if [.expense, .refund].contains(b.transactionKind) {
+            let amount = money.minor * (b.transactionKind == .refund ? -1 : 1)
+            categories[b.category] = try Money.sum([categories[b.category] ?? 0, amount])
+            let attribution = b.finance?.consumption ?? .unassigned
+            let label = attribution == .personal ? "个人 · \(b.finance?.consumer ?? "未标注")" : attribution.title
+            consumption[label] = try Money.sum([consumption[label] ?? 0, amount])
+        }
+        sourceIDs.append(id)
     }
 }

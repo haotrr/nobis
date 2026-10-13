@@ -36,12 +36,15 @@ public struct LifeWorkspace: Sendable {
 }
 public extension FamilyCore {
     func reportView(spaceIDs: Set<UUID>) throws -> (core: FamilyCore, spaceID: UUID) {
-        let selected = try spaceIDs.sorted { $0.uuidString < $1.uuidString }.map { try space($0) }
+        let snapshot = try repository.load()
+        let allowed = Dictionary(uniqueKeysWithValues: authorizedSpaces(in: snapshot).map { ($0.id, $0) })
+        let selected = try spaceIDs.sorted { $0.uuidString < $1.uuidString }.map { id in
+            guard let space = allowed[id] else { throw NobisError.forbidden }; return space
+        }
         guard let first = selected.first else { throw NobisError.validation("没有可用的记录范围。") }
         let id = UUID()
         let members = Dictionary(grouping: selected.flatMap(\.members), by: \.id).values.compactMap(\.first)
         let projectedSpace = Space(id: id, name: "报告", kind: .family, ownerID: first.ownerID, members: members)
-        let snapshot = try repository.load()
         let published = Set(Record.project(snapshot.revisions.filter { spaceIDs.contains($0.spaceID) }).filter { $0.body.sharedDestination != nil }.map(\.id))
         let revisions = snapshot.revisions.filter { spaceIDs.contains($0.spaceID) && !published.contains($0.recordID) }.map { r in
             Revision(id: r.id, recordID: r.recordID, spaceID: id, parents: r.parents, operationID: r.operationID, actorID: r.actorID, createdAt: r.createdAt, body: r.body, deleted: r.deleted)

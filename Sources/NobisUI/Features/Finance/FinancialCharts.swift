@@ -89,11 +89,10 @@ struct CategorySpendingChart: View {
 
 struct AnnualTrend: View {
     let model: AppModel
-    let core: FamilyCore
-    let space: UUID
+    let index: FinancialReportIndex
     let year: Int
     var currency: Currency? = nil
-    private var recordedCurrencies: [Currency] { Array(Set(((try? core.records(spaceID: space)) ?? []).compactMap { $0.body.money?.currency ?? $0.body.incomeMonth?.net.currency })).sorted { $0.rawValue < $1.rawValue } }
+    private var recordedCurrencies: [Currency] { index.currencies }
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .body) private var chartHeight: CGFloat = 210
     @State private var selection: String?
@@ -101,7 +100,7 @@ struct AnnualTrend: View {
         LifeSection(title: "月度收支 · 已记录", icon: "chart.bar") {
             Text("未来月份不绘制；无记录不等于零收支。月内数据截至今天，仍可能未记全。").font(.caption).foregroundStyle(.secondary)
             ForEach(recordedCurrencies.filter { currency == nil || $0 == currency }, id: \.self) { currency in
-                switch Result(catching: { try FinancialChartData.months(core: core, spaceID: space, year: year, currency: currency, today: LocalDay(date: Date())) }) {
+                switch Result(catching: { try FinancialChartData.months(index: index, year: year, currency: currency, today: LocalDay(date: Date())) }) {
                 case .failure(let error): InlineIssue(message: error.localizedDescription)
                 case .success(let points):
                     if !points.isEmpty {
@@ -129,7 +128,7 @@ struct AnnualTrend: View {
 
                             .chartOverlay { ChartSelectionOverlay(proxy: $0, horizontal: true, selection: $selection) }
                         if let point = points.first(where: { String($0.month) == selection }) { monthRow(point, currency: currency) }
-                        if case .success(let report) = Result(catching: { try core.financialReport(spaceID: space, year: year) }), let total = report.totals.first(where: { $0.currency == currency }) {
+                        if case .success(let report) = Result(catching: { try index.report(year: year) }), let total = report.totals.first(where: { $0.currency == currency }) {
                             Text("年报核对：月度到账 \(money(total.monthlyNet, currency)) ＋ 非月度 \(money(total.nonMonthlyNet, currency)) ＋ 流水收入 \(money(total.cashIncome, currency)) ＝ \((try? total.income).map { money($0, currency) } ?? "超出范围")").font(.caption)
                             Text("非月度收入保留原年份，不进入月度图；年报还可能含已记入的未来日期记录。").font(.caption).foregroundStyle(.secondary)
                         }
@@ -153,10 +152,9 @@ struct AnnualTrend: View {
 
 struct YearComparisonChart: View {
     let model: AppModel
-    let core: FamilyCore
-    let space: UUID
+    let index: FinancialReportIndex
     var currency: Currency? = nil
-    private var recordedCurrencies: [Currency] { Array(Set(((try? core.records(spaceID: space)) ?? []).compactMap { $0.body.money?.currency ?? $0.body.incomeMonth?.net.currency })).sorted { $0.rawValue < $1.rawValue } }
+    private var recordedCurrencies: [Currency] { index.currencies }
     @State private var expanded = false
     struct Row: Identifiable {
         var id: Int { year }
@@ -169,18 +167,19 @@ struct YearComparisonChart: View {
     }
     private func rows(_ currency: Currency) throws -> [Row] {
         let today = LocalDay(date: Date())
-        let records = try core.records(spaceID: space)
-        let years = Set(records.flatMap { $0.heads.compactMap { $0.body.incomeMonth?.year ?? ($0.body.kind == .transaction ? $0.body.date?.year : nil) } }).filter { $0 <= today.year }.sorted()
+        let years = index.years.filter { $0 <= today.year }
         return try years.map { year in
-            let yearly = try FamilyCore.financialReport(records: records, year: year)
+            let yearly = try index.report(year: year)
             let annual = yearly.totals.first { $0.currency == currency }
             let cutoff = try (try? LocalDay(year, today.month, today.day)) ?? LocalDay(year, today.month, 28)
-            let ytd = try FamilyCore.financialReport(records: records, year: year, through: cutoff)
+            let ytd = try index.report(year: year, through: cutoff)
             let expense = ytd.totals.first { $0.currency == currency }
-            let months = try FinancialChartData.months(records: records, year: year, currency: currency, today: cutoff)
-            let hasIncome = records.contains { r in annual?.sourceIDs.contains(r.id) == true && (r.body.kind == .monthlyIncome || r.body.transactionKind == .income) }
-            let hasExpense = records.contains { r in expense?.sourceIDs.contains(r.id) == true && r.body.kind == .transaction && [.expense, .refund].contains(r.body.transactionKind) }
-            return Row(year: year, income: hasIncome ? try annual?.income : nil, expense: hasExpense ? try expense?.netExpense : nil, incomeMonths: Set(records.filter { annual?.sourceIDs.contains($0.id) == true && (($0.body.incomeMonth?.month ?? $0.body.date?.month ?? 0) > 0) && ($0.body.kind == .monthlyIncome || $0.body.transactionKind == .income) }.compactMap { $0.body.incomeMonth?.month ?? $0.body.date?.month }).count, expenseMonths: months.filter { $0.expense != nil }.count, unresolved: yearly.unresolvedCount + ytd.unresolvedCount)
+            let months = try FinancialChartData.months(index: index, year: year, currency: currency, today: cutoff)
+            let incomeBodies = (annual?.sourceIDs ?? []).compactMap { index.bodiesByID[$0] }.filter { $0.kind == .monthlyIncome || $0.transactionKind == .income }
+            let expenseBodies = (expense?.sourceIDs ?? []).compactMap { index.bodiesByID[$0] }
+            let hasIncome = !incomeBodies.isEmpty
+            let hasExpense = expenseBodies.contains { $0.kind == .transaction && [.expense, .refund].contains($0.transactionKind) }
+            return Row(year: year, income: hasIncome ? try annual?.income : nil, expense: hasExpense ? try expense?.netExpense : nil, incomeMonths: Set(incomeBodies.compactMap { $0.incomeMonth?.month ?? $0.date?.month }.filter { $0 > 0 }).count, expenseMonths: months.filter { $0.expense != nil }.count, unresolved: yearly.unresolvedCount + ytd.unresolvedCount)
         }
     }
     var body: some View {
