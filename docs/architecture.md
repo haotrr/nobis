@@ -1,0 +1,59 @@
+# v0.1 架构与 Store 路由
+
+模块职责与目录见[仓库结构](repository-structure.md)。本页只说明数据与存储约束。
+
+```text
+NobisMac / NobisIOS (SwiftUI)
+  → FamilyCore（会话、空间校验、用例、账务汇总）
+  → Repository
+  → RoutedRepository
+    → CoreDataRepository（本地个人 / 家庭草稿）
+    → CloudFamilyRepository（CloudKit private / shared，修订与审计同次 save）
+
+nobis CLI → 显式导出包 → 校验 → 同一 FamilyCore（只读）
+NobisSharingSpike → 独立 NSPersistentCloudKitContainer → private / shared
+```
+
+## 持久化边界
+
+应用支持目录 `Nobis/identity.json` 保存本地创建的成员标识，不是 Apple ID 凭据。`Stores/spaces.json` 是空间目录；`Stores/<space UUID>.sqlite` 保存该空间的根、修订与审计。Mac 沙盒运行时路径位于应用容器中。
+
+SpaceRoot 的 payload 保存空间元数据；RecordRevision、AuditEvent 通过 optional inverse 关系连接根。每个实体包含逻辑 ID 与 Codable JSON 二进制 payload。未使用 CloudKit 不支持的唯一约束；本地库不参与云同步，共享家庭使用独立云存储。大型 payload 与全量扫描需要后续性能测量，不能当作 1 万条性能指标已经通过。
+
+本地一次写入只改变一个物理 Store；新增修订和审计同事务落盘，失败 rollback。库层拒绝覆盖历史。业务层校验父版本集合；投影以无子节点的修订为 head。多 head 为冲突，墓碑抑制自动复活。财务冲突排除正式合计，并报告各受影响币种的待核对数量。UI 选择版本会形成引用全部 head 的新修订。
+
+家庭草稿中的另一成员只是本地分工/分摊标签，没有登录能力；不能推导其已接受邀请。正式共享家庭由设置中的 iCloud 流程另行创建或加入，不复用这些占位身份。
+
+业务金额与分摊规则见[财务报告](features/financial-reports.md)，资源权限见[共同与私密](features/shared-life-design.md)。
+
+## 备份
+
+单个 JSON 包含 manifest（schema、范围、数量、时间和 SHA-256）及 base64 编码的业务 JSON。校验和用于检测损坏，不提供加密或来源认证。恢复时检查 UUID、空间/成员、父版本、环、关联和金额结构，先保存当前空间备份，再导入全新隔离 Core Data 目录；当前库不覆盖。保留原业务 ID 供隔离核对，不注册或复用旧 CloudKit 共享 ID。正式重新建家庭及迁移合并尚未实现。
+
+## 构建模式
+
+主应用 Cloud 配置已接入共享数据路径，普通 Debug 保留本地试用。CloudKit P0 真机验收尚未通过，Cloud 配置用于开发验证。尚不可用的 AI 写入没有确认入口；独立 Spike 的探针 actor 为测试标识，不用于业务身份。
+
+## 云共享存储
+
+`CloudFamilyController` 在明确启用的 CloudDebug/CloudRelease 构建中连接 iCloud。CloudKit userRecordID 经容器命名空间映射为稳定成员 UUID；不按称呼、邮箱或本地占位成员匹配。AccessSession 按空间选择 actor；Repository 在保存时再次检查实时授权，因此旧编辑窗口不能凭旧 session 绕过撤权。
+
+共享根只包含新建家庭及其记录。原个人和家庭草稿不迁移。接受邀请前核验容器/格式/私有范围；接受后重新获取服务器 CKShare，核对当前身份、拥有者、接受状态、权限、根归属和根对应的 share，全部满足才开放。导入暂缺父修订、关联或审计时，不把部分账务投影显示成完整结果。云端有相同逻辑 ID 的不一致镜像时保留原存储并拒绝猜选。
+
+当前成员来自核验后的 CKShare；离开成员的 UUID 留在历史账务中，不授予读取权限。只读参与者可以看记录但不能保存。最多两位已接受成员是应用校验，不是 CloudKit 云端人数限制。
+
+撤权与账号更换立即撤销 Repository 的 grant；UI 树重建，通知撤销，专用云目录关闭并清理。先落 `access-denied` 标记，清理成功才移除；失败/重启不能恢复旧 grant。缓存清理使用本地 Core Data coordinator 与专用目录删除，**不调用会删除云端对象的 purgeObjectsAndRecordsInZone**。个人库、家庭草稿和用户主动导出的文件不在清理目录内。
+
+设备曾验证的 grant 可在同一账户的暂时网络失败时使用；账户身份未确认或已明确失权时不可使用。远端导入/导出事件和前台唤醒触发检查，事件合并并遵守重试间隔；“导出完成”不代表另一台设备收到了记录。
+
+Apple 的系统面板更新 share 后，主应用调用 persistUpdatedShare 更新本地 metadata。参与者退出通过删除自己 shared database 中的 share 完成；拥有者移除参与者通过更新 CKShare 完成。分享/撤权请求失败不显示成功；真实跨设备行为仍等待开发容器与真机验收。
+
+## 笔记与兼容格式
+
+`document` 复用 RecordBody.notes 存储 Markdown；`comment` 是独立可审计记录，根评注关联文档，回复关联根评注，避免留言修改正文修订。可选 documentQuote 保存引用快照。权限、存储和 CloudKit 路由沿用空间；不增加共享成员模型。备份 envelope 当前为 6，可读取 1–6，业务 Snapshot schema 为 1；共享格式为 5，不自动升级旧共享。具体功能和限制见 [documents.md](features/documents.md)。
+
+## 源码依据
+
+- [记录与校验](../Sources/FamilyCore/FamilyCore.swift)、[领域模型](../Sources/FamilyDomain/Models.swift)
+- [存储路由](../Sources/FamilyCore/RoutedRepository.swift)、[CloudKit 控制器](../Sources/FamilyPersistence/CloudFamilyController.swift)
+- [备份格式](../Sources/FamilyCore/Backup.swift)、[离线 CLI](../Sources/NobisCLI/main.swift)

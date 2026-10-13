@@ -1,0 +1,11 @@
+.build/
+DerivedData/
+.build-app/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+*.sqlite*
+.env
+Config/Cloud.local.xcconfig
+
+__pycache__/

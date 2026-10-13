@@ -1,0 +1,153 @@
+name: Nobis
+options:
+  bundleIdPrefix: com.haotrr.nobis
+  deploymentTarget:
+    iOS: '17.0'
+    macOS: '14.0'
+packages:
+  Nobis:
+    path: .
+configs:
+  Debug: debug
+  Release: release
+  CloudDebug: debug
+  CloudRelease: release
+settings:
+  base:
+    NOBIS_CLOUD_CONTAINER: ''
+    INFOPLIST_KEY_NobisCloudContainer: $(NOBIS_CLOUD_CONTAINER)
+    INFOPLIST_KEY_CKSharingSupported: YES
+    SWIFT_VERSION: '6.0'
+    MARKETING_VERSION: '0.1.0'
+    CURRENT_PROJECT_VERSION: '1'
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: Nobis
+    INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.lifestyle
+    CODE_SIGN_STYLE: Automatic
+targets:
+  NobisMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: Apps/Nobis/Shared
+      - path: Apps/Nobis/macOS
+        excludes: ['*.entitlements', '*.plist']
+    configFiles:
+      CloudDebug: Config/Cloud.xcconfig
+      CloudRelease: Config/Cloud.xcconfig
+    dependencies:
+      - package: Nobis
+        product: NobisUI
+    settings:
+      base:
+        PRODUCT_NAME: Nobis
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        PRODUCT_BUNDLE_IDENTIFIER: com.haotrr.nobis.mac
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_USER_SELECTED_FILES: readwrite
+        COMBINE_HIDPI_IMAGES: YES
+      configs:
+        CloudDebug:
+          CODE_SIGN_ENTITLEMENTS: Apps/Nobis/macOS/NobisMac.entitlements
+          NOBIS_CLOUD_ENVIRONMENT: Development
+          NOBIS_PUSH_ENVIRONMENT: development
+        CloudRelease:
+          CODE_SIGN_ENTITLEMENTS: Apps/Nobis/macOS/NobisMac.entitlements
+          NOBIS_CLOUD_ENVIRONMENT: Production
+          NOBIS_PUSH_ENVIRONMENT: production
+  NobisIOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: Apps/Nobis/Shared
+      - path: Apps/Nobis/iOS
+        excludes: ['*.entitlements', '*.plist']
+    configFiles:
+      CloudDebug: Config/Cloud.xcconfig
+      CloudRelease: Config/Cloud.xcconfig
+    dependencies:
+      - package: Nobis
+        product: NobisUI
+    settings:
+      base:
+        PRODUCT_NAME: Nobis
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        PRODUCT_BUNDLE_IDENTIFIER: com.haotrr.nobis.ios
+        INFOPLIST_FILE: Apps/Nobis/iOS/Info.plist
+        TARGETED_DEVICE_FAMILY: '1,2'
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+      configs:
+        CloudDebug:
+          CODE_SIGN_ENTITLEMENTS: Apps/Nobis/iOS/NobisIOS.entitlements
+          NOBIS_CLOUD_ENVIRONMENT: Development
+          NOBIS_PUSH_ENVIRONMENT: development
+        CloudRelease:
+          CODE_SIGN_ENTITLEMENTS: Apps/Nobis/iOS/NobisIOS.entitlements
+          NOBIS_CLOUD_ENVIRONMENT: Production
+          NOBIS_PUSH_ENVIRONMENT: production
+  NobisSharingSpike:
+    type: application
+    platform: iOS
+    sources: [Apps/SharingSpike]
+    dependencies:
+      - package: Nobis
+        product: NobisUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.haotrr.nobis.sharing-spike
+        TARGETED_DEVICE_FAMILY: '1,2'
+        NOBIS_CLOUD_CONTAINER: iCloud.com.haotrr.nobis.dev
+        CODE_SIGN_ENTITLEMENTS: Apps/SharingSpike/SharingSpike.entitlements
+        INFOPLIST_KEY_NobisCloudContainer: $(NOBIS_CLOUD_CONTAINER)
+        INFOPLIST_KEY_CKSharingSupported: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+
+schemes:
+  NobisMac:
+    build:
+      targets:
+        NobisMac: all
+    run:
+      config: Debug
+  NobisIOS:
+    build:
+      targets:
+        NobisIOS: all
+    run:
+      config: Debug
+  NobisSharingSpike:
+    build:
+      targets:
+        NobisSharingSpike: all
+    run:
+      config: Debug
+  NobisMac-Cloud:
+    build:
+      targets:
+        NobisMac: all
+    run:
+      config: CloudDebug
+    test:
+      config: CloudDebug
+    analyze:
+      config: CloudDebug
+    profile:
+      config: CloudRelease
+    archive:
+      config: CloudRelease
+  NobisIOS-Cloud:
+    build:
+      targets:
+        NobisIOS: all
+    run:
+      config: CloudDebug
+    test:
+      config: CloudDebug
+    analyze:
+      config: CloudDebug
+    profile:
+      config: CloudRelease
+    archive:
+      config: CloudRelease

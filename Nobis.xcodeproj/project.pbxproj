@@ -1,0 +1,886 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1A92232050DBE3D03C1F1ABC /* CloudInvitationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA7D61CAC07321D375952AB /* CloudInvitationDelegate.swift */; };
+		67DDFD8C3968D4A8814BFBC5 /* NobisUI in Frameworks */ = {isa = PBXBuildFile; productRef = A64AB197DDDE5621A91E7ED9 /* NobisUI */; };
+		74A288C45BAD9BFD86E8D2F2 /* SharingSpikeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC82D29EB73A518455E89E59 /* SharingSpikeApp.swift */; };
+		917D83954D8AF0C6AFE034D2 /* NobisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C95CB57F706914D3436A62 /* NobisApp.swift */; };
+		9D247A6ED335D9AAD1B7EF0C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8CDA72F1600ADBE5F8FF63A8 /* Assets.xcassets */; };
+		B92E0F8C06979FA632D67CC8 /* NobisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C95CB57F706914D3436A62 /* NobisApp.swift */; };
+		C868172186229A925EDE545D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8CDA72F1600ADBE5F8FF63A8 /* Assets.xcassets */; };
+		DAE561BBB63A514D07307320 /* NobisUI in Frameworks */ = {isa = PBXBuildFile; productRef = 8CE90BEDB4AD3A47DFE070A9 /* NobisUI */; };
+		F86658BCBDCFCCA581ECCB0B /* CloudInvitationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B86515977E098DD98B1B19E9 /* CloudInvitationDelegate.swift */; };
+		FBCD556EC5F13887399B3B3A /* NobisUI in Frameworks */ = {isa = PBXBuildFile; productRef = 0850F10A5184519C60F16EBB /* NobisUI */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		1E9FDD28C8E03FE6376590CA /* NobisSharingSpike.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NobisSharingSpike.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6B18B6A70943C4B77864FF8F /* NobisIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NobisIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8B1000E71D3C600C16309FF5 /* Cloud.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Cloud.xcconfig; sourceTree = "<group>"; };
+		8CDA72F1600ADBE5F8FF63A8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		95A760F82A8E474F6EAFC27B /* SharingSpike.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SharingSpike.entitlements; sourceTree = "<group>"; };
+		B7C95CB57F706914D3436A62 /* NobisApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NobisApp.swift; sourceTree = "<group>"; };
+		B86515977E098DD98B1B19E9 /* CloudInvitationDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudInvitationDelegate.swift; sourceTree = "<group>"; };
+		BC82D29EB73A518455E89E59 /* SharingSpikeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharingSpikeApp.swift; sourceTree = "<group>"; };
+		DBE7176BB46FA70BD0EBEBE8 /* NobisMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NobisMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F369B541950600A4C0D55716 /* nobis */ = {isa = PBXFileReference; lastKnownFileType = folder; name = nobis; path = .; sourceTree = SOURCE_ROOT; };
+		FDA7D61CAC07321D375952AB /* CloudInvitationDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudInvitationDelegate.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7E3EC02DE2AB67D6EEEAF02C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				67DDFD8C3968D4A8814BFBC5 /* NobisUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9077C181D4351C5E4CC715F8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FBCD556EC5F13887399B3B3A /* NobisUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A28626B0FE81409A0386B94E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DAE561BBB63A514D07307320 /* NobisUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3B165329FD537435CE85530A /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				B86515977E098DD98B1B19E9 /* CloudInvitationDelegate.swift */,
+			);
+			name = iOS;
+			path = Apps/Nobis/iOS;
+			sourceTree = "<group>";
+		};
+		4762C0E08B0C2E9CBAD36130 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				FDA7D61CAC07321D375952AB /* CloudInvitationDelegate.swift */,
+			);
+			name = macOS;
+			path = Apps/Nobis/macOS;
+			sourceTree = "<group>";
+		};
+		676A0FC321D402B0D76F2193 = {
+			isa = PBXGroup;
+			children = (
+				AE37C888AC677A13311809DB /* Config */,
+				3B165329FD537435CE85530A /* iOS */,
+				4762C0E08B0C2E9CBAD36130 /* macOS */,
+				816F4F6053F254E4BA861487 /* Packages */,
+				EF1E09D61A0B1674A1F98A2A /* Shared */,
+				947A82229DBAA1C05154EF5D /* SharingSpike */,
+				8B9B8AAB7051CD2562B3C3C3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		816F4F6053F254E4BA861487 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				F369B541950600A4C0D55716 /* nobis */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		8B9B8AAB7051CD2562B3C3C3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6B18B6A70943C4B77864FF8F /* NobisIOS.app */,
+				DBE7176BB46FA70BD0EBEBE8 /* NobisMac.app */,
+				1E9FDD28C8E03FE6376590CA /* NobisSharingSpike.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		947A82229DBAA1C05154EF5D /* SharingSpike */ = {
+			isa = PBXGroup;
+			children = (
+				95A760F82A8E474F6EAFC27B /* SharingSpike.entitlements */,
+				BC82D29EB73A518455E89E59 /* SharingSpikeApp.swift */,
+			);
+			name = SharingSpike;
+			path = Apps/SharingSpike;
+			sourceTree = "<group>";
+		};
+		AE37C888AC677A13311809DB /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				8B1000E71D3C600C16309FF5 /* Cloud.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		EF1E09D61A0B1674A1F98A2A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				8CDA72F1600ADBE5F8FF63A8 /* Assets.xcassets */,
+				B7C95CB57F706914D3436A62 /* NobisApp.swift */,
+			);
+			name = Shared;
+			path = Apps/Nobis/Shared;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0FEB69B4B9769846745FC9CD /* NobisMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7846F22CE904D9BD44FF35DA /* Build configuration list for PBXNativeTarget "NobisMac" */;
+			buildPhases = (
+				7C6F8CF9C987ABE444C01FD6 /* Sources */,
+				9674303116FD6EAB149A1DBB /* Resources */,
+				A28626B0FE81409A0386B94E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NobisMac;
+			packageProductDependencies = (
+				8CE90BEDB4AD3A47DFE070A9 /* NobisUI */,
+			);
+			productName = NobisMac;
+			productReference = DBE7176BB46FA70BD0EBEBE8 /* NobisMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		43E4D52F915890FAF4B2D847 /* NobisSharingSpike */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B659857C84C10447B7212707 /* Build configuration list for PBXNativeTarget "NobisSharingSpike" */;
+			buildPhases = (
+				4E2D9FBA8D9152295AE1D41E /* Sources */,
+				7E3EC02DE2AB67D6EEEAF02C /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NobisSharingSpike;
+			packageProductDependencies = (
+				A64AB197DDDE5621A91E7ED9 /* NobisUI */,
+			);
+			productName = NobisSharingSpike;
+			productReference = 1E9FDD28C8E03FE6376590CA /* NobisSharingSpike.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E03467A1C11505CBE7512E93 /* NobisIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 20DDF60168F88C13B7EC8C43 /* Build configuration list for PBXNativeTarget "NobisIOS" */;
+			buildPhases = (
+				7B1BD6C71F02D70DE1E89DFD /* Sources */,
+				19BC3C023AC9D5D322A71FE5 /* Resources */,
+				9077C181D4351C5E4CC715F8 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NobisIOS;
+			packageProductDependencies = (
+				0850F10A5184519C60F16EBB /* NobisUI */,
+			);
+			productName = NobisIOS;
+			productReference = 6B18B6A70943C4B77864FF8F /* NobisIOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		9DF70728D525205116C2FD8B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0FEB69B4B9769846745FC9CD = {
+						ProvisioningStyle = Automatic;
+					};
+					43E4D52F915890FAF4B2D847 = {
+						ProvisioningStyle = Automatic;
+					};
+					E03467A1C11505CBE7512E93 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 1EE715341132A624F6051988 /* Build configuration list for PBXProject "Nobis" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 676A0FC321D402B0D76F2193;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0682F35945BF8FC641CA1B3A /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8B9B8AAB7051CD2562B3C3C3 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0FEB69B4B9769846745FC9CD /* NobisMac */,
+				E03467A1C11505CBE7512E93 /* NobisIOS */,
+				43E4D52F915890FAF4B2D847 /* NobisSharingSpike */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		19BC3C023AC9D5D322A71FE5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D247A6ED335D9AAD1B7EF0C /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9674303116FD6EAB149A1DBB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C868172186229A925EDE545D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4E2D9FBA8D9152295AE1D41E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				74A288C45BAD9BFD86E8D2F2 /* SharingSpikeApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7B1BD6C71F02D70DE1E89DFD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F86658BCBDCFCCA581ECCB0B /* CloudInvitationDelegate.swift in Sources */,
+				B92E0F8C06979FA632D67CC8 /* NobisApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7C6F8CF9C987ABE444C01FD6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A92232050DBE3D03C1F1ABC /* CloudInvitationDelegate.swift in Sources */,
+				917D83954D8AF0C6AFE034D2 /* NobisApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		109A5F2EC1D1F48C2A8599B5 /* CloudDebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Nobis;
+				INFOPLIST_KEY_CKSharingSupported = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NobisCloudContainer = "$(NOBIS_CLOUD_CONTAINER)";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				NOBIS_CLOUD_CONTAINER = "";
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = CloudDebug;
+		};
+		2280ACECD057BB8C3DABFAC2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.mac;
+				PRODUCT_NAME = Nobis;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		2EFC9DD6B72C07042C675B98 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Nobis;
+				INFOPLIST_KEY_CKSharingSupported = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NobisCloudContainer = "$(NOBIS_CLOUD_CONTAINER)";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				NOBIS_CLOUD_CONTAINER = "";
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		3863D47D24C1B44C4528BC46 /* CloudRelease */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Nobis;
+				INFOPLIST_KEY_CKSharingSupported = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NobisCloudContainer = "$(NOBIS_CLOUD_CONTAINER)";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				NOBIS_CLOUD_CONTAINER = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = CloudRelease;
+		};
+		3EB6DA564176B7EE908F5E26 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Nobis;
+				INFOPLIST_KEY_CKSharingSupported = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NobisCloudContainer = "$(NOBIS_CLOUD_CONTAINER)";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				NOBIS_CLOUD_CONTAINER = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		4FC562EF5019B588226C64E2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Apps/Nobis/iOS/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.ios;
+				PRODUCT_NAME = Nobis;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		52EECE36F08CE02F04F13B3B /* CloudRelease */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8B1000E71D3C600C16309FF5 /* Cloud.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/Nobis/macOS/NobisMac.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				NOBIS_CLOUD_ENVIRONMENT = Production;
+				NOBIS_PUSH_ENVIRONMENT = production;
+				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.mac;
+				PRODUCT_NAME = Nobis;
+				SDKROOT = macosx;
+			};
+			name = CloudRelease;
+		};
+		6407982B0745D351BEED20DD /* CloudDebug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8B1000E71D3C600C16309FF5 /* Cloud.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/Nobis/iOS/NobisIOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Apps/Nobis/iOS/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				NOBIS_CLOUD_ENVIRONMENT = Development;
+				NOBIS_PUSH_ENVIRONMENT = development;
+				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.ios;
+				PRODUCT_NAME = Nobis;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = CloudDebug;
+		};
+		6DDE3D793170AE7C95D3A38B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.mac;
+				PRODUCT_NAME = Nobis;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		81DD7D611F1CC9750371E945 /* CloudRelease */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8B1000E71D3C600C16309FF5 /* Cloud.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/Nobis/iOS/NobisIOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Apps/Nobis/iOS/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				NOBIS_CLOUD_ENVIRONMENT = Production;
+				NOBIS_PUSH_ENVIRONMENT = production;
+				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.ios;
+				PRODUCT_NAME = Nobis;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = CloudRelease;
+		};
+		967B6FC38F87EBB7787FB313 /* CloudDebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/SharingSpike/SharingSpike.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CKSharingSupported = YES;
+				INFOPLIST_KEY_NobisCloudContainer = "$(NOBIS_CLOUD_CONTAINER)";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				NOBIS_CLOUD_CONTAINER = iCloud.com.haotrr.nobis.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.sharing-spike";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = CloudDebug;
+		};
+		B449FCC7FB9BF937EC524D4E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/SharingSpike/SharingSpike.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CKSharingSupported = YES;
+				INFOPLIST_KEY_NobisCloudContainer = "$(NOBIS_CLOUD_CONTAINER)";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				NOBIS_CLOUD_CONTAINER = iCloud.com.haotrr.nobis.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.sharing-spike";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B893E5D2E0062C645EE5472B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/SharingSpike/SharingSpike.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CKSharingSupported = YES;
+				INFOPLIST_KEY_NobisCloudContainer = "$(NOBIS_CLOUD_CONTAINER)";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				NOBIS_CLOUD_CONTAINER = iCloud.com.haotrr.nobis.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.sharing-spike";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BF258EC087512B4ADDD39FDC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Apps/Nobis/iOS/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.ios;
+				PRODUCT_NAME = Nobis;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E906EE248339C7EF643412B0 /* CloudDebug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8B1000E71D3C600C16309FF5 /* Cloud.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/Nobis/macOS/NobisMac.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				NOBIS_CLOUD_ENVIRONMENT = Development;
+				NOBIS_PUSH_ENVIRONMENT = development;
+				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.mac;
+				PRODUCT_NAME = Nobis;
+				SDKROOT = macosx;
+			};
+			name = CloudDebug;
+		};
+		F600EAE14427739F465237E4 /* CloudRelease */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/SharingSpike/SharingSpike.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_CKSharingSupported = YES;
+				INFOPLIST_KEY_NobisCloudContainer = "$(NOBIS_CLOUD_CONTAINER)";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				NOBIS_CLOUD_CONTAINER = iCloud.com.haotrr.nobis.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.sharing-spike";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = CloudRelease;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1EE715341132A624F6051988 /* Build configuration list for PBXProject "Nobis" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				109A5F2EC1D1F48C2A8599B5 /* CloudDebug */,
+				3863D47D24C1B44C4528BC46 /* CloudRelease */,
+				2EFC9DD6B72C07042C675B98 /* Debug */,
+				3EB6DA564176B7EE908F5E26 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = CloudDebug;
+		};
+		20DDF60168F88C13B7EC8C43 /* Build configuration list for PBXNativeTarget "NobisIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6407982B0745D351BEED20DD /* CloudDebug */,
+				81DD7D611F1CC9750371E945 /* CloudRelease */,
+				4FC562EF5019B588226C64E2 /* Debug */,
+				BF258EC087512B4ADDD39FDC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = CloudDebug;
+		};
+		7846F22CE904D9BD44FF35DA /* Build configuration list for PBXNativeTarget "NobisMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E906EE248339C7EF643412B0 /* CloudDebug */,
+				52EECE36F08CE02F04F13B3B /* CloudRelease */,
+				2280ACECD057BB8C3DABFAC2 /* Debug */,
+				6DDE3D793170AE7C95D3A38B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = CloudDebug;
+		};
+		B659857C84C10447B7212707 /* Build configuration list for PBXNativeTarget "NobisSharingSpike" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				967B6FC38F87EBB7787FB313 /* CloudDebug */,
+				F600EAE14427739F465237E4 /* CloudRelease */,
+				B893E5D2E0062C645EE5472B /* Debug */,
+				B449FCC7FB9BF937EC524D4E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = CloudDebug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		0682F35945BF8FC641CA1B3A /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0850F10A5184519C60F16EBB /* NobisUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NobisUI;
+		};
+		8CE90BEDB4AD3A47DFE070A9 /* NobisUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NobisUI;
+		};
+		A64AB197DDDE5621A91E7ED9 /* NobisUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NobisUI;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 9DF70728D525205116C2FD8B /* Project object */;
+}

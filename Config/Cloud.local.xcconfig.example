@@ -1,0 +1,4 @@
+// Copy to Cloud.local.xcconfig. Never add credentials or passwords here.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+NOBIS_CLOUD_CONTAINER = iCloud.your.registered.container
+// If you change product IDs in project.yml, register matching App IDs in the same team.

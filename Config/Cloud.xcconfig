@@ -1,0 +1,4 @@
+// Both platforms must use the same container. Override these in Cloud.local.xcconfig.
+NOBIS_CLOUD_CONTAINER = iCloud.com.haotrr.nobis.dev
+DEVELOPMENT_TEAM =
+#include? "Cloud.local.xcconfig"
