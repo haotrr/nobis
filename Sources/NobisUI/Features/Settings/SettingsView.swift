@@ -36,7 +36,7 @@ struct SettingsView: View {
                 LabeledContent("保存状态", value: "已保存在此设备")
                 LabeledContent("云端同步", value: model.cloud.configured ? model.cloud.state : "此版本暂未启用")
                 LabeledContent("提醒", value: model.notificationStatus)
-                Button("启用 / 更新此设备提醒") { Task { await model.updateNotifications(requestPermission: true) } }
+                NavigationLink("日常提醒：设备与静默时段") { ReminderSettingsView(model: model) }
                 Text("通知按发生日期去重，前台补算待办。休眠、系统权限和后台限制可能影响提醒送达。").font(.caption).foregroundStyle(.secondary)
                 if let notice = model.notice { Text(notice).font(.caption) }
             }

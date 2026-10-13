@@ -57,3 +57,7 @@ Apple 的系统面板更新 share 后，主应用调用 persistUpdatedShare 更�
 - [记录与校验](../Sources/FamilyCore/FamilyCore.swift)、[领域模型](../Sources/FamilyDomain/Models.swift)
 - [存储路由](../Sources/FamilyCore/RoutedRepository.swift)、[CloudKit 控制器](../Sources/FamilyPersistence/CloudFamilyController.swift)
 - [备份格式](../Sources/FamilyCore/Backup.swift)、[离线 CLI](../Sources/NobisCLI/main.swift)
+
+## 本机提醒
+
+`ReminderPreferences` 保存在当前数据目录的独立元数据文件，不进入业务备份或云记录。读取失败停用提醒并显示错误，不静默恢复默认启用。`ReminderPlanning` 从可访问的活跃待办／订阅生成确定性计划，排除删除、冲突及已发布来源；记录时区与设备静默时区分开处理。日历匹配处理夏令时，标识继续按发生日期／提前天数去重。AppModel 串行合并调度更新，代次与访问 epoch 阻止旧计划回写；关闭时撤销本应用待发送通知。最多安排最近 60 条，前台及时区变化重算；应用未运行时的时区变化不保证立即重排。隔离模式完全跳过系统通知中心。

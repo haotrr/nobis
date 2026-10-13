@@ -26,6 +26,12 @@ import FamilyPersistence
     public var readComments: Set<UUID> = []
     public var draftStore: DocumentDraftStore { DocumentDraftStore(directory: directory.appendingPathComponent("DocumentDrafts")) }
     public var notificationStatus = "尚未启用"
+    public private(set) var reminderPreferences = ReminderPreferences()
+    public private(set) var reminderSettingsError: String?
+    public var isReminderPreviewOnly: Bool { !notificationsEnabled }
+    private var notificationGeneration = 0
+    private var schedulingNotifications = false
+    private var permissionRequested = false
     public var core: FamilyCore?
     public let directory: URL
     public let cloud: CloudFamilyController
@@ -46,6 +52,16 @@ import FamilyPersistence
             } else { setupRequired = true }
         } catch { recordStartupFailure(error) }
         if let data = try? LocalMetadataFile.read(from: self.directory.appendingPathComponent("CommentReads.json")), let ids = try? JSONDecoder().decode(Set<UUID>.self, from: data) { readComments = ids }
+        let reminderURL = self.directory.appendingPathComponent("ReminderPreferences.json")
+        if FileManager.default.fileExists(atPath: reminderURL.path) {
+            do {
+                let value = try JSONDecoder().decode(ReminderPreferences.self, from: LocalMetadataFile.read(from: reminderURL))
+                try value.validate(); reminderPreferences = value
+            } catch {
+                reminderPreferences.enabled = false
+                reminderSettingsError = "提醒设置读取失败，请核对并重新保存：\(error.localizedDescription)"
+            }
+        }
         cloud.onChange = { [weak self] in self?.rebind() }
         cloud.onAccessLost = { [weak self] id in self?.invalidateCloudUI(spaceID: id) }
         NobisCloudInvitation.receive = { [weak self] metadata in self?.cloud.receive(metadata) }
@@ -227,45 +243,70 @@ import FamilyPersistence
             notice = "已更新下次计费日期；如已付款，请另记账单。"
         }
     }
+    public func saveReminderPreferences(_ value: ReminderPreferences) throws {
+        try value.validate()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try JSONEncoder().encode(value).write(to: directory.appendingPathComponent("ReminderPreferences.json"), options: LocalMetadataFile.writingOptions)
+        reminderPreferences = value; reminderSettingsError = nil
+        notificationGeneration += 1
+    }
+    public func reminderPreview(_ preferences: ReminderPreferences? = nil, now: Date = Date(), timeZone: TimeZone = .current) throws -> [PlannedReminder] {
+        guard let core else { return [] }
+        let ids = workspace.ids(.all)
+        let records = try spaces.filter { ids.contains($0.id) }.flatMap { try core.records(spaceID: $0.id) }
+        return try ReminderPlanning.plan(records: records, preferences: preferences ?? reminderPreferences, now: now, deviceTimeZone: timeZone)
+    }
     public func updateNotifications(requestPermission: Bool) async {
-        guard notificationsEnabled else { return }
+        notificationGeneration += 1
+        permissionRequested = permissionRequested || requestPermission
+        guard !schedulingNotifications else { return }
+        schedulingNotifications = true
+        defer { schedulingNotifications = false }
+        // Coalesce overlapping refreshes; only this worker may replace pending requests.
+        while true {
+            let generation = notificationGeneration
+            let request = permissionRequested; permissionRequested = false
+            await scheduleNotifications(requestPermission: request, generation: generation)
+            if generation == notificationGeneration { break }
+        }
+    }
+    private func scheduleNotifications(requestPermission: Bool, generation: Int) async {
+        guard notificationsEnabled else {
+            notificationStatus = "隔离验证：仅预览，不发送系统通知"
+            return
+        }
         let ticket = accessEpoch
         let center = UNUserNotificationCenter.current()
+        func current() -> Bool { ticket == accessEpoch && generation == notificationGeneration }
         do {
-            if requestPermission { _ = try await center.requestAuthorization(options: [.alert, .sound, .badge]) }
-            let settings = await center.notificationSettings()
-            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { notificationStatus = "系统通知未授权，应用内待办仍保留"; return }
-            notificationStatus = "已启用此设备提醒 · 当地时间 09:00"
-            guard let core else { return }
-            var requests: [(Date, UNNotificationRequest)] = []
-            for space in spaces where workspace.ids(.all).contains(space.id) {
-                for record in try core.records(spaceID: space.id) where !record.conflicted && record.body.status == .active && record.body.sharedDestination == nil {
-                    guard [.task, .subscription].contains(record.body.kind), let day = record.body.date else { continue }
-                    let offsets = record.body.kind == .subscription ? record.body.reminderDays : [0]
-                    for offset in Set(offsets) {
-                        let fireDay = day.addingDays(-offset)
-                        var components = DateComponents(); components.year = fireDay.year; components.month = fireDay.month; components.day = fireDay.day; components.hour = 9
-                        components.timeZone = TimeZone(identifier: record.body.timeZone)
-                        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = components.timeZone ?? .current
-                        guard let fireAt = calendar.date(from: components), fireAt > Date() else { continue }
-                        let content = UNMutableNotificationContent(); content.title = record.body.title
-                        content.body = record.body.kind == .subscription ? "续费待复核，预计日期 \(day)；不代表已扣款。" : "今天有一项待办。"
-                        content.sound = .default
-                        let id = "nobis:\(space.id):\(record.id):\(day):\(offset)"
-                        requests.append((fireAt, UNNotificationRequest(identifier: id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false))))
-                    }
-                }
-            }
-            guard ticket == accessEpoch else { return }
             let pending = await center.pendingNotificationRequests()
-            guard ticket == accessEpoch else { return }
-            center.removePendingNotificationRequests(withIdentifiers: pending.filter { $0.identifier.hasPrefix("nobis:") }.map(\.identifier))
-            for (_, request) in requests.sorted(by: { $0.0 < $1.0 }).prefix(60) {
-                guard ticket == accessEpoch else { return }
-                try await center.add(request)
-                if ticket != accessEpoch { center.removePendingNotificationRequests(withIdentifiers: [request.identifier]); return }
+            guard current() else { return }
+            if !reminderPreferences.enabled || reminderSettingsError != nil {
+                center.removePendingNotificationRequests(withIdentifiers: pending.filter { $0.identifier.hasPrefix("nobis:") }.map(\.identifier))
+                notificationStatus = "此设备不接收提醒，应用内待办仍保留"
+                return
             }
-        } catch { self.error = "提醒调度失败：\(error.localizedDescription)" }
+            if requestPermission { _ = try await center.requestAuthorization(options: [.alert, .sound, .badge]) }
+            guard current() else { return }
+            let settings = await center.notificationSettings()
+            guard current() else { return }
+            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
+                center.removePendingNotificationRequests(withIdentifiers: pending.filter { $0.identifier.hasPrefix("nobis:") }.map(\.identifier))
+                notificationStatus = "系统通知未授权，应用内待办仍保留"; return
+            }
+            let planned = try reminderPreview()
+            center.removePendingNotificationRequests(withIdentifiers: pending.filter { $0.identifier.hasPrefix("nobis:") }.map(\.identifier))
+            for item in planned.prefix(60) {
+                guard current() else { return }
+                let content = UNMutableNotificationContent(); content.title = item.title; content.body = item.body; content.sound = .default
+                var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+                var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: item.fireDate)
+                components.timeZone = calendar.timeZone
+                try await center.add(UNNotificationRequest(identifier: item.id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
+                if !current() { center.removePendingNotificationRequests(withIdentifiers: [item.id]); return }
+            }
+            notificationStatus = "此设备已安排 \(min(planned.count, 60)) 条提醒" + (planned.count > 60 ? "，其余在打开应用时补算" : "")
+        } catch { if current() { notificationStatus = "提醒更新失败"; self.error = "提醒调度失败：\(error.localizedDescription)" } }
     }
     private func seed(space: Space, me: Member) throws {
         guard let core else { return }

@@ -145,6 +145,22 @@ import FamilyCore
             _ = try Backup.decode(recoveryCore.export(spaceID: targetID))
             results.append(["source": file, "records": records.count, "expenseMinor": sums.expense, "netIncomeMinor": sums.monthlyNet, "elapsedSeconds": Date().timeIntervalSince(start)])
         }
+        // Reminder preferences belong only to the isolated device directory, never to imported business data.
+        // Minty has no active dated tasks in this fixture. Add one explicitly marked sample only to the test store.
+        var reminderSample = RecordBody(kind: .task, title: "隔离验收：静默时段样本")
+        reminderSample.date = LocalDay(date: Date(), timeZone: TimeZone(identifier: "Asia/Shanghai")!).addingDays(2)
+        reminderSample.timeZone = "Asia/Shanghai"
+        try core.save(reminderSample, spaceID: try #require(model.workspace.commonID))
+        let reminderBefore = try core.repository.load()
+        var reminders = ReminderPreferences(); reminders.quietEnabled = true; reminders.quietStart = 8 * 60; reminders.quietEnd = 10 * 60
+        try model.saveReminderPreferences(reminders)
+        let reminderNow = Date(timeIntervalSince1970: 0), reminderZone = TimeZone(identifier: "Asia/Shanghai")!
+        let reminderPlan = try model.reminderPreview(now: reminderNow, timeZone: reminderZone)
+        #expect(!reminderPlan.isEmpty)
+        #expect(reminderPlan.allSatisfy { reminders.adjusted($0.fireDate, deviceTimeZone: reminderZone) == $0.fireDate })
+        reminders.enabled = false; try model.saveReminderPreferences(reminders)
+        #expect(try model.reminderPreview(now: reminderNow).isEmpty)
+        #expect(try core.repository.load() == reminderBefore)
         // Export/decode exercises the same integrity gate used by isolated backup restore.
         for space in model.workspace.ids(.all) { _ = try Backup.decode(core.export(spaceID: space)) }
         recoveryModel.refresh()
@@ -153,6 +169,7 @@ import FamilyCore
         model.refresh()
         let reopened = AppModel(directory: directory, cloudIdentifier: nil, notificationsEnabled: false)
         #expect(reopened.records.count == model.records.count)
+        #expect(reopened.reminderPreferences == reminders)
         try JSONSerialization.data(withJSONObject: ["directory": directory.path, "results": results], options: [.prettyPrinted, .sortedKeys]).write(to: root.appendingPathComponent("acceptance.json"))
     }
 }

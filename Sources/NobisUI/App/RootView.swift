@@ -25,6 +25,9 @@ public struct NobisRootView: View {
         .sheet(isPresented: Binding(get: { model.cloud.invitation != nil }, set: { if !$0 { model.cloud.invitation = nil } })) { FamilyInvitationView(model: model) }
         .tint(colorScheme == .dark ? Color(red: 0.65, green: 0.82, blue: 0.73) : Color(red: 0.24, green: 0.43, blue: 0.36))
         .alert("操作未完成", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("知道了", role: .cancel) { model.error = nil } } message: { Text(model.error ?? "") }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+            Task { await model.updateNotifications(requestPermission: false) }
+        }
         .onChange(of: page) { _, _ in model.recordPanel.close() }
         .onChange(of: model.selectedSpaceID) { _, _ in model.refresh() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { model.refresh(); Task { if model.cloud.enabled { await model.cloud.connect() }; await model.updateNotifications(requestPermission: false) } } }
