@@ -1,0 +1,46 @@
+docs/roadmap.md
+  s_b801c6f4883cd7::t_d33998cc67da4c 46
+  s_b801c6f4883cd7::t_2d6da657fb7b4f 23,36,43
+docs/feature-inventory.md
+  s_b801c6f4883cd7::t_2d6da657fb7b4f 7
+docs/verification.md
+  s_b801c6f4883cd7::t_d31cf7028aa789 206
+  s_b801c6f4883cd7::t_2d6da657fb7b4f 141,188-205
+docs/tech/T-261013-EV8TV-large-store-loading/TODO.md
+  s_b801c6f4883cd7::t_2d6da657fb7b4f 1,3,5,7,9,11-15,17,19,23-24
+  s_b801c6f4883cd7::t_d33998cc67da4c 2,4,6,8,10,16,18,20-22,25
+docs/architecture.md
+  s_b801c6f4883cd7::t_2d6da657fb7b4f 21,68-73
+Sources/FamilyCore/FamilyCore.swift
+  s_b801c6f4883cd7::t_c33daaea56bc83 6,11-13,47,215-217,219-220,234-235,241,243,255-277
+Sources/FamilyCore/RoutedRepository.swift
+  s_b801c6f4883cd7::t_96a55c0513f485 14-18,20
+Sources/FamilyCore/WorkspaceLoading.swift
+  s_b801c6f4883cd7::t_73fbe2047458d4 1-37
+Sources/FamilyDomain/Models.swift
+  s_b801c6f4883cd7::t_3c842444d960ea 198,203-215
+Sources/FamilyPersistence/CoreDataRepository.swift
+  s_b801c6f4883cd7::t_95d04643e4bd04 37-38,42,44-66,77-80
+Sources/NobisUI/App/AppModel.swift
+  s_b801c6f4883cd7::t_e0df9f97db8080 111,113,115-117,121,123,131,184-185,189-191
+Tests/FamilyCoreTests/LargeStoreLoadingTests.swift
+  s_b801c6f4883cd7::t_c10627e0abe231 1-136
+Tests/FamilyCoreTests/LegacyStoreWorkload.swift
+  s_b801c6f4883cd7::t_d272f6c8b7b46a 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "570641e413654736c0eca2789e88c576dd2e688c",
+  "prompts": {},
+  "sessions": {
+    "s_b801c6f4883cd7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13435-bac4-76b2-82f2-015690654c1b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
