@@ -1,0 +1,28 @@
+Tests/NobisIOSTests/MDTextKitUIKitTests.swift
+  s_acc4a8c629dad0::t_1f40dcbcdc78c3 32-67
+  s_acc4a8c629dad0::t_1ca80c8a7cd36d 30-31,68-81
+Tests/FamilyCoreTests/MDTextKitIntegrationTests.swift
+  s_acc4a8c629dad0::t_05f40d21241a90 53-65
+Vendor/MDTextKit/NOBIS.md
+  s_acc4a8c629dad0::t_3b6d0d7deb76ad 35-36
+Vendor/MDTextKit/Sources/MDTextKitUIKit/MDMarkdownTextView.swift
+  s_acc4a8c629dad0::t_3585dfb6360a78 104-113
+docs/verification.md
+  s_acc4a8c629dad0::t_d0ae9ad4daad63 5-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97aa92f7ed11531e7676319e1efc9a51b9e785df",
+  "prompts": {},
+  "sessions": {
+    "s_acc4a8c629dad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1380c-f431-7b43-8a04-ec8c8d335b4d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
