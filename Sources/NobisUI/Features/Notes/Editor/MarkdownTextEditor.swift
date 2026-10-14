@@ -12,6 +12,8 @@ struct MarkdownTextEditor: NSViewRepresentable {
     var plainText = false
     var inlineOnly = false
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
+    var expandsToContent = false
+    var focusRequest: NoteEditorFocus?
     func makeCoordinator() -> Coordinator { Coordinator(text: $text, onFocus: onFocus, plainText: plainText) }
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
@@ -152,6 +154,8 @@ struct MarkdownTextEditor: UIViewRepresentable {
     var plainText = false
     var inlineOnly = false
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
+    var expandsToContent = false
+    var focusRequest: NoteEditorFocus?
     func makeCoordinator() -> Coordinator { Coordinator(text: $text, onFocus: onFocus, plainText: plainText) }
     func makeUIView(context: Context) -> UITextView {
         let view = MDMarkdownTextView()
@@ -162,6 +166,7 @@ struct MarkdownTextEditor: UIViewRepresentable {
         }
         context.coordinator.onSelection = onSelection
         context.coordinator.inlineOnly = inlineOnly
+        view.isScrollEnabled = !expandsToContent
         view.plainText = plainText
         view.inlineOnly = inlineOnly
         view.font = RichMarkdown.font(); view.adjustsFontForContentSizeCategory = true
@@ -171,11 +176,23 @@ struct MarkdownTextEditor: UIViewRepresentable {
         view.accessibilityLabel = "笔记正文"
         return view
     }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        guard expandsToContent, let width = proposal.width, width > 0 else { return nil }
+        let size = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: max(44, ceil(size.height)))
+    }
     func updateUIView(_ view: UITextView, context: Context) {
+        context.coordinator.updating = true
+        defer { context.coordinator.updating = false }
         context.coordinator.text = $text
         context.coordinator.onFocus = onFocus
         context.coordinator.onSelection = onSelection
         context.coordinator.inlineOnly = inlineOnly
+        view.isScrollEnabled = !expandsToContent
+        if let focusRequest, context.coordinator.lastFocus != focusRequest.id {
+            context.coordinator.lastFocus = focusRequest.id
+            (view as? MDMarkdownTextView)?.requestFocus(selection: focusRequest.range)
+        }
         if let request, context.coordinator.lastRequest != request.id {
             context.coordinator.lastRequest = request.id
             DispatchQueue.main.async {
@@ -201,11 +218,14 @@ struct MarkdownTextEditor: UIViewRepresentable {
         var inlineOnly = false
         func reportSelection(_ view: UITextView) {
             let format = (view as? MDMarkdownTextView)?.formattingState()
-            let state = NoteEditorSelection(enabled: view.isEditable && !plainText, composing: view.markedTextRange != nil, inTable: inlineOnly, selected: format?.selected ?? [], mixed: format?.mixed ?? [])
+            let state = NoteEditorSelection(range: view.selectedRange, enabled: view.isEditable && !plainText, composing: view.markedTextRange != nil, inTable: inlineOnly, selected: format?.selected ?? [], mixed: format?.mixed ?? [])
             DispatchQueue.main.async { [weak self] in self?.onSelection(state) }
         }
         var active = true
         var lastRequest: UUID?
+        var lastFocus: UUID?
+        var updating = false
+        private var revealScheduled = false
         private var keyboardFrame: CGRect = .null
         private weak var activeView: UITextView?
         init(text: Binding<String>, onFocus: (() -> Void)?, plainText: Bool) {
@@ -217,44 +237,56 @@ struct MarkdownTextEditor: UIViewRepresentable {
         @objc private func keyboardFrameChanged(_ notification: Notification) {
             keyboardFrame = (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect) ?? .null
             if let activeView { revealCaret(activeView) }
-            // SwiftUI restores the outer scroll offset after UIKit finishes the keyboard transition.
-            // Reconcile once after that layout pass; normal typing remains immediate.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                guard let self, let activeView = self.activeView else { return }
-                self.revealCaret(activeView)
-            }
+        }
+        private func reportFocus(_ view: UITextView) {
+            if updating {
+                DispatchQueue.main.async { [weak self, weak view] in
+                    guard let view, view.isFirstResponder else { return }
+                    self?.onFocus?()
+                }
+            } else { onFocus?() }
         }
         func textViewDidChangeSelection(_ textView: UITextView) {
-            if textView.isFirstResponder { (textView as? MDMarkdownTextView)?.rememberSelection(); onFocus?(); reportSelection(textView); revealCaret(textView) }
+            if textView.isFirstResponder { (textView as? MDMarkdownTextView)?.rememberSelection(); reportFocus(textView); reportSelection(textView); revealCaret(textView) }
         }
-        func textViewDidBeginEditing(_ textView: UITextView) { onFocus?(); reportSelection(textView); revealCaret(textView) }
+        func textViewDidBeginEditing(_ textView: UITextView) { reportFocus(textView); reportSelection(textView); revealCaret(textView) }
         func revealCaret(_ view: UITextView) {
             activeView = view
-            let keyboardFrame = keyboardFrame
+            guard !revealScheduled else { return }
+            revealScheduled = true
             // The block scrolls inside a SwiftUI page. Keep its active line visible in both scroll views.
-            DispatchQueue.main.async { [weak view] in
+            DispatchQueue.main.async { [weak self, weak view] in
+                guard let self else { return }
+                self.revealScheduled = false
+                let keyboardFrame = self.keyboardFrame
                 guard let view, view.isFirstResponder, let selection = view.selectedTextRange else { return }
                 view.layoutIfNeeded()
-                view.scrollRectToVisible(view.caretRect(for: selection.end).insetBy(dx: 0, dy: -8), animated: false)
+                if view.isScrollEnabled { view.scrollRectToVisible(view.caretRect(for: selection.end).insetBy(dx: 0, dy: -8), animated: false) }
                 var ancestor = view.superview
                 while let current = ancestor {
                     if let scroll = current as? UIScrollView {
-                        let caret = view.convert(view.caretRect(for: selection.end), to: scroll).insetBy(dx: 0, dy: -8)
-                        scroll.scrollRectToVisible(caret, animated: false)
+                        // Do not fight an ongoing finger gesture or its momentum.
+                        guard !scroll.isDragging, !scroll.isDecelerating else { return }
+                        let caret = view.convert(view.caretRect(for: selection.end), to: scroll).insetBy(dx: -8, dy: -8)
+                        var visible = scroll.bounds.inset(by: scroll.adjustedContentInset)
                         if let window = view.window, !keyboardFrame.isNull {
-                            let keyboard = window.convert(keyboardFrame, from: nil)
-                            let line = view.convert(view.caretRect(for: selection.end), to: window)
-                            let visibleTop = scroll.convert(scroll.bounds, to: window).minY + scroll.adjustedContentInset.top + 12
-                            var offset = scroll.contentOffset.y
-                            if line.minY < visibleTop {
-                                offset -= visibleTop - line.minY
-                            } else if keyboard.intersects(window.bounds), line.maxY + 12 > keyboard.minY {
-                                offset += line.maxY + 12 - keyboard.minY
+                            let keyboard = scroll.convert(window.convert(keyboardFrame, from: nil), from: window)
+                            // Floating keyboards only occlude a caret in their horizontal span.
+                            if keyboard.intersects(visible), caret.maxX > keyboard.minX, caret.minX < keyboard.maxX {
+                                visible.size.height = max(0, min(visible.maxY, keyboard.minY - 12) - visible.minY)
                             }
-                            let minimum = -scroll.adjustedContentInset.top
-                            let maximum = max(minimum, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
-                            scroll.setContentOffset(CGPoint(x: scroll.contentOffset.x, y: min(maximum, max(minimum, offset))), animated: false)
                         }
+                        var offset = scroll.contentOffset
+                        if caret.minY < visible.minY { offset.y -= visible.minY - caret.minY }
+                        else if caret.maxY > visible.maxY { offset.y += caret.maxY - visible.maxY }
+                        if caret.minX < visible.minX { offset.x -= visible.minX - caret.minX }
+                        else if caret.maxX > visible.maxX { offset.x += caret.maxX - visible.maxX }
+                        let minimum = CGPoint(x: -scroll.adjustedContentInset.left, y: -scroll.adjustedContentInset.top)
+                        let maximum = CGPoint(x: max(minimum.x, scroll.contentSize.width - scroll.bounds.width + scroll.adjustedContentInset.right),
+                                              y: max(minimum.y, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom))
+                        offset.x = min(maximum.x, max(minimum.x, offset.x))
+                        offset.y = min(maximum.y, max(minimum.y, offset.y))
+                        if offset != scroll.contentOffset { scroll.setContentOffset(offset, animated: false) }
                         // A table adds a horizontal scroll view. Continue outward so
                         // the page also reveals the active cell above the keyboard.
                     }
@@ -263,11 +295,13 @@ struct MarkdownTextEditor: UIViewRepresentable {
             }
         }
         func textViewDidChange(_ view: UITextView) {
+            guard !updating else { return }
             reportSelection(view)
             // A marked range belongs to the input method, not the saved document.
             guard view.markedTextRange == nil, (view as? MDMarkdownTextView)?.isProcessingInput != true else { return }
             (view as? MDMarkdownTextView)?.commitChanges()
             (view as? MDMarkdownTextView)?.renderMarkdown()
+            view.invalidateIntrinsicContentSize()
             lastSource = view.text
             if text.wrappedValue != lastSource { text.wrappedValue = lastSource }
             revealCaret(view)

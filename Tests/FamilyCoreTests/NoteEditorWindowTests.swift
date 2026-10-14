@@ -16,6 +16,14 @@ struct NoteEditorWindowTests {
         session.window.contentView?.layoutSubtreeIfNeeded()
     }
 
+    private func waitForDraft(_ store: DocumentDraftStore, key: UUID, matching: (String) -> Bool) async throws {
+        for _ in 0..<100 {
+            if let draft = try store.read(key), matching(draft.body.notes) { return }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        Issue.record("草稿未在期限内完成后台写入")
+    }
+
     private func editor(in view: NSView?) -> MDTextView? {
         guard let view else { return nil }
         if let text = view as? MDTextView { return text }
@@ -41,6 +49,7 @@ struct NoteEditorWindowTests {
         text.setSelectedRange(NSRange(location: 0, length: 0))
         NobisMDTextView.apply("toggle", to: text)
         try await settle(session)
+        try await waitForDraft(model.draftStore, key: record.id) { $0.contains("- [x]") }
         #expect(try model.draftStore.read(record.id)?.body.notes.contains("- [x]") == true)
         let reopened = windows.open(model: model, existing: record)
         #expect(reopened === session)
@@ -64,6 +73,7 @@ struct NoteEditorWindowTests {
         text.editorUndoManager.undo()
         try await settle(session)
         #expect(text.markdown == body.notes)
+        try await waitForDraft(model.draftStore, key: record.id) { $0 == body.notes }
         #expect(try model.draftStore.read(record.id)?.body.notes == body.notes)
         text.setSelectedRange(NSRange(location: text.string.utf16.count, length: 0))
         text.setMarkedText("zhong", selectedRange: NSRange(location: 5, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))

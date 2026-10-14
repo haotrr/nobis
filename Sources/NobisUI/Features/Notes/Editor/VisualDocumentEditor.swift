@@ -4,6 +4,8 @@ import SwiftUI
 final class DocumentBlockBuffer {
     var blocks: [DocumentBlock]
     let undo = UndoManager()
+    var focus: NoteEditorFocus?
+    var focusRequest: NoteEditorFocus?
     var emitted: String
     init(_ source: String) { blocks = DocumentBlocks.parse(source); emitted = source }
     func edit(_ id: UUID, _ change: (inout DocumentBlock) -> Void) {
@@ -13,10 +15,48 @@ final class DocumentBlockBuffer {
         change(&block)
         blocks[index] = block
     }
-    func replace(_ next: [DocumentBlock], undo: UndoManager?) {
-        let old = blocks
-        undo?.registerUndo(withTarget: self) { [weak undo] target in target.replace(old, undo: undo) }
+    func replace(_ next: [DocumentBlock], undo: UndoManager?, focus nextFocus: NoteEditorFocus? = nil) {
+        let old = blocks, oldFocus = focus
+        undo?.registerUndo(withTarget: self) { [weak undo] target in target.replace(old, undo: undo, focus: oldFocus) }
         blocks = next
+        focus = nextFocus ?? focus
+        if let nextFocus { focusRequest = NoteEditorFocus(target: nextFocus.target, range: nextFocus.range) }
+    }
+
+    func insert(_ content: DocumentBlock.Content) {
+        var next = blocks
+        let block = DocumentBlock(content)
+        let index = focus.flatMap { focus in next.firstIndex { focus.belongs(to: $0.id) } }
+        var insertion = index.map { $0 + 1 } ?? next.count
+        if let index, case .text(let text) = next[index].content, let focus {
+            // Insert after the selection, preserving its text. Clamp to a Character boundary.
+            let start = min(text.utf16.count, max(0, focus.range.location))
+            let offset = start + min(text.utf16.count - start, max(0, focus.range.length))
+            var boundary = 0
+            for character in text {
+                let end = boundary + String(character).utf16.count
+                if end > offset { break }
+                boundary = end
+            }
+            let source = text as NSString
+            var prefix = source.substring(to: boundary)
+            if !prefix.isEmpty && !prefix.hasSuffix("\n") { prefix += "\n" }
+            next[index].content = .text(prefix)
+            let suffix = DocumentBlock(.text(source.substring(from: boundary)))
+            next.insert(suffix, at: insertion)
+        } else if insertion > 0, !next[insertion - 1].markdown.hasSuffix("\n") {
+            next.insert(DocumentBlock(.text("\n")), at: insertion)
+            insertion += 1
+        }
+        next.insert(block, at: insertion)
+        let target: String
+        switch content {
+        case .text: target = block.id.uuidString
+        case .code: target = "code:\(block.id)"
+        case .table: target = "\(block.id)-0-0"
+        case .image: target = "image:\(block.id)"
+        }
+        replace(next, undo: undo, focus: NoteEditorFocus(target: target))
     }
 }
 
@@ -26,12 +66,12 @@ struct BlockDocumentEditor: View {
     var request: RichEditRequest?
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
     @State private var composing = false
-    @ScaledMetric(relativeTo: .body) private var bodyLineHeight = 22.0
     @ScaledMetric(relativeTo: .body) private var compactLineHeight = 21.0
     @State private var buffer: DocumentBlockBuffer
     @State private var activeText: String?
     @State private var requestTarget: String?
     @State private var pendingRequest: RichEditRequest?
+    @FocusState private var imageFocus: String?
 
     init(text: Binding<String>, request: RichEditRequest? = nil, onSelection: @escaping (NoteEditorSelection) -> Void = { _ in }) {
         _text = text; self.request = request; self.onSelection = onSelection
@@ -41,10 +81,11 @@ struct BlockDocumentEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(buffer.blocks) { block in
                 switch block.content {
-                case .text(let source):
+                case .text:
                     MarkdownTextEditor(text: textBinding(block.id), request: requestTarget == block.id.uuidString ? pendingRequest : nil,
-                                       onFocus: { activeText = block.id.uuidString }, sharedUndoManager: buffer.undo, onSelection: selectionChanged)
-                        .frame(height: textHeight(source)).frame(maxWidth: .infinity)
+                                       onFocus: { activeText = block.id.uuidString }, sharedUndoManager: buffer.undo, onSelection: { selectionChanged($0, target: block.id.uuidString) },
+                                       expandsToContent: true, focusRequest: focusRequest(block.id.uuidString))
+                        .frame(maxWidth: .infinity)
                 case .code(let language, let body):
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -53,7 +94,7 @@ struct BlockDocumentEditor: View {
                                 .textFieldStyle(.plain).font(.caption).accessibilityLabel("代码语言")
                             blockMenu(block)
                         }
-                        MarkdownTextEditor(text: Binding(get: { code(block.id).1 }, set: { value in edit(block.id) { $0.content = .code(language: code(block.id).0, body: value) } }), onFocus: { activeText = "code:\(block.id)" }, sharedUndoManager: buffer.undo, plainText: true, onSelection: selectionChanged)
+                        MarkdownTextEditor(text: Binding(get: { code(block.id).1 }, set: { value in edit(block.id) { $0.content = .code(language: code(block.id).0, body: value) } }), onFocus: { activeText = "code:\(block.id)" }, sharedUndoManager: buffer.undo, plainText: true, onSelection: { selectionChanged($0, target: "code:\(block.id)") }, focusRequest: focusRequest("code:\(block.id)"))
                             .frame(height: max(92, min(480, CGFloat(body.components(separatedBy: "\n").count) * compactLineHeight + 24)))
                             .accessibilityLabel(language.isEmpty ? "代码内容" : "\(language) 代码内容")
 
@@ -77,7 +118,7 @@ struct BlockDocumentEditor: View {
                                     HStack(spacing: 1) {
                                         ForEach(rows[row].indices, id: \.self) { column in
                                             let key = "\(block.id)-\(row)-\(column)"
-                                            MarkdownTextEditor(text: cellBinding(block.id, row, column), request: requestTarget == key ? pendingRequest : nil, onFocus: { activeText = key }, sharedUndoManager: buffer.undo, inlineOnly: true, onSelection: selectionChanged)
+                                            MarkdownTextEditor(text: cellBinding(block.id, row, column), request: requestTarget == key ? pendingRequest : nil, onFocus: { activeText = key }, sharedUndoManager: buffer.undo, inlineOnly: true, onSelection: { selectionChanged($0, target: key) }, focusRequest: focusRequest(key))
                                                 .frame(width: 180, height: max(44, CGFloat(rows[row][column].components(separatedBy: "\n").count) * compactLineHeight + 16))
                                                 .background(row == 0 ? Color.accentColor.opacity(0.08) : Color.clear)
                                                 .accessibilityLabel("第 \(row + 1) 行，第 \(column + 1) 列")
@@ -102,7 +143,7 @@ struct BlockDocumentEditor: View {
                         } else {
                             Label(address.isEmpty ? "添加图片地址后显示图片" : "请使用 HTTPS 图片地址", systemImage: "photo").foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 100)
                         }
-                        TextField("图片说明", text: imageBinding(block.id, field: 0), axis: .vertical).textFieldStyle(.plain).font(.callout).accessibilityLabel("图片说明")
+                        TextField("图片说明", text: imageBinding(block.id, field: 0), axis: .vertical).textFieldStyle(.plain).font(.callout).accessibilityLabel("图片说明").focused($imageFocus, equals: "image:\(block.id)")
                         DisclosureGroup("替换图片与设置") {
                             TextField("https://", text: imageBinding(block.id, field: 1)).textFieldStyle(.roundedBorder).accessibilityLabel("图片地址")
                             TextField("图片标题（可选）", text: imageBinding(block.id, field: 2)).textFieldStyle(.roundedBorder)
@@ -114,6 +155,12 @@ struct BlockDocumentEditor: View {
             if case .text = buffer.blocks.last?.content { } else {
                 Button("继续写正文", systemImage: "text.cursor") { insert(.text("\n")) }.buttonStyle(.borderless)
             }
+        }
+        .onChange(of: buffer.focusRequest) { _, focus in
+            if let focus, focus.target.hasPrefix("image:") { imageFocus = focus.target }
+        }
+        .onChange(of: imageFocus) { _, target in
+            if let target { buffer.focus = NoteEditorFocus(target: target); activeText = target }
         }
         .onChange(of: buffer.blocks) { _, blocks in
             let source = blocks.map(\.markdown).joined()
@@ -135,8 +182,14 @@ struct BlockDocumentEditor: View {
             }
         }
     }
-    private func selectionChanged(_ state: NoteEditorSelection) { composing = state.composing; onSelection(state) }
-    private func textHeight(_ text: String) -> CGFloat { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 24 : max(58, min(620, CGFloat(text.components(separatedBy: "\n").count + text.count / 65) * bodyLineHeight + 20)) }
+    private func selectionChanged(_ state: NoteEditorSelection, target: String) {
+        composing = state.composing
+        if activeText == target { buffer.focus = NoteEditorFocus(target: target, range: state.range) }
+        onSelection(state)
+    }
+    private func focusRequest(_ target: String) -> NoteEditorFocus? {
+        buffer.focusRequest?.target == target ? buffer.focusRequest : nil
+    }
     private func edit(_ id: UUID, _ change: (inout DocumentBlock) -> Void) { buffer.edit(id, change) }
     private func textBinding(_ id: UUID) -> Binding<String> {
         Binding(get: { if case .text(let value) = buffer.blocks.first(where: { $0.id == id })?.content { value } else { "" } },
@@ -165,17 +218,7 @@ struct BlockDocumentEditor: View {
         change(&rows, &alignment); next[index].content = .table(rows: rows, alignment: alignment)
         buffer.replace(next, undo: buffer.undo)
     }
-    private func insert(_ content: DocumentBlock.Content) {
-        var next = buffer.blocks
-        // Insert after the focused text block; appending is the predictable fallback.
-        let index = next.firstIndex(where: { $0.id.uuidString == activeText }).map { $0 + 1 } ?? next.count
-        var insertion = index
-        if index > 0, !next[index - 1].markdown.hasSuffix("\n") {
-            next.insert(DocumentBlock(.text("\n")), at: insertion); insertion += 1
-        }
-        next.insert(DocumentBlock(content), at: insertion)
-        buffer.replace(next, undo: buffer.undo)
-    }
+    private func insert(_ content: DocumentBlock.Content) { buffer.insert(content) }
     private func blockMenu(_ block: DocumentBlock) -> some View {
         Menu {
             Button("撤销") { if buffer.undo.canUndo { buffer.undo.undo() } }
@@ -183,7 +226,11 @@ struct BlockDocumentEditor: View {
             Divider()
             Button("在下方添加正文") {
                 var next = buffer.blocks
-                if let index = next.firstIndex(where: { $0.id == block.id }) { next.insert(DocumentBlock(.text("\n")), at: index + 1); buffer.replace(next, undo: buffer.undo) }
+                if let index = next.firstIndex(where: { $0.id == block.id }) {
+                    let text = DocumentBlock(.text("\n"))
+                    next.insert(text, at: index + 1)
+                    buffer.replace(next, undo: buffer.undo, focus: NoteEditorFocus(target: text.id.uuidString))
+                }
             }
             Button("删除此内容", role: .destructive) {
                 var next = buffer.blocks.filter { $0.id != block.id }
@@ -194,7 +241,17 @@ struct BlockDocumentEditor: View {
     }
 }
 
+struct NoteEditorFocus: Equatable {
+    let id = UUID()
+    let target: String
+    var range = NSRange(location: 0, length: 0)
+    func belongs(to block: UUID) -> Bool {
+        target == block.uuidString || target == "code:\(block)" || target == "image:\(block)" || target.hasPrefix("\(block)-")
+    }
+}
+
 struct NoteEditorSelection: Equatable {
+    var range = NSRange(location: 0, length: 0)
     var enabled = true
     var composing = false
     var inTable = false

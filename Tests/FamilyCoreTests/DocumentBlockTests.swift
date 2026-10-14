@@ -76,4 +76,38 @@ import FamilyCore
         manager.undo(); #expect(buffer.blocks == original)
         manager.redo(); #expect(buffer.blocks.count == 2)
     }
+    @Test func insertionSplitsAtSelectionAndUndoRestoresIdentityAndFocus() {
+        let source = "前半👨‍👩‍👧后半\n继续"
+        let buffer = DocumentBlockBuffer(source)
+        let original = buffer.blocks
+        let range = (source as NSString).range(of: "👨‍👩‍👧")
+        buffer.focus = NoteEditorFocus(target: original[0].id.uuidString, range: range)
+        buffer.undo.groupsByEvent = false
+        buffer.undo.beginUndoGrouping()
+        buffer.insert(.table(rows: [["列"]], alignment: ["---"]))
+        buffer.undo.endUndoGrouping()
+        #expect(buffer.blocks[0].content == .text("前半👨‍👩‍👧\n"))
+        #expect(buffer.blocks[2].content == .text("后半\n继续"))
+        #expect(buffer.focusRequest?.target == "\(buffer.blocks[1].id)-0-0")
+        let inserted = buffer.blocks
+        buffer.undo.undo()
+        #expect(buffer.blocks == original)
+        #expect(buffer.focusRequest?.target == original[0].id.uuidString)
+        #expect(buffer.focusRequest?.range == range)
+        buffer.undo.redo()
+        #expect(buffer.blocks == inserted)
+    }
+
+    @Test func insertionFromCellOrCodeStaysBesideItsBlock() {
+        for code in [false, true] {
+            let buffer = DocumentBlockBuffer(code ? "```swift\nabc\n```\n尾段" : "| A |\n| --- |\n| B |\n尾段")
+            let first = buffer.blocks[0]
+            buffer.focus = NoteEditorFocus(target: code ? "code:\(first.id)" : "\(first.id)-1-0")
+            buffer.insert(.image(alt: "图片", address: "https://example.com/a.png", title: ""))
+            #expect(buffer.blocks[0] == first)
+            #expect(buffer.blocks[1].content == .image(alt: "图片", address: "https://example.com/a.png", title: ""))
+            #expect(buffer.blocks.last?.markdown == "尾段")
+        }
+    }
+
 }

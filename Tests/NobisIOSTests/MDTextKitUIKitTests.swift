@@ -1,6 +1,6 @@
 import XCTest
 import UIKit
-import MDTextKitUIKit
+@testable import MDTextKitUIKit
 import SwiftUI
 @testable import NobisUI
 
@@ -230,6 +230,144 @@ import SwiftUI
         await fulfillment(of: [rendered], timeout: 2)
         XCTAssertGreaterThan(outer.contentOffset.y, 0)
         XCTAssertEqual(view.markdown, "中文单元格")
+    }
+
+    func testLongDocumentReusesParseAcrossSelectionAndStyling() {
+        let source = String(repeating: "**中文** 正文 👨‍👩‍👧\n", count: 800)
+        let view = editor(source)
+        let parsed = view.parseCount
+        let start = CFAbsoluteTimeGetCurrent()
+        for location in 0..<100 {
+            view.selectedRange = NSRange(location: location, length: 0)
+            _ = view.formattingState()
+            view.renderMarkdown()
+        }
+        print("Note cached selection/style 100 updates: \(CFAbsoluteTimeGetCurrent() - start)s, UTF16=\(source.utf16.count)")
+        XCTAssertEqual(view.parseCount, parsed)
+        view.selectedRange = NSRange(location: source.utf16.count, length: 0)
+        view.insertText("新内容")
+        view.renderMarkdown()
+        _ = view.formattingState()
+        XCTAssertEqual(view.parseCount, parsed + 1)
+        let afterEdit = view.parseCount
+        view.setMarkedText("nihao", selectedRange: NSRange(location: 5, length: 0))
+        view.renderMarkdown(); _ = view.formattingState()
+        XCTAssertEqual(view.parseCount, afterEdit)
+        XCTAssertNotNil(view.markedTextRange)
+        view.insertText("你好"); view.unmarkText()
+        view.renderMarkdown(); _ = view.formattingState()
+        XCTAssertEqual(view.parseCount, afterEdit + 1)
+        XCTAssertTrue(view.markdown.hasSuffix("新内容你好"))
+    }
+
+    private func settleLayout() async {
+        window.rootViewController?.view.setNeedsLayout()
+        window.rootViewController?.view.layoutIfNeeded()
+        try? await Task.sleep(for: .milliseconds(100))
+        window.rootViewController?.view.layoutIfNeeded()
+    }
+    private func textViews(in view: UIView) -> [MDMarkdownTextView] {
+        (view as? MDMarkdownTextView).map { [$0] } ?? view.subviews.flatMap { textViews(in: $0) }
+    }
+
+    func testBodyUsesMeasuredHeightAcrossWidthsAndComposition() async {
+        let source = String(repeating: "长文中文 👨‍👩‍👧 **排版** 换行内容\n", count: 100)
+        let host = UIHostingController(rootView: ScrollView {
+            MarkdownTextEditor(text: .constant(source), expandsToContent: true)
+        })
+        window.rootViewController = host
+        await settleLayout()
+        guard let view = textViews(in: host.view).first else { return XCTFail("正文控件未创建") }
+        XCTAssertFalse(view.isScrollEnabled)
+        XCTAssertGreaterThan(view.bounds.height, 620)
+        var narrowHeight: CGFloat = 0
+        for width in [CGFloat(280), 700] {
+            host.view.frame = CGRect(x: 0, y: 0, width: width, height: 500)
+            view.overrideUserInterfaceStyle = width == 280 ? .dark : .light
+            await settleLayout()
+            XCTAssertEqual(view.markdown, source)
+            XCTAssertGreaterThanOrEqual(view.bounds.height + 2, view.sizeThatFits(CGSize(width: view.bounds.width, height: .greatestFiniteMagnitude)).height)
+            if width == 280 { narrowHeight = view.bounds.height }
+            else { XCTAssertLessThanOrEqual(view.bounds.height, narrowHeight) }
+        }
+        view.becomeFirstResponder()
+        view.selectedRange = NSRange(location: 10, length: 0)
+        view.setMarkedText("zhong", selectedRange: NSRange(location: 5, length: 0))
+        host.view.frame.size.width = 320
+        await settleLayout()
+        XCTAssertNotNil(view.markedTextRange)
+        XCTAssertTrue(view.markdown.contains("zhong"))
+    }
+
+    @MainActor @Observable final class EditorHarness {
+        var source = "前半👨‍👩‍👧后半\n继续"
+        var request: RichEditRequest?
+    }
+    private struct HarnessView: View {
+        @Bindable var state: EditorHarness
+        var body: some View {
+            ScrollView { BlockDocumentEditor(text: $state.source, request: state.request) }
+        }
+    }
+
+    func testInsertAtCaretFocusesCellAndUndoRestoresWholeBody() async {
+        let state = EditorHarness()
+        let original = state.source
+        let host = UIHostingController(rootView: HarnessView(state: state))
+        window.rootViewController = host
+        await settleLayout()
+        guard let body = textViews(in: host.view).first else { return XCTFail("正文控件未创建") }
+        body.becomeFirstResponder()
+        let selection = (original as NSString).range(of: "👨‍👩‍👧")
+        body.selectedRange = selection
+        await settleLayout()
+        state.request = RichEditRequest(action: "insert-table")
+        await settleLayout()
+        XCTAssertTrue(state.source.hasPrefix("前半👨‍👩‍👧\n| 列一 | 列二 |"))
+        XCTAssertTrue(state.source.hasSuffix("后半\n继续"))
+        guard let cell = textViews(in: host.view).first(where: { $0.isFirstResponder }) else { return XCTFail("插入后未聚焦") }
+        XCTAssertTrue(cell.inlineOnly)
+        XCTAssertEqual(cell.markdown, "列一")
+        // Native text edits and structural undo must remain in one history.
+        cell.insertText("新")
+        await settleLayout()
+        cell.undoManager?.undo()
+        await settleLayout()
+        XCTAssertEqual(cell.markdown, "列一")
+        cell.undoManager?.undo()
+        await settleLayout()
+        XCTAssertEqual(state.source, original)
+        XCTAssertTrue(body.isFirstResponder)
+        XCTAssertEqual(body.selectedRange, selection)
+        body.undoManager?.redo()
+        await settleLayout()
+        XCTAssertTrue(state.source.contains("| 列一 | 列二 |"))
+    }
+
+    func testKeyboardRevealKeepsLongBodyCaretVisibleWithoutDelayedJump() async {
+        let outer = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 700))
+        outer.contentSize = CGSize(width: 320, height: 4000)
+        let view = MDMarkdownTextView(frame: CGRect(x: 0, y: 0, width: 320, height: 3500))
+        view.isScrollEnabled = false
+        view.load(markdown: String(repeating: "中文正文\n", count: 100))
+        window.rootViewController!.view.addSubview(outer)
+        outer.addSubview(view)
+        let coordinator = MarkdownTextEditor.Coordinator(text: .constant(view.markdown), onFocus: nil, plainText: false)
+        view.delegate = coordinator
+        view.becomeFirstResponder()
+        view.selectedRange = NSRange(location: 250, length: 0)
+        let keyboard = CGRect(x: 0, y: 400, width: 390, height: 444)
+        NotificationCenter.default.post(name: UIResponder.keyboardDidChangeFrameNotification, object: nil,
+            userInfo: [UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: keyboard)])
+        await settleLayout()
+        let caret = view.convert(view.caretRect(for: view.selectedTextRange!.end), to: window)
+        XCTAssertLessThanOrEqual(caret.maxY, keyboard.minY)
+        XCTAssertGreaterThanOrEqual(caret.minY, 0)
+        XCTAssertGreaterThan(outer.contentOffset.y, 0)
+        let offset = outer.contentOffset
+        await settleLayout()
+        XCTAssertEqual(outer.contentOffset, offset)
+        XCTAssertEqual(view.selectedRange.location, 250)
     }
 
 }

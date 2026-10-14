@@ -17,23 +17,38 @@ public struct DocumentDraftStore: Sendable {
     public let directory: URL
     public init(directory: URL) { self.directory = directory }
     private func url(_ key: UUID) -> URL { directory.appendingPathComponent("\(key).json") }
+    // All draft access shares one FIFO, including permission cleanup and explicit removal.
+    private static let io = DispatchQueue(label: "Nobis.document-drafts", qos: .utility)
     public func read(_ key: UUID) throws -> DocumentDraft? {
-        guard FileManager.default.fileExists(atPath: url(key).path) else { return nil }
-        return try JSONDecoder().decode(DocumentDraft.self, from: LocalMetadataFile.read(from: url(key)))
+        try Self.io.sync {
+            guard FileManager.default.fileExists(atPath: url(key).path) else { return nil }
+            return try JSONDecoder().decode(DocumentDraft.self, from: LocalMetadataFile.read(from: url(key)))
+        }
     }
-    public func save(_ draft: DocumentDraft, key: UUID) throws {
+    private func write(_ draft: DocumentDraft, key: UUID) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try JSONEncoder().encode(draft).write(to: url(key), options: LocalMetadataFile.writingOptions)
     }
+    public func save(_ draft: DocumentDraft, key: UUID) throws {
+        try Self.io.sync { try write(draft, key: key) }
+    }
+    public func saveInBackground(_ draft: DocumentDraft, key: UUID,
+                                 completion: @escaping @Sendable (Result<Void, Error>) -> Void) {
+        Self.io.async { completion(Result { try write(draft, key: key) }) }
+    }
     public func remove(spaceID: UUID) throws {
-        guard FileManager.default.fileExists(atPath: directory.path) else { return }
-        for file in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) where file.pathExtension == "json" {
-            let draft = try JSONDecoder().decode(DocumentDraft.self, from: LocalMetadataFile.read(from: file))
-            if draft.spaceID == spaceID { try FileManager.default.removeItem(at: file) }
+        try Self.io.sync {
+            guard FileManager.default.fileExists(atPath: directory.path) else { return }
+            for file in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) where file.pathExtension == "json" {
+                let draft = try JSONDecoder().decode(DocumentDraft.self, from: LocalMetadataFile.read(from: file))
+                if draft.spaceID == spaceID { try FileManager.default.removeItem(at: file) }
+            }
         }
     }
     public func remove(_ key: UUID) throws {
-        if FileManager.default.fileExists(atPath: url(key).path) { try FileManager.default.removeItem(at: url(key)) }
+        try Self.io.sync {
+            if FileManager.default.fileExists(atPath: url(key).path) { try FileManager.default.removeItem(at: url(key)) }
+        }
     }
 }
 

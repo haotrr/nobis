@@ -416,6 +416,8 @@ private struct DocumentCommentEditor: View {
     @State private var writableDraft = false
     @State private var commentID = UUID()
     @State private var draftStatus = ""
+    @State private var draftWriter = NoteDraftWriter()
+    @Environment(\.scenePhase) private var scenePhase
     private var store: DocumentDraftStore { DocumentDraftStore(directory: model.directory.appendingPathComponent("CommentDrafts")) }
     private var key: UUID { reply?.id ?? document.id }
     private var dirty: Bool { !message.isEmpty || !quote.isEmpty }
@@ -453,15 +455,30 @@ private struct DocumentCommentEditor: View {
                 if dirty { persist() }
             } catch { issue = error.localizedDescription; draftStatus = "草稿读取失败，未覆盖原草稿" }
         }
-        .onChange(of: message) { _, _ in persist() }
-        .onChange(of: quote) { _, _ in persist() }
+        .onChange(of: message) { _, _ in persist(inBackground: true) }
+        .onChange(of: quote) { _, _ in persist(inBackground: true) }
+        .onChange(of: scenePhase) { _, phase in if phase != .active { persist() } }
+        .onDisappear { persist() }
     }
-    private func persist() {
+    private func persist(inBackground: Bool = false) {
         guard loaded, writableDraft, model.spaces.contains(where: { $0.id == document.latest.spaceID }), model.canWrite(spaceID: document.latest.spaceID) else { return }
+        if !inBackground || !dirty { draftWriter.cancel() }
         if !dirty { do { try store.remove(key); draftStatus = "" } catch { issue = error.localizedDescription }; return }
         var body = RecordBody(kind: .comment, title: "评注")
         body.notes = message; body.documentQuote = quote.isEmpty ? nil : quote; body.relatedRecordID = key
-        do { try store.save(DocumentDraft(body: body, spaceID: document.latest.spaceID, recordID: commentID, expected: []), key: key); draftStatus = "草稿已保存在此设备" }
+        let draft = DocumentDraft(body: body, spaceID: document.latest.spaceID, recordID: commentID, expected: [])
+        if inBackground {
+            draftStatus = "正在保留草稿…"
+            draftWriter.schedule(store: store, draft: draft, key: key,
+                allowed: { writableDraft && model.spaces.contains { $0.id == document.latest.spaceID } && model.canWrite(spaceID: document.latest.spaceID) }) { result in
+                    switch result {
+                    case .success: draftStatus = "草稿已保存在此设备"
+                    case .failure(let error): issue = error.localizedDescription; draftStatus = "草稿保存失败，请保留此窗口"
+                    }
+                }
+            return
+        }
+        do { try store.save(draft, key: key); draftStatus = "草稿已保存在此设备" }
         catch { issue = error.localizedDescription; draftStatus = "草稿保存失败，请保留此窗口" }
     }
     private func post() {
@@ -471,6 +488,7 @@ private struct DocumentCommentEditor: View {
         do {
             guard writableDraft else { throw NobisError.validation("请先重新打开评注草稿。") }
             try model.save(body, spaceID: document.latest.spaceID, recordID: commentID)
+            draftWriter.cancel(); writableDraft = false
             do { try store.remove(key) } catch { model.error = "评注已发布，但旧草稿清理失败：" + error.localizedDescription }
             onPosted()
         } catch { issue = error.localizedDescription }
@@ -497,6 +515,7 @@ private struct DocumentCommentEditor: View {
     var draftLoaded = false
     var draftWritable = false
     var importing = false
+    let draftWriter = NoteDraftWriter()
 
     init(model: AppModel, existing: Record?, project: Record?, group: String?) {
         self.existing = existing
@@ -684,9 +703,6 @@ struct DocumentEditorContent: View {
             #if os(iOS)
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardVisible = true }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardVisible = false }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
-                if compactHeight && !titleFocused && !showInfo { scroll.scrollTo("note-body", anchor: .top) }
-            }
             #endif
             }
         }
@@ -719,14 +735,15 @@ struct DocumentEditorContent: View {
         .interactiveDismissDisabled(dirty)
         .confirmationDialog("关闭笔记？", isPresented: $state.discard) {
             Button("保留草稿并关闭") { persistDraft(); if draftStatus == "草稿已保存在此设备" { finish() } }
-            Button("放弃修改", role: .destructive) { do { if let draftKey { try model.draftStore.remove(draftKey) }; draftWritable = false; finish() } catch { issue = error.localizedDescription } }
+            Button("放弃修改", role: .destructive) { state.draftWriter.cancel(); do { if let draftKey { try model.draftStore.remove(draftKey) }; draftWritable = false; finish() } catch { issue = error.localizedDescription } }
             Button("继续编辑", role: .cancel) { }
         }
         .onAppear { restoreDraft(); onReady?(cancel, save); onWindowState?(value.title, dirty, editorSelection.composing) }
-        .onChange(of: value) { _, _ in persistDraft(); onWindowState?(value.title, dirty, editorSelection.composing) }
+        .onChange(of: value) { _, _ in persistDraft(inBackground: true); onWindowState?(value.title, dirty, editorSelection.composing) }
         .onChange(of: editorSelection.composing) { _, _ in onWindowState?(value.title, dirty, editorSelection.composing) }
         .onChange(of: dirty) { _, _ in onWindowState?(value.title, dirty, editorSelection.composing) }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persistDraft() } }
+        .onDisappear { persistDraft() }
         .fileImporter(isPresented: $state.importing, allowedContentTypes: MarkdownDocument.readableContentTypes) { result in
             do {
                 let url = try result.get(); let scoped = url.startAccessingSecurityScopedResource(); defer { if scoped { url.stopAccessingSecurityScopedResource() } }
@@ -739,7 +756,7 @@ struct DocumentEditorContent: View {
                 if value.title.isEmpty { value.title = url.deletingPathExtension().lastPathComponent }
             } catch { issue = error.localizedDescription }
         }
-        .onChange(of: spaceID) { _, _ in persistDraft() }
+        .onChange(of: spaceID) { _, _ in persistDraft(inBackground: true) }
         .editorDimensions(width: 680, height: 600, embedded: embedded)
     }
     private var saveStatus: some View {
@@ -833,12 +850,25 @@ struct DocumentEditorContent: View {
             draftWritable = true
         } catch { issue = error.localizedDescription; draftStatus = "草稿读取失败，未覆盖原草稿" }
     }
-    private func persistDraft() {
+    private func persistDraft(inBackground: Bool = false) {
         guard draftLoaded, draftWritable, let spaceID, let draftKey else { return }
+        if !inBackground || !dirty { state.draftWriter.cancel() }
         if !dirty { do { try model.draftStore.remove(draftKey); draftStatus = existing == nil ? "尚未保存" : "所有修改已保存" } catch { issue = error.localizedDescription }; return }
         guard model.spaces.contains(where: { $0.id == spaceID }), model.canWrite(spaceID: spaceID) else { draftStatus = "访问已关闭，草稿未写入"; return }
+        let draft = DocumentDraft(body: value, spaceID: spaceID, recordID: existing?.id ?? savedRecordID, expected: expected)
+        if inBackground {
+            draftStatus = "正在保留草稿…"
+            state.draftWriter.schedule(store: model.draftStore, draft: draft, key: draftKey,
+                allowed: { draftWritable && model.spaces.contains { $0.id == spaceID } && model.canWrite(spaceID: spaceID) }) { result in
+                    switch result {
+                    case .success: draftStatus = "草稿已保存在此设备"
+                    case .failure(let error): issue = error.localizedDescription; draftStatus = "草稿保存失败，请保留此窗口"
+                    }
+                }
+            return
+        }
         do {
-            try model.draftStore.save(DocumentDraft(body: value, spaceID: spaceID, recordID: existing?.id ?? savedRecordID, expected: expected), key: draftKey)
+            try model.draftStore.save(draft, key: draftKey)
             draftStatus = "草稿已保存在此设备"
         } catch { issue = error.localizedDescription; draftStatus = "草稿保存失败，请保留此窗口" }
     }
@@ -857,6 +887,7 @@ struct DocumentEditorContent: View {
             let reconciled = try core.reconcilingManagementChanges(in: draft)
             try model.save(reconciled.body, spaceID: spaceID, existing: existing, expected: reconciled.expected, recordID: existing?.id ?? savedRecordID)
             value = reconciled.body
+            state.draftWriter.cancel()
             if let draftKey { do { try model.draftStore.remove(draftKey) } catch { model.error = "笔记已保存，但旧草稿清理失败：" + error.localizedDescription } }
             let id = existing?.id ?? savedRecordID
             existing = try model.core?.record(id, spaceID: spaceID)

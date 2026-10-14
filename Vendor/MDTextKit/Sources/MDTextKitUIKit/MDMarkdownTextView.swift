@@ -18,12 +18,60 @@ import PolarMark
     public var isProcessingInput: Bool { inputDepth > 0 }
     private var viewport = CGSize.zero
     private var rendering = false
+    private var parsedSource: String?
+    private var parsedAST: PMKAST?
+    private var annotations: NSAttributedString?
+    private var renderedSource: String?
+    private var renderedStyle: String?
+    private(set) var parseCount = 0
+
+    private func syntax() -> PMKAST {
+        let source = markdown
+        if parsedSource != source || parsedAST == nil {
+            parsedSource = source
+            parsedAST = PMKAST(markdown: source)
+            annotations = nil
+            parseCount += 1
+        }
+        return parsedAST!
+    }
+
+    private func annotatedSyntax() -> NSAttributedString {
+        let ast = syntax()
+        if let annotations { return annotations }
+        let value = ast.annotatedString()
+        annotations = value
+        return value
+    }
 
     public var markdown: String { text ?? "" }
+
+    private var requestedSelection: NSRange?
+    public func requestFocus(selection: NSRange) {
+        requestedSelection = selection
+        if window != nil { applyRequestedFocus() }
+    }
+    public override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil { applyRequestedFocus() }
+    }
+    private func applyRequestedFocus() {
+        guard let selection = requestedSelection, markedTextRange == nil else { return }
+        requestedSelection = nil
+        // SwiftUI must finish inserting the view before responder/selection callbacks run.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.window != nil, self.markedTextRange == nil else { return }
+            self.becomeFirstResponder()
+            self.selectedRange = self.clamped(selection)
+            self.rememberSelection()
+            self.onViewportChange?(self)
+        }
+    }
 
     public func load(markdown: String) {
         guard markedTextRange == nil, self.markdown != markdown else { return }
         let selection = selectedRange
+        renderedSource = nil
         text = markdown
         selectedRange = clamped(selection)
         committed = markdown
@@ -34,21 +82,24 @@ import PolarMark
     /// Only attributes change; UIKit keeps ownership of keyboard edits and undo groups.
     public func renderMarkdown() {
         guard markedTextRange == nil, !rendering else { return }
+        let source = markdown
+        let style = "\(plainText)-\(inlineOnly)-\(traitCollection.preferredContentSizeCategory.rawValue)"
+        guard renderedSource != source || renderedStyle != style else { return }
+        renderedSource = source
+        renderedStyle = style
         rendering = true
         defer { rendering = false }
-        let body = UIFont.preferredFont(forTextStyle: .body)
+        let body = UIFont.preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
         let code = UIFont.monospacedSystemFont(ofSize: body.pointSize, weight: .regular)
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 3
         let base: [NSAttributedString.Key: Any] = [.font: plainText ? code : body, .foregroundColor: UIColor.label, .paragraphStyle: paragraph]
-        let source = markdown
         let styled = NSMutableAttributedString(string: source, attributes: base)
         if !plainText {
-            let ast = PMKAST(markdown: source)
-            ast.annotatedString().enumerateAttributes(in: NSRange(location: 0, length: styled.length)) { attrs, range, _ in
+            annotatedSyntax().enumerateAttributes(in: NSRange(location: 0, length: styled.length)) { attrs, range, _ in
                 var font = body
                 if !inlineOnly, let level = attrs[.pmkHeading] as? NSNumber {
-                    font = UIFont.preferredFont(forTextStyle: level.intValue == 1 ? .title1 : level.intValue == 2 ? .title2 : .headline)
+                    font = UIFont.preferredFont(forTextStyle: level.intValue == 1 ? .title1 : level.intValue == 2 ? .title2 : .headline, compatibleWith: traitCollection)
                 }
                 var traits = font.fontDescriptor.symbolicTraits
                 if attrs[.pmkStrong] != nil { traits.insert(.traitBold) }
@@ -104,7 +155,7 @@ import PolarMark
     public override func insertText(_ text: String) {
         // The IME owns Return while composing. Cells and code keep literal newlines.
         if text == "\n", markedTextRange == nil, !plainText, !inlineOnly, isEditable {
-            let result = PMKAST(markdown: markdown).insertNewline(selection: selectedRange)
+            let result = syntax().insertNewline(selection: selectedRange)
             let value = (markdown as NSString).replacingCharacters(in: result.replacementRange, with: result.replacementString)
             restore(value, selection: result.proposedSelection)
         } else {
@@ -133,7 +184,7 @@ import PolarMark
 
     public func formattingState() -> (selected: Set<String>, mixed: Set<String>) {
         guard !plainText, markedTextRange == nil, !markdown.isEmpty else { return ([], []) }
-        let annotated = PMKAST(markdown: markdown).annotatedString()
+        let annotated = annotatedSyntax()
         let selection = clamped(selectedRange)
         let range = selection.length == 0 ? NSRange(location: min(selection.location, annotated.length - 1), length: 1) : selection
         var all: Set<String>?, any = Set<String>()
@@ -158,7 +209,7 @@ import PolarMark
     /// Toolbar commands never commit or discard marked text.
     public func performMarkdownAction(_ action: String) {
         guard isEditable, !plainText, markedTextRange == nil else { return }
-        let ast = PMKAST(markdown: markdown)
+        let ast = syntax()
         let selection = selectedRange
         var result: PMKASTOperationResult?
         switch action {
@@ -210,6 +261,7 @@ import PolarMark
         let previous = markdown, previousSelection = selectedRange
         undoManager?.registerUndo(withTarget: self) { target in target.restore(previous, selection: previousSelection) }
         // Do not assign attributedText: that resets UIKit's keyboard undo history.
+        renderedSource = nil
         textStorage.replaceCharacters(in: NSRange(location: 0, length: textStorage.length), with: value)
         selectedRange = clamped(selection)
         committed = value
