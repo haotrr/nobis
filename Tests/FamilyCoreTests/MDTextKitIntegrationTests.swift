@@ -154,5 +154,104 @@ struct MDTextKitIntegrationTests {
         NobisMDTextView.apply("checklist", to: coordinator.view)
         #expect(coordinator.view.markdown == source)
     }
+    @Test func tableUndoRestoresCellSelectionAndPreservesSurroundingText() throws {
+        let source = "前文\n\n| 项目 | 备注 |\n| --- | --- |\n| 原值 | 内容 |\n\n后文"
+        let (buffer, coordinator) = make(source)
+        defer { coordinator.stop() }
+        let host = coordinator.view
+        var attachment: MDTableTextAttachment?
+        host.mdTextStorage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: host.mdTextStorage.length)) { value, _, _ in
+            if let table = value as? MDTableTextAttachment { attachment = table }
+        }
+        let table = try #require(attachment?.attachmentViewController as? MDTableAttachmentViewController)
+        host.editorUndoManager.groupsByEvent = false
+        table.beginEditing(at: (1, 0))
+        let first = try #require(table.activeCellEditor)
+        first.setSelectedRange(NSRange(location: 1, length: 1))
+        host.editorUndoManager.beginUndoGrouping()
+        first.insertText("甲", replacementRange: first.selectedRange())
+        host.editorUndoManager.endUndoGrouping()
+        let afterFirst = buffer.value
+        table.beginEditing(at: (1, 1))
+        let second = try #require(table.activeCellEditor)
+        second.setSelectedRange(NSRange(location: 0, length: 2))
+        host.editorUndoManager.beginUndoGrouping()
+        second.insertText("乙", replacementRange: second.selectedRange())
+        host.editorUndoManager.endUndoGrouping()
+        let afterSecond = buffer.value
+        host.editorUndoManager.undo()
+        #expect(buffer.value == afterFirst)
+        #expect(table.activeCellEditor?.selectedRange() == NSRange(location: 0, length: 2))
+        host.editorUndoManager.undo()
+        #expect(buffer.value == source)
+        #expect(table.activeCellEditor?.selectedRange() == NSRange(location: 1, length: 1))
+        host.editorUndoManager.redo()
+        host.editorUndoManager.redo()
+        #expect(buffer.value == afterSecond)
+        #expect(buffer.value.hasPrefix("前文\n\n"))
+        #expect(buffer.value.hasSuffix("\n\n后文"))
+    }
+
+    @Test func longDocumentMeasuresBeyondOldScrollLimitAndInvalidates() {
+        let (buffer, coordinator) = make(String(repeating: "一段用于验证长文换行和页面滚动的文字。\n\n", count: 100))
+        defer { coordinator.stop() }
+        let narrow = coordinator.view.measuredSize(width: 280)
+        #expect(narrow.height > 900)
+        #expect(coordinator.view.measuredSize(width: 280) == narrow)
+        let wide = coordinator.view.measuredSize(width: 680)
+        #expect(wide.height <= narrow.height)
+        buffer.value = "短文"
+        coordinator.update(MDTextKitEditor(text: buffer.binding, loadImages: false))
+        #expect(coordinator.view.measuredSize(width: 680).height < wide.height)
+    }
+
+    @Test func formattingReportsSelectionMixedAndComposition() {
+        let (_, coordinator) = make("**粗体** 普通")
+        defer { coordinator.stop() }
+        let view = coordinator.view
+        view.setSelectedRange(NSRange(location: 2, length: 2))
+        #expect(coordinator.selectionState(for: view).selected.contains("bold"))
+        view.setSelectedRange(NSRange(location: 2, length: view.string.utf16.count - 2))
+        #expect(coordinator.selectionState(for: view).mixed.contains("bold"))
+        view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0))
+        view.setMarkedText("zhong", selectedRange: NSRange(location: 5, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        #expect(coordinator.selectionState(for: view).composing)
+        view.insertText("中", replacementRange: NSRange(location: NSNotFound, length: 0))
+        #expect(!coordinator.selectionState(for: view).composing)
+        view.isEditable = false
+        #expect(!coordinator.selectionState(for: view).enabled)
+    }
+
+    @Test func tableStructureUndoAndBodyEditsShareHistory() throws {
+        let source = "前文\n\n| 一 | 二 |\n| --- | --- |\n| 甲 | 乙 |\n"
+        let (buffer, coordinator) = make(source)
+        defer { coordinator.stop() }
+        let host = coordinator.view
+        let location = ("前文\n\n" as NSString).length
+        func currentTable() throws -> MDTableAttachmentViewController {
+            let attachment = try #require(host.mdTextStorage.textAttachment(at: location) as? MDTableTextAttachment)
+            return try #require(attachment.attachmentViewController as? MDTableAttachmentViewController)
+        }
+        let table = try currentTable()
+        table.beginEditing(at: (1, 1))
+        host.editorUndoManager.groupsByEvent = false
+        host.editorUndoManager.beginUndoGrouping()
+        table.perform(NSSelectorFromString("addRow"))
+        host.editorUndoManager.endUndoGrouping()
+        #expect(table.model.rows.count == 3)
+        let added = buffer.value
+        host.setSelectedRange(NSRange(location: 0, length: 0))
+        host.editorUndoManager.beginUndoGrouping()
+        host.insertText("正文编辑", replacementRange: host.selectedRange())
+        host.editorUndoManager.endUndoGrouping()
+        host.editorUndoManager.undo()
+        #expect(buffer.value == added)
+        host.editorUndoManager.undo()
+        #expect(buffer.value == source)
+        #expect(try currentTable().model.rows.count == 2)
+        host.editorUndoManager.redo()
+        #expect(buffer.value == added)
+    }
+
 }
 #endif

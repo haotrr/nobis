@@ -72,3 +72,5 @@ Mac 笔记采用统一 Markdown 文本流原位排版，光标进入语法结构
 应用与产物名称统一 Nobis；Target、Scheme 和 bundle identifier 保留平台区分，不改变数据身份。图标为暖白背景、深松绿与鼠尾草绿交叠的 N 字带。母版为 `docs/design/nobis-icon-master.png`，资源位于 `Apps/Nobis/Shared/Assets.xcassets/AppIcon.appiconset`，包含 macOS 各尺寸与 iOS 1024 像素资源。
 
 设计规则不等于所有设备验收通过，具体证据与未覆盖项见[验证状态](docs/verification.md)。
+
+Mac 笔记正文跟随页面统一纵向滚动，不另设有高度上限的正文滚动区。格式菜单以勾选表示当前格式、短横线表示混合格式；组词期间禁用格式命令，弹出链接输入时保留正文或单元格选区。表格撤销回到原单元格与选区。

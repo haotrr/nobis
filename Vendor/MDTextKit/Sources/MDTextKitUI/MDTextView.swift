@@ -190,6 +190,7 @@ import SFThemeKit
         super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
         compositionDepth -= 1
         finishComposition()
+        editorController.notifyTextSelectionChanges(in: self)
     }
 
     open override func insertText(_ string: Any, replacementRange: NSRange) {
@@ -287,13 +288,13 @@ import SFThemeKit
 
     open override func becomeFirstResponder() -> Bool {
         let ok = super.becomeFirstResponder()
-        if ok { editorController.autodisableLinks(in: self) }
+        if ok { editorController.autodisableLinks(in: self); editorController.notifyTextSelectionChanges(in: self) }
         return ok
     }
 
     open override func resignFirstResponder() -> Bool {
         let ok = super.resignFirstResponder()
-        if ok { editorController.autodisableLinks(in: self) }
+        if ok { editorController.autodisableLinks(in: self); editorController.notifyTextSelectionChanges(in: self) }
         return ok
     }
 

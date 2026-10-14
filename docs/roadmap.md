@@ -15,7 +15,7 @@
 | --- | --- |
 | CloudKit 真实双账号 | 代码已实现；开发者配置、邀请、双向写入、离线重连、并发修订、删除收敛、撤权与账号切换需要真实设备验证 |
 | 信息精简视觉回归 | 双平台构建通过；Mac 720 点窄窗口浅深色主页面复验完成，并修复详情空白工具栏；iOS 横屏、浅色与完整交互仍需补验 |
-| MDTextKit 后续 | Mac 源码接入已完成；iOS 原生块编辑保留，UIKit 移植未实施；最低系统、真实输入法候选、外部图片网络端到端及长文全交互仍待验收 |
+| MDTextKit 后续 | Mac 源码接入及表格撤销／滚动／工具栏优化已完成；iOS 原生块编辑保留，UIKit 移植未实施；最低系统、真实输入法候选、外部图片网络端到端及长文全交互仍待验收 |
 | 真机专项 | 最低系统、长文键盘、横屏最大字号、VoiceOver、外接键盘；不能以模拟器结果替代 |
 | 提醒 | 已实现本机接收选择、静默时段、预览及 DST 日期计算测试；实际后台送达、跨设备运行与休眠／旅行时区变化仍待验收 |
 | 数据迁移 | 副本隔离核对已完成；非月度收入、浮点税额尾差及零元历史兼容已实现，完整副本包补导对账通过；已支持财务归属批量确认、旧本地成员映射预览与方案导出；成员映射已接入恢复合并并通过完整副本验证，正式数据迁入尚未执行 |
@@ -41,7 +41,7 @@
 <!-- codebase-workflow:tasks:start -->
 | ID | 类型 | 标题 | 状态 | 文档 | MR | 终态日期 |
 | --- | --- | --- | --- | --- | --- | --- |
-| T-261014-NB2Q3 | Tech | MDTextKit 源码集成与笔记编辑器接入 | 已完成 | [tech/T-261014-NB2Q3-mdtextkit/TODO.md](tech/T-261014-NB2Q3-mdtextkit/TODO.md) | - | 2026-10-14 |
+| T-261014-NB2Q3 | Tech | MDTextKit 源码集成与笔记编辑器接入 | 已完成 | [tech/T-261014-NB2Q3-mdtextkit/TODO.md](tech/T-261014-NB2Q3-mdtextkit/TODO.md) | - | - |
 | T-261013-FH99S | Tech | 日常提醒的静默时段与设备选择 | 已完成 | [tech/T-261013-FH99S-daily-reminders/TODO.md](tech/T-261013-FH99S-daily-reminders/TODO.md) | - | 2026-10-13 |
 | T-261013-FXGYF | Tech | Minty 迁入后的财务体验完善 | 已完成 | [tech/T-261013-FXGYF-minty-迁入后的财务体验完善/TODO.md](tech/T-261013-FXGYF-minty-迁入后的财务体验完善/TODO.md) | - | 2026-10-13 |
 | T-261013-QTW1Q | Tech | 报表扫描优化与万条规模验证 | 已完成 | [tech/T-261013-QTW1Q-report-performance/TODO.md](tech/T-261013-QTW1Q-report-performance/TODO.md) | - | 2026-10-13 |

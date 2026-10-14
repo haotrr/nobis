@@ -190,13 +190,23 @@ struct BlockDocumentEditor: View {
     }
 }
 
+struct NoteEditorSelection: Equatable {
+    var enabled = true
+    var composing = false
+    var inTable = false
+    var selected: Set<String> = []
+    var mixed: Set<String> = []
+}
+
 /// Both platforms keep the same Markdown draft and save boundary.
 struct VisualDocumentEditor: View {
     @Binding var text: String
     var request: RichEditRequest?
+    var preserveSelection = false
+    var onSelection: (NoteEditorSelection) -> Void = { _ in }
     var body: some View {
         #if os(macOS)
-        MDTextKitEditor(text: $text, request: request)
+        MDTextKitEditor(text: $text, request: request, preserveSelection: preserveSelection, onSelection: onSelection)
         #else
         BlockDocumentEditor(text: $text, request: request)
         #endif

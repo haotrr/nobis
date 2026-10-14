@@ -371,6 +371,7 @@ struct DocumentEditor: View {
     @State private var showInfo = false
     @State private var showHelp = false
     @State private var formatRequest: RichEditRequest?
+    @State private var editorSelection = NoteEditorSelection()
     @State private var showLink = false
     @State private var linkURL = ""
     @State private var issue: String?
@@ -459,7 +460,7 @@ struct DocumentEditor: View {
                         } label: { Text("所属项目 · \(projectName)").font(.callout).foregroundStyle(.secondary) }
                     }
                     #endif
-                    VisualDocumentEditor(text: $value.notes, request: formatRequest)
+                    VisualDocumentEditor(text: $value.notes, request: formatRequest, preserveSelection: showLink, onSelection: { editorSelection = $0 })
                         .frame(minHeight: max(220, geometry.size.height - 240), alignment: .top)
                         .id("note-body")
 
@@ -546,18 +547,24 @@ struct DocumentEditor: View {
                 .disabled(!(existing == nil || dirty) || value.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }.fixedSize()
     }
+    private var blockFormattingDisabled: Bool { !editorSelection.enabled || editorSelection.composing || editorSelection.inTable }
+    private func formatButton(_ title: String, action: String) -> some View {
+        Button { formatRequest = RichEditRequest(action: action) } label: {
+            Label(title, systemImage: editorSelection.mixed.contains(action) ? "minus" : editorSelection.selected.contains(action) ? "checkmark" : "circle")
+        }.disabled(!editorSelection.enabled || editorSelection.composing || (editorSelection.inTable && ["heading", "body", "list"].contains(action)))
+    }
     private func formattingBar(width: CGFloat) -> some View {
                     ScrollView(.horizontal) {
                     HStack {
                         Menu {
-                            Button("标题") { formatRequest = RichEditRequest(action: "heading") }
-                            Button("正文") { formatRequest = RichEditRequest(action: "body") }
-                            Button("粗体") { formatRequest = RichEditRequest(action: "bold") }
-                            Button("斜体") { formatRequest = RichEditRequest(action: "italic") }
-                            Button("项目列表") { formatRequest = RichEditRequest(action: "list") }
+                            formatButton("标题", action: "heading")
+                            formatButton("正文", action: "body")
+                            formatButton("粗体", action: "bold")
+                            formatButton("斜体", action: "italic")
+                            formatButton("项目列表", action: "list")
                         } label: { Image(systemName: "textformat").touchTarget() }.help("文字格式").accessibilityLabel("文字格式")
                         Button { showLink = true } label: { Image(systemName: "link").touchTarget() }
-                            .help("选中文字后添加链接").keyboardShortcut("k")
+                            .disabled(!editorSelection.enabled || editorSelection.composing).help("选中文字后添加链接").keyboardShortcut("k")
                             .popover(isPresented: $showLink) {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("选中文字的链接").font(.headline)
@@ -565,13 +572,13 @@ struct DocumentEditor: View {
                                     Button("应用") { formatRequest = RichEditRequest(action: "link:" + linkURL); showLink = false }
                                 }.padding(20).frame(width: 300).background { LifeBackground() }
                             }
-                        Button { formatRequest = RichEditRequest(action: "checklist") } label: { Image(systemName: "checklist").touchTarget() }.help("转为清单").accessibilityLabel("转为清单")
-                        Button { formatRequest = RichEditRequest(action: "toggle") } label: { Image(systemName: "checkmark.circle").touchTarget() }.help("切换当前清单完成状态").accessibilityLabel("切换清单完成状态")
+                        Button { formatRequest = RichEditRequest(action: "checklist") } label: { Image(systemName: "checklist").touchTarget() }.disabled(blockFormattingDisabled).tint(editorSelection.selected.contains("checklist") ? Color.accentColor : nil).help("转为清单").accessibilityLabel("转为清单")
+                        Button { formatRequest = RichEditRequest(action: "toggle") } label: { Image(systemName: "checkmark.circle").touchTarget() }.disabled(blockFormattingDisabled).help("切换当前清单完成状态").accessibilityLabel("切换清单完成状态")
                         Menu {
                             Button("表格", systemImage: "tablecells") { formatRequest = RichEditRequest(action: "insert-table") }
                             Button("图片", systemImage: "photo") { formatRequest = RichEditRequest(action: "insert-image") }
                             Button("代码块", systemImage: "chevron.left.forwardslash.chevron.right") { formatRequest = RichEditRequest(action: "insert-code") }
-                        } label: { Image(systemName: "plus").touchTarget() }.accessibilityLabel("插入内容")
+                        } label: { Image(systemName: "plus").touchTarget() }.disabled(blockFormattingDisabled).accessibilityLabel("插入内容")
                         Spacer()
                         Button { importing = true } label: { Image(systemName: "square.and.arrow.down").touchTarget() }
                             .buttonStyle(.borderless).keyboardShortcut("o")

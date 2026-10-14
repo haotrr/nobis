@@ -9,6 +9,7 @@ public struct MDFormatting: Equatable, Sendable {
     /// 1 to 6 when every selected paragraph is that heading, 0 when none is a heading, nil when mixed.
     public var headingLevel: Int?
     public var inline: Set<InlineStyle>
+    public var mixedInline: Set<InlineStyle> = []
     public var isLink: Bool
     public var isCodeBlock: Bool
     public var isBlockquote: Bool
@@ -36,7 +37,21 @@ public extension NSAttributedString {
             (.pmkStrong, .strong), (.pmkEmphasis, .emphasis), (.pmkStrikethrough, .strikethrough),
             (.pmkUnderline, .underline), (.pmkHighlighter, .highlighter), (.pmkCode, .code)
         ]
-        for (key, style) in pairs where isRange(selection, insideAttribute: key) { inline.insert(style) }
+        var mixed: Set<MDFormatting.InlineStyle> = []
+        let range = NSIntersectionRange(selection, NSRange(location: 0, length: length))
+        for (key, style) in pairs {
+            if selection.length == 0 {
+                if isRange(selection, insideAttribute: key) { inline.insert(style) }
+            } else {
+                var present = false
+                var absent = false
+                enumerateAttribute(key, in: range) { value, _, _ in
+                    if value == nil { absent = true } else { present = true }
+                }
+                if present && !absent { inline.insert(style) }
+                if present && absent { mixed.insert(style) }
+            }
+        }
         let ns = string as NSString
         var heading: Int?
         var list: MDFormatting.ListKind?
@@ -45,22 +60,25 @@ public extension NSAttributedString {
         let end = min(NSMaxRange(selection), length)
         var first = true
         while first || location < end {
+            let isFirst = first
             first = false
             let paragraph = ns.paragraphRange(for: NSRange(location: location, length: 0))
             let level = headerLevel(at: paragraph.location)
             heading = heading == nil || heading == level ? level : -1
             let kind = listKind(at: paragraph.location)
-            if list == nil, !mixedList { list = kind } else if list != kind { mixedList = true }
+            if isFirst { list = kind } else if list != kind { mixedList = true }
             location = NSMaxRange(paragraph)
             if paragraph.length == 0 { break }
         }
-        return MDFormatting(
+        var result = MDFormatting(
             headingLevel: heading == -1 ? nil : heading,
             inline: inline,
             isLink: isRange(selection, insideAttribute: .pmkLink),
             isCodeBlock: isRangeInsideBlockCode(selection),
             isBlockquote: isRange(selection, insideAttribute: .pmkBlockquote),
             list: mixedList ? nil : list)
+        result.mixedInline = mixed
+        return result
     }
 
     private func listKind(at index: Int) -> MDFormatting.ListKind? {

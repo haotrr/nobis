@@ -112,6 +112,16 @@ import SFThemeKit
     weak var controller: MDTableAttachmentViewController?
     var indexPath = (row: 0, column: 0)
 
+    override func shouldChangeText(inRanges ranges: [NSValue], replacementStrings: [String]?) -> Bool {
+        if !hasMarkedText() { controller?.prepareForEdit() }
+        return super.shouldChangeText(inRanges: ranges, replacementStrings: replacementStrings)
+    }
+
+    override func breakUndoCoalescing() {
+        if !hasMarkedText() { controller?.prepareForEdit() }
+        super.breakUndoCoalescing()
+    }
+
     override func insertTab(_ sender: Any?) { controller?.selectCell(dRow: 0, dColumn: 1, from: indexPath, caretAtEnd: false) }
     override func insertBacktab(_ sender: Any?) { controller?.selectCell(dRow: 0, dColumn: -1, from: indexPath, caretAtEnd: true) }
     override func moveUp(_ sender: Any?) {
@@ -142,11 +152,28 @@ import SFThemeKit
         return r.maxY >= last.maxY - 1
     }
 
+    override func undo(_ sender: Any?) { controller?.hostTextView?.undo(sender) }
+    override func redo(_ sender: Any?) { controller?.hostTextView?.redo(sender) }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        if window?.firstResponder === self, !hasMarkedText(), event.charactersIgnoringModifiers?.lowercased() == "z",
+           flags == .command || flags == [.command, .shift] {
+            if flags.contains(.shift) { redo(nil) } else { undo(nil) }
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
     override func resignFirstResponder() -> Bool {
         let ok = super.resignFirstResponder()
         Task { @MainActor [weak self] in
             guard let self, self.window?.firstResponder !== self else { return }
-            if !(self.window?.firstResponder is MDTableCellTextView) { self.controller?.endEditing(returnFocus: false) }
+            // A toolbar/popover may temporarily own focus. Keep this cell and its
+            // selection alive; clicking back into the document closes it normally.
+            if self.window?.firstResponder === self.controller?.hostTextView {
+                self.controller?.endEditing(returnFocus: false)
+            }
         }
         return ok
     }
@@ -216,7 +243,7 @@ import SFThemeKit
 }
 
 /// `TableAttachmentViewController` (+ core) — owns the model, the grid view, the cell editor and the
-/// debounced write-back of the markdown into the attachment.
+/// immediate write-back of the markdown into the attachment.
 @MainActor public final class MDTableAttachmentViewController: NSViewController {
     public weak var textAttachment: MDTableTextAttachment?
     public weak var hostTextView: MDTextView?
@@ -230,7 +257,21 @@ import SFThemeKit
     private let cellEditorController = MDEditorController()
     private var cellScrollView: NSScrollView?
     private var cellTextView: MDTableCellTextView?
-    private var saveTask: Task<Void, Never>?
+    private struct Focus {
+        var row: Int
+        var column: Int
+        var selection: NSRange
+    }
+    private struct Snapshot {
+        var markdown: String
+        var focus: Focus?
+    }
+    private var committedFocus: Focus?
+    private var restoring = false
+    public var activeCellEditor: MDTextView? { cellTextView }
+    private var currentFocus: Focus? {
+        cellTextView.map { Focus(row: $0.indexPath.row, column: $0.indexPath.column, selection: $0.selectedRange()) }
+    }
     private var tableView: MDTableAttachmentView { view as! MDTableAttachmentView }
 
     public init(attachment: MDTableTextAttachment, hostTextView: MDTextView, editorController: MDEditorController, gridRenderer: MDTableAttachmentRenderer, themeManager: SFThemeManager) {
@@ -324,13 +365,16 @@ import SFThemeKit
     public func beginEditing(at ip: (row: Int, column: Int), clickPoint: CGPoint? = nil) {
         guard let l = layout, ip.row < l.rects.count, ip.column < l.rects[ip.row].count else { return }
         if let tv = cellTextView, tv.indexPath == ip { tv.window?.makeFirstResponder(tv); return }
+        guard cellTextView?.hasMarkedText() != true else { return }
         endEditing(returnFocus: false)
+        hostTextView?.breakUndoCoalescing()
         let rect = l.rects[ip.row][ip.column]
         let tv = MDTableCellTextView(frame: NSRect(origin: .zero, size: rect.size), editorController: cellEditorController)
         tv.controller = self
         tv.indexPath = ip
         tv.autoresizingMask = [.width, .height]
-        tv.allowsUndo = true
+        tv.allowsUndo = false
+        tv.editorUndoManager.disableUndoRegistration()
         let sv = MDTableCellScrollView(frame: rect)
         sv.documentView = tv
         sv.drawsBackground = false
@@ -364,18 +408,19 @@ import SFThemeKit
             let idx = tv.characterIndexForInsertion(at: local)
             tv.setSelectedRange(NSRange(location: min(idx, tv.string.utf16.count), length: 0))
         }
+        committedFocus = currentFocus
         NotificationCenter.default.addObserver(self, selector: #selector(cellTextDidChange(_:)), name: MDTextViewTextDidChangeNotification, object: tv)
     }
 
     public func endEditing(returnFocus: Bool) {
-        guard let tv = cellTextView else { return }
+        guard let tv = cellTextView, !tv.hasMarkedText() else { return }
         NotificationCenter.default.removeObserver(self, name: MDTextViewTextDidChangeNotification, object: tv)
         commitCell(tv)
         cellScrollView?.removeFromSuperview()
         cellScrollView = nil
         cellTextView = nil
         relayout(needsLayout: false)
-        writeBack(debounce: false)
+        writeBack()
         if returnFocus, let host = hostTextView { host.window?.makeFirstResponder(host) }
     }
 
@@ -397,12 +442,12 @@ import SFThemeKit
     }
 
     @objc private func cellTextDidChange(_ note: Notification) {
-        guard let tv = cellTextView, !tv.hasMarkedText() else { return }
+        guard !restoring, let tv = cellTextView, !tv.hasMarkedText() else { return }
         // Styling ran first and reset the paragraph style, so the column's alignment goes back on.
         align(tv, model.rows[tv.indexPath.row][tv.indexPath.column].alignment)
         commitCell(tv)
         relayout(needsLayout: true)
-        writeBack(debounce: false)
+        writeBack()
     }
 
     private func align(_ tv: MDTableCellTextView, _ alignment: Int) {
@@ -430,29 +475,71 @@ import SFThemeKit
 
     // MARK: Write-back
 
-    func writeBack(debounce: Bool) {
-        saveTask?.cancel(); saveTask = nil
-        if debounce {
-            saveTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(2))
-                guard !Task.isCancelled else { return }
-                self?.writeBack(debounce: false)
-            }
-            return
-        }
-        guard let att = textAttachment, let host = hostTextView, let ec = hostEditorController else { return }
-        let prev = att.representedText
-        let md = model.markdown()
-        guard prev != md else { return }
-        let previousSource = host.markdown
-        let replacementRange = NSRange(location: 0, length: host.mdTextStorage.length)
+    private func styledTable(_ markdown: String) -> NSAttributedString {
+        let renderer = cellEditorController.attributedStringRenderer
+        renderer.styleInlinesOnly = false
+        defer { renderer.styleInlinesOnly = true }
+        // The parser commits table rows only after a newline; attachment text excludes it.
+        let text = renderer.styledAttributedString(fromString: markdown + "\n")
+        text.deleteCharacters(in: NSRange(location: text.length - 1, length: 1))
+        return text
+    }
+
+    func prepareForEdit() { committedFocus = currentFocus ?? committedFocus }
+
+    func writeBack() {
+        guard !restoring, let att = textAttachment, let host = hostTextView, let ec = hostEditorController else { return }
+        let previous = att.representedText
+        let markdown = model.markdown()
+        guard previous != markdown else { return }
+        let range = host.mdTextStorage.range(ofTextAttachment: att)
+        guard range.location != NSNotFound else { return }
+        registerRestore(Snapshot(markdown: previous, focus: committedFocus), at: range.location, host: host)
+        att.representedAttributedText = styledTable(markdown)
+        committedFocus = currentFocus ?? committedFocus
+        ec.textView(host, didChangeAttachmentTextRepresentation: att, previousRepresentedText: previous)
+    }
+
+    private func registerRestore(_ snapshot: Snapshot, at location: Int, host: MDTextView) {
+        // Resolve the current attachment at undo time: a restyle may have rebuilt its controller.
         host.editorUndoManager.registerUndo(withTarget: host) { view in
-            view.editorController.replaceCharacters(in: replacementRange, with: NSAttributedString(string: previousSource),
-                                                    selectRange: NSRange(location: 0, length: 0), in: view)
+            guard location < view.mdTextStorage.length,
+                  let attachment = view.mdTextStorage.textAttachment(at: location) as? MDTableTextAttachment,
+                  let table = attachment.attachmentViewController as? MDTableAttachmentViewController else { return }
+            table.restore(snapshot)
         }
-        let styled = cellEditorController.attributedStringRenderer.styledAttributedString(fromString: md)
-        att.representedAttributedText = styled
-        ec.textView(host, didChangeAttachmentTextRepresentation: att, previousRepresentedText: prev)
+        host.editorUndoManager.setActionName("编辑表格")
+    }
+
+    private func restore(_ snapshot: Snapshot) {
+        guard let att = textAttachment, let host = hostTextView, let ec = hostEditorController else { return }
+        let range = host.mdTextStorage.range(ofTextAttachment: att)
+        guard range.location != NSNotFound, cellTextView?.hasMarkedText() != true else { return }
+        registerRestore(Snapshot(markdown: att.representedText, focus: currentFocus ?? committedFocus), at: range.location, host: host)
+        let previous = att.representedText
+        let clip = host.enclosingScrollView?.contentView
+        let origin = clip?.bounds.origin
+        restoring = true
+        if let cell = cellTextView { NotificationCenter.default.removeObserver(self, name: MDTextViewTextDidChangeNotification, object: cell) }
+        cellScrollView?.removeFromSuperview()
+        cellTextView = nil
+        cellScrollView = nil
+        att.representedAttributedText = styledTable(snapshot.markdown)
+        let (rows, columns) = gridRenderer.model(from: att.representedAttributedText)
+        model = MDTableDataModel(rows: rows, columns: columns, separatorAttributes: model.separatorAttributes)
+        ec.textView(host, didChangeAttachmentTextRepresentation: att, previousRepresentedText: previous)
+        relayout(needsLayout: true)
+        if let focus = snapshot.focus, focus.row < rows.count, focus.column < columns {
+            beginEditing(at: (focus.row, focus.column))
+            if let cell = cellTextView {
+                let start = min(focus.selection.location, cell.mdTextStorage.length)
+                cell.setSelectedRange(NSRange(location: start, length: min(focus.selection.length, cell.mdTextStorage.length - start)))
+            }
+        }
+        committedFocus = currentFocus
+        restoring = false
+        if let origin { clip?.scroll(to: origin) }
+        if let cell = cellTextView { cell.scrollRangeToVisible(cell.selectedRange()) }
     }
 
     // MARK: Menu
@@ -477,7 +564,14 @@ import SFThemeKit
     }
 
     private var targetIP: (row: Int, column: Int) { cellTextView?.indexPath ?? moreButtonIndexPath ?? (0, 0) }
-    private func mutate(_ body: () -> Void) { endEditing(returnFocus: false); body(); relayout(needsLayout: true); writeBack(debounce: false) }
+    private func mutate(_ body: () -> Void) {
+        guard cellTextView?.hasMarkedText() != true else { return }
+        moreButtonIndexPath = targetIP
+        endEditing(returnFocus: false)
+        body()
+        relayout(needsLayout: true)
+        writeBack()
+    }
     @objc private func addRow() { mutate { model.insertRow(at: targetIP.row + 1) } }
     @objc private func addRowAbove() { mutate { model.insertRow(at: targetIP.row) } }
     @objc private func deleteRow() { mutate { model.deleteRow(at: targetIP.row) } }

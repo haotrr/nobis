@@ -11,33 +11,23 @@ struct MDTextKitEditor: NSViewRepresentable {
     var request: RichEditRequest?
     var editable = true
     var loadImages = true
+    var preserveSelection = false
+    var onSelection: (NoteEditorSelection) -> Void = { _ in }
 
     func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
 
-    func makeNSView(context: Context) -> NSScrollView {
-        let scroll = NSScrollView()
-        scroll.drawsBackground = false
-        scroll.hasVerticalScroller = true
-        scroll.autohidesScrollers = true
-        scroll.borderType = .noBorder
-        scroll.automaticallyAdjustsContentInsets = false
-        scroll.documentView = context.coordinator.view
+    func makeNSView(context: Context) -> NobisMDTextView {
         context.coordinator.update(self)
-        return scroll
+        return context.coordinator.view
     }
 
-    func updateNSView(_ view: NSScrollView, context: Context) { context.coordinator.update(self) }
+    func updateNSView(_ view: NobisMDTextView, context: Context) { context.coordinator.update(self) }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSScrollView, context: Context) -> CGSize? {
-        let width = max(100, proposal.width ?? 600)
-        let view = context.coordinator.view
-        view.setFrameSize(NSSize(width: width, height: view.frame.height))
-        guard let layout = view.layoutManager, let container = view.textContainer else { return nil }
-        layout.ensureLayout(for: container)
-        return CGSize(width: width, height: min(900, max(240, layout.usedRect(for: container).height + 32)))
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NobisMDTextView, context: Context) -> CGSize? {
+        nsView.measuredSize(width: max(100, proposal.width ?? 600))
     }
 
-    static func dismantleNSView(_ nsView: NSScrollView, coordinator: Coordinator) { coordinator.stop() }
+    static func dismantleNSView(_ nsView: NobisMDTextView, coordinator: Coordinator) { coordinator.stop() }
 
     @MainActor final class Coordinator {
         var binding: Binding<String>
@@ -53,6 +43,35 @@ struct MDTextKitEditor: NSViewRepresentable {
         private var imagesEnabled = false
         private var needsImageRefresh = false
         private var stopped = false
+        private var onSelection: (NoteEditorSelection) -> Void = { _ in }
+        private var preserveSelection = false
+        private var reported: NoteEditorSelection?
+
+        func selectionState(for target: MDTextView) -> NoteEditorSelection {
+            let format = target.editorController.formatting(in: target)
+            var state = NoteEditorSelection(enabled: target.isEditable, composing: target.hasMarkedText(), inTable: target !== view)
+            if format.headingLevel == 2 { state.selected.insert("heading") }
+            if format.headingLevel == 0 { state.selected.insert("body") }
+            if format.headingLevel == nil { state.mixed.formUnion(["heading", "body"]) }
+            for (style, action) in [(MDFormatting.InlineStyle.strong, "bold"), (.emphasis, "italic")] {
+                if format.inline.contains(style) { state.selected.insert(action) }
+                if format.mixedInline.contains(style) { state.mixed.insert(action) }
+            }
+            if format.list == .bullet { state.selected.insert("list") }
+            if format.list == .task { state.selected.insert("checklist") }
+            return state
+        }
+
+        private func reportSelection() {
+            Task { @MainActor [weak self] in
+                guard let self, !self.stopped else { return }
+                let target = self.activeView.flatMap { $0 === self.view || $0.isDescendant(of: self.view) ? $0 : nil } ?? self.view
+                var state = self.selectionState(for: target)
+                if !self.preserveSelection, let responder = self.view.window?.firstResponder as? NSTextView,
+                   responder !== self.view, !responder.isDescendant(of: self.view) { state.enabled = false }
+                if state != self.reported { self.reported = state; self.onSelection(state) }
+            }
+        }
 
         init(text: Binding<String>) {
             binding = text
@@ -62,6 +81,8 @@ struct MDTextKitEditor: NSViewRepresentable {
             theme = Self.makeTheme()
             view.applyTheme(theme)
             view.drawsBackground = false
+            view.isVerticallyResizable = false
+            view.autoresizingMask = []
             view.textContainerInset = NSSize(width: 0, height: 12)
             view.mdTextContainer.maxColumSize = 0
             view.setAccessibilityLabel("笔记正文")
@@ -75,17 +96,24 @@ struct MDTextKitEditor: NSViewRepresentable {
             observers.append(center.addObserver(forName: MDTextViewTextDidChangeNotification, object: view, queue: nil) { [weak self] _ in
                 MainActor.assumeIsolated { self?.publish() }
             })
+            observers.append(center.addObserver(forName: NSText.didBeginEditingNotification, object: nil, queue: nil) { [weak self] _ in
+                MainActor.assumeIsolated { self?.reportSelection() }
+            })
             observers.append(center.addObserver(forName: MDTextViewTextDidChangeSelectionNotification, object: nil, queue: nil) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    guard let self, let target = self.view.window?.firstResponder as? MDTextView,
-                          target === self.view || target.isDescendant(of: self.view) else { return }
-                    if target.window?.firstResponder === target { self.activeView = target }
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    if let target = self.view.window?.firstResponder as? MDTextView,
+                       target === self.view || target.isDescendant(of: self.view) { self.activeView = target }
+                    self.reportSelection()
                 }
             })
         }
 
         func update(_ host: MDTextKitEditor) {
             binding = host.$text
+            onSelection = host.onSelection
+            preserveSelection = host.preserveSelection
+            defer { reportSelection() }
             if view.isEditable != host.editable { emitted = nil }
             view.isEditable = host.editable
             view.isSelectable = true
@@ -95,6 +123,7 @@ struct MDTextKitEditor: NSViewRepresentable {
             if emitted != host.text, !view.hasMarkedText() {
                 installing = true
                 view.editorController.loadString(host.text, into: view)
+                view.invalidateMeasurement()
                 emitted = host.text
                 installing = false
             } else if enabledImages { needsImageRefresh = true }
@@ -114,10 +143,12 @@ struct MDTextKitEditor: NSViewRepresentable {
 
         private func publish() {
             guard !stopped, !installing, !view.hasMarkedText() else { return }
+            view.invalidateMeasurement()
             let source = view.markdown
             emitted = source
             if binding.wrappedValue != source { binding.wrappedValue = source }
             refreshImagesIfPossible()
+            reportSelection()
         }
 
         private func imageData(_ path: String) -> Data? {
@@ -145,6 +176,7 @@ struct MDTextKitEditor: NSViewRepresentable {
             needsImageRefresh = false
             installing = true
             view.editorController.restyleAll(in: view)
+            view.invalidateMeasurement()
             installing = false
         }
 
@@ -182,6 +214,45 @@ struct MDTextKitEditor: NSViewRepresentable {
 }
 
 @MainActor final class NobisMDTextView: MDTextView {
+    private var measurement: CGSize?
+    private var revealScheduled = false
+
+    func invalidateMeasurement() {
+        measurement = nil
+        invalidateIntrinsicContentSize()
+        needsLayout = true
+    }
+
+    func measuredSize(width: CGFloat) -> CGSize {
+        if let measurement, abs(measurement.width - width) < 0.5 { return measurement }
+        let changedWidth = abs(frame.width - width) >= 0.5
+        if changedWidth { setFrameSize(NSSize(width: width, height: frame.height)) }
+        guard let layoutManager, let textContainer else { return CGSize(width: width, height: 240) }
+        layoutManager.ensureLayout(for: textContainer)
+        let result = CGSize(width: width, height: max(240, ceil(layoutManager.usedRect(for: textContainer).maxY + textContainerInset.height * 2 + 8)))
+        measurement = result
+        if changedWidth { revealCaretAfterLayout() }
+        return result
+    }
+
+    override func didChangeText() {
+        super.didChangeText()
+        invalidateMeasurement()
+        revealCaretAfterLayout()
+    }
+
+    func revealCaretAfterLayout() {
+        guard !revealScheduled, window?.firstResponder === self else { return }
+        revealScheduled = true
+        Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self else { return }
+            self.revealScheduled = false
+            guard self.window?.firstResponder === self else { return }
+            self.scrollRangeToVisible(self.selectedRange())
+        }
+    }
+
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard window?.firstResponder === self, isEditable, !hasMarkedText() else { return super.performKeyEquivalent(with: event) }
         let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
@@ -190,8 +261,8 @@ struct MDTextKitEditor: NSViewRepresentable {
             else if editorUndoManager.canUndo { editorUndoManager.undo() }
             return true
         }
-        if flags == .command, let key = event.charactersIgnoringModifiers?.lowercased(), ["b", "i", "k"].contains(key) {
-            Self.apply(key == "b" ? "bold" : key == "i" ? "italic" : "link:", to: self)
+        if flags == .command, let key = event.charactersIgnoringModifiers?.lowercased(), ["b", "i"].contains(key) {
+            Self.apply(key == "b" ? "bold" : "italic", to: self)
             return true
         }
         return super.performKeyEquivalent(with: event)
