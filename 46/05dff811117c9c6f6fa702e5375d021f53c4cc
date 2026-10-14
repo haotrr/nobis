@@ -1,0 +1,39 @@
+docs/feature-inventory.md
+  s_acc4a8c629dad0::t_30fceaa4ed11ed 10
+Tests/FamilyCoreTests/NoteEditorWindowTests.swift
+  s_acc4a8c629dad0::t_56fc5b045d4513 161
+  s_acc4a8c629dad0::t_277dc9ae0f65b9 137-149
+  s_acc4a8c629dad0::t_9515bfb73c3576 3,114-136,150-160,162-231
+Sources/NobisUI/Features/Notes/DocumentsView.swift
+  s_acc4a8c629dad0::t_613b6d05595113 599,725-728
+  s_acc4a8c629dad0::t_4d4760c59382e4 480-512,515-591,601,605-606,628,631,645,656,663,667,720,730,780,783,800
+docs/features/documents.md
+  s_acc4a8c629dad0::t_30fceaa4ed11ed 29
+DESIGN.md
+  s_acc4a8c629dad0::t_30fceaa4ed11ed 39,52
+docs/verification.md
+  s_acc4a8c629dad0::t_31c2762d2a7844 5-7,11
+  s_acc4a8c629dad0::t_63e13cde28a49e 8-10,14
+Sources/NobisUI/Features/Notes/Editor/NoteEditorWindows.swift
+  s_acc4a8c629dad0::t_63e13cde28a49e 114-115
+  s_acc4a8c629dad0::t_613b6d05595113 45,47,51,53-58,62,79,84-90,109-113,202-203,206,212-235,243-245,249-264,266-269
+  s_acc4a8c629dad0::t_bd2553e8adb2d3 19,32-33,46,116-120,123-159,170,173-179,197-201,273-284,287
+Sources/NobisUI/Features/Notes/Editor/MDTextKitEditor.swift
+  s_acc4a8c629dad0::t_f903a22a1cc936 9-24,27,35-41,54,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4605dff811117c9c6f6fa702e5375d021f53c4cc",
+  "prompts": {},
+  "sessions": {
+    "s_acc4a8c629dad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1380c-f431-7b43-8a04-ec8c8d335b4d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
