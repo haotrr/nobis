@@ -1,7 +1,7 @@
 import Foundation
 import FamilyDomain
 
-/// Device-only drafts retain the original heads; recovery never rebases a stale edit silently.
+/// Device-only drafts retain their revision baseline; only independent management changes can be reconciled.
 public struct DocumentDraft: Codable, Equatable, Sendable {
     public var body: RecordBody
     public var spaceID: UUID
@@ -34,5 +34,37 @@ public struct DocumentDraftStore: Sendable {
     }
     public func remove(_ key: UUID) throws {
         if FileManager.default.fileExists(atPath: url(key).path) { try FileManager.default.removeItem(at: url(key)) }
+    }
+}
+
+extension FamilyCore {
+    /// Reconcile only independent management changes; body edits still require review.
+    public func reconcilingManagementChanges(in draft: DocumentDraft) throws -> DocumentDraft {
+        guard let id = draft.recordID, !draft.expected.isEmpty else { return draft }
+        let current = try record(id, spaceID: draft.spaceID)
+        guard !current.deleted, !current.conflicted else { throw NobisError.conflict }
+        guard draft.expected != Set(current.heads.map(\.id)) else { return draft }
+        guard draft.expected.count == 1,
+              let base = try history(id, spaceID: draft.spaceID).first(where: { draft.expected.contains($0.id) }),
+              !base.deleted, base.body.kind == .document, current.body.kind == .document else { throw NobisError.conflict }
+        var unchanged = current.body
+        unchanged.title = base.body.title
+        unchanged.noteGroup = base.body.noteGroup
+        unchanged.projectIDs = base.body.projectIDs
+        unchanged.isPinned = base.body.isPinned
+        unchanged.status = base.body.status
+        guard unchanged == base.body else { throw NobisError.conflict }
+        func merge<T: Equatable>(_ local: T, _ old: T, _ remote: T) throws -> T {
+            guard local == old || remote == old || local == remote else { throw NobisError.conflict }
+            return local == old ? remote : local
+        }
+        var result = draft
+        result.body.title = try merge(draft.body.title, base.body.title, current.body.title)
+        result.body.noteGroup = try merge(draft.body.noteGroup, base.body.noteGroup, current.body.noteGroup)
+        result.body.projectIDs = try merge(draft.body.projectIDs, base.body.projectIDs, current.body.projectIDs)
+        result.body.isPinned = try merge(draft.body.isPinned, base.body.isPinned, current.body.isPinned)
+        result.body.status = try merge(draft.body.status, base.body.status, current.body.status)
+        result.expected = Set(current.heads.map(\.id))
+        return result
     }
 }

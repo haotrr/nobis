@@ -11,6 +11,11 @@ struct DocumentsView: View {
     @State private var search = ""
     @State private var archived = false
     @State private var creating = false
+    @State private var editingMetadata: Record?
+    @State private var metadataTitle = ""
+    @State private var metadataGroup = ""
+    @State private var metadataIssue: String?
+    private var hasFilters: Bool { !search.isEmpty || !group.isEmpty || pinnedOnly }
     @State private var deleting: Record?
     @AppStorage("notes.sortOrder") private var sortOrder = "modifiedDescending"
     private var documents: [Record] {
@@ -43,11 +48,11 @@ struct DocumentsView: View {
             }.padding(.vertical, 4)
             LazyVStack(spacing: 16) {
             if documents.isEmpty {
-                WorkspaceEmptyState(title: search.isEmpty ? "还没有笔记" : "没有匹配的笔记",
-                    icon: search.isEmpty ? "doc.text" : "magnifyingglass",
-                    message: search.isEmpty ? "记下想法，也留给彼此补充。" : "试试其他关键词或可见范围。",
-                    actionTitle: search.isEmpty ? "新建笔记" : "清除搜索") {
-                        if search.isEmpty { creating = true } else { search = "" }
+                WorkspaceEmptyState(title: hasFilters ? "当前筛选无结果" : "还没有笔记",
+                    icon: hasFilters ? "line.3.horizontal.decrease.circle" : "doc.text",
+                    message: hasFilters ? "试试其他关键词或分组，或清除筛选。" : "记下想法，也留给彼此补充。",
+                    actionTitle: hasFilters ? "清除筛选" : "新建笔记") {
+                        if hasFilters { search = ""; group = ""; pinnedOnly = false } else { creating = true }
                     }
             }
             ForEach(documents) { document in
@@ -58,6 +63,15 @@ struct DocumentsView: View {
                             Text(document.body.title).font(.headline).lineLimit(2)
                             if model.unreadComments(for: document.id) > 0 { Label("\(model.unreadComments(for: document.id))", systemImage: "bubble.fill").font(.caption).foregroundStyle(.tint).accessibilityLabel("有未读评注") }
                             if document.conflicted { Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange) }
+                        }
+                        if document.body.status == .archived || !document.body.projectIDs.isEmpty {
+                            HStack {
+                                if document.body.status == .archived { Label("已归档", systemImage: "archivebox") }
+                                ForEach(document.body.projectIDs, id: \.self) { id in
+                                    Label(model.activeRecords.first(where: { $0.id == id && $0.latest.spaceID == document.latest.spaceID })?.body.title ?? "项目不可用", systemImage: "folder")
+                                        .lineLimit(1)
+                                }
+                            }.font(.caption).foregroundStyle(.secondary)
                         }
                         documentExcerpt(document.body.notes).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
                         ViewThatFits(in: .horizontal) {
@@ -76,6 +90,34 @@ struct DocumentsView: View {
                     .contextMenu { managementMenu(document) }
             }
             }
+        }
+        .sheet(item: $editingMetadata) { document in
+            VStack(alignment: .leading, spacing: 16) {
+                Text("名称与分组").font(.headline)
+                TextField("笔记标题", text: $metadataTitle).textFieldStyle(.roundedBorder)
+                TextField("分组（可留空）", text: $metadataGroup).textFieldStyle(.roundedBorder)
+                Menu("选择已有分组") {
+                    Button("未分组") { metadataGroup = "" }
+                    ForEach(Array(Set(model.activeRecords.filter { $0.body.kind == .document && $0.latest.spaceID == document.latest.spaceID }.compactMap { $0.body.noteGroup })).sorted(), id: \.self) { name in
+                        Button(name) { metadataGroup = name }
+                    }
+                }
+                if let metadataIssue { Text(metadataIssue).foregroundStyle(.red) }
+                HStack {
+                    Button("取消") { editingMetadata = nil }
+                    Spacer()
+                    Button("保存") {
+                        do {
+                            var body = document.body
+                            body.title = metadataTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let name = metadataGroup.trimmingCharacters(in: .whitespacesAndNewlines)
+                            body.noteGroup = name.isEmpty ? nil : name
+                            try model.save(body, spaceID: document.latest.spaceID, existing: document)
+                            editingMetadata = nil
+                        } catch { metadataIssue = error.localizedDescription }
+                    }.disabled(metadataTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }.padding(24).frame(idealWidth: 380)
         }
         .confirmationDialog("将笔记移入回收站？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), presenting: deleting) { document in
             Button("移入回收站", role: .destructive) {
@@ -102,6 +144,10 @@ struct DocumentsView: View {
 
     @ViewBuilder private func managementMenu(_ document: Record) -> some View {
         let writable = !document.conflicted && model.canWrite(spaceID: document.latest.spaceID)
+        Button("重命名与分组", systemImage: "pencil") {
+            metadataTitle = document.body.title; metadataGroup = document.body.noteGroup ?? ""
+            metadataIssue = nil; editingMetadata = document
+        }.disabled(!writable)
         Button(document.body.isPinned == true ? "取消置顶" : "置顶笔记", systemImage: "pin") {
             update(document) { $0.isPinned = !($0.isPinned ?? false) }
         }.disabled(!writable)
@@ -672,6 +718,12 @@ struct DocumentEditor: View {
             if let draftKey, let draft = try model.draftStore.read(draftKey) {
                 guard model.spaces.contains(where: { $0.id == draft.spaceID }), model.canWrite(spaceID: draft.spaceID) else { throw NobisError.forbidden }
                 value = draft.body; spaceID = draft.spaceID; expected = draft.expected; savedRecordID = draft.recordID ?? savedRecordID
+                if let core = model.core {
+                    do {
+                        let reconciled = try core.reconcilingManagementChanges(in: draft)
+                        value = reconciled.body; expected = reconciled.expected
+                    } catch { issue = "笔记有无法自动合并的修改。草稿已保留，请核对后再保存。" }
+                }
                 draftStatus = "已恢复此设备的草稿，尚未发布"
                 if existing != nil && expected != Set(existing!.heads.map(\.id)) { issue = "正文已有新版本。草稿已保留，请复制需要的内容并与最新版本核对；保存不会覆盖新版本。" }
             }
@@ -693,7 +745,11 @@ struct DocumentEditor: View {
         guard let spaceID else { issue = "请选择可见范围。"; return }
         do {
             guard draftWritable else { throw NobisError.validation("草稿尚未成功读取，请重新打开编辑器。") }
-            try model.save(value, spaceID: spaceID, existing: existing, expected: expected, recordID: existing?.id ?? savedRecordID)
+            guard let core = model.core else { throw NobisError.validation("空间尚未就绪。") }
+            let draft = DocumentDraft(body: value, spaceID: spaceID, recordID: existing?.id ?? savedRecordID, expected: expected)
+            let reconciled = try core.reconcilingManagementChanges(in: draft)
+            try model.save(reconciled.body, spaceID: spaceID, existing: existing, expected: reconciled.expected, recordID: existing?.id ?? savedRecordID)
+            value = reconciled.body
             if let draftKey { do { try model.draftStore.remove(draftKey) } catch { model.error = "笔记已保存，但旧草稿清理失败：" + error.localizedDescription } }
             let id = existing?.id ?? savedRecordID
             existing = try model.core?.record(id, spaceID: spaceID)
