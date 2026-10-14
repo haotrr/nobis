@@ -748,9 +748,9 @@ struct DocumentEditorContent: View {
             do {
                 let url = try result.get(); let scoped = url.startAccessingSecurityScopedResource(); defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                guard size <= 200_000 else { throw NobisError.validation("文件过大，请选择不超过 20,000 字的 Markdown 笔记。") }
+                guard size <= DocumentContentLimits.maximumFileBytes else { throw NobisError.validation("Markdown 文件过大，请拆分笔记后导入。") }
                 let text = try String(contentsOf: url, encoding: .utf8)
-                guard text.count <= 20_000 else { throw NobisError.validation("笔记正文不能超过 20,000 字。") }
+                try DocumentContentLimits.validate(text)
                 // Import appends to a nonempty draft, preserving the text already entered.
                 value.notes += (value.notes.isEmpty ? "" : "\n\n") + text
                 if value.title.isEmpty { value.title = url.deletingPathExtension().lastPathComponent }
@@ -805,7 +805,12 @@ struct DocumentEditorContent: View {
                         Button { formatRequest = RichEditRequest(action: "toggle") } label: { Image(systemName: "checkmark.circle").touchTarget() }.disabled(blockFormattingDisabled).help("切换当前清单完成状态").accessibilityLabel("切换清单完成状态")
                         Menu {
                             Button("表格", systemImage: "tablecells") { formatRequest = RichEditRequest(action: "insert-table") }
+                            #if os(iOS)
+                            Button("从相册选择", systemImage: "photo.on.rectangle") { formatRequest = RichEditRequest(action: "insert-photo") }
+                            Button("图片链接", systemImage: "link") { formatRequest = RichEditRequest(action: "insert-image") }
+                            #else
                             Button("图片", systemImage: "photo") { formatRequest = RichEditRequest(action: "insert-image") }
+                            #endif
                             Button("代码块", systemImage: "chevron.left.forwardslash.chevron.right") { formatRequest = RichEditRequest(action: "insert-code") }
                         } label: { Image(systemName: "plus").touchTarget() }.disabled(blockFormattingDisabled).accessibilityLabel("插入内容")
                         Spacer()

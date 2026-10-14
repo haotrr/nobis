@@ -124,7 +124,8 @@ public struct LedgerSummary: Codable, Sendable {
         return revision
     }
     func validate(_ body: RecordBody, space: Space, recordID: UUID) throws {
-        guard !body.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, body.title.count <= 200, body.notes.count <= 20_000 else { throw NobisError.validation("标题不能为空且最多 200 字，备注最多 20,000 字。") }
+        if body.kind == .document { try DocumentContentLimits.validate(body.notes) }
+        guard !body.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, body.title.count <= 200, body.kind == .document || body.notes.count <= 20_000 else { throw NobisError.validation("标题不能为空且最多 200 字，备注最多 20,000 字。") }
         guard (body.noteGroup?.count ?? 0) <= 40, (body.referenceIDs?.count ?? 0) <= 30 else { throw NobisError.validation("分组最多 40 字，相关内容最多 30 条。") }
         for id in body.referenceIDs ?? [] {
             guard id != recordID else { throw NobisError.validation("不能关联自身。") }

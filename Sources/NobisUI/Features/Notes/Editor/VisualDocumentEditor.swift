@@ -1,4 +1,10 @@
 import SwiftUI
+import FamilyCore
+#if os(iOS)
+import PhotosUI
+import CoreTransferable
+import UniformTypeIdentifiers
+#endif
 
 @MainActor @Observable
 final class DocumentBlockBuffer {
@@ -72,6 +78,13 @@ struct BlockDocumentEditor: View {
     @State private var requestTarget: String?
     @State private var pendingRequest: RichEditRequest?
     @FocusState private var imageFocus: String?
+    #if os(iOS)
+    @State private var showPhotos = false
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var photoIssue: String?
+    @State private var importingPhoto = false
+    @State private var photoFocus: NoteEditorFocus?
+    #endif
 
     init(text: Binding<String>, request: RichEditRequest? = nil, onSelection: @escaping (NoteEditorSelection) -> Void = { _ in }) {
         _text = text; self.request = request; self.onSelection = onSelection
@@ -132,7 +145,9 @@ struct BlockDocumentEditor: View {
                 case .image(let alt, let address, let title):
                     VStack(alignment: .leading, spacing: 10) {
                         HStack { Label("图片", systemImage: "photo").font(.caption).foregroundStyle(.secondary); Spacer(); blockMenu(block) }
-                        if let url = URL(string: address), url.scheme?.lowercased() == "https", url.host != nil {
+                        if address.hasPrefix(NoteEmbeddedImage.prefix) {
+                            NoteEmbeddedImageView(address: address, label: alt.isEmpty ? "笔记照片" : alt)
+                        } else if let url = URL(string: address), url.scheme?.lowercased() == "https", url.host != nil {
                             AsyncImage(url: url) { phase in
                                 NoteImageViewport(phase: phase, label: alt.isEmpty ? "笔记图片" : alt)
                             }.id(address)
@@ -143,7 +158,11 @@ struct BlockDocumentEditor: View {
                         }
                         TextField("图片说明", text: imageBinding(block.id, field: 0), axis: .vertical).textFieldStyle(.plain).font(.callout).accessibilityLabel("图片说明").focused($imageFocus, equals: "image:\(block.id)")
                         DisclosureGroup("替换图片与设置") {
-                            TextField("https://", text: imageBinding(block.id, field: 1)).textFieldStyle(.roundedBorder).accessibilityLabel("图片地址")
+                            if address.hasPrefix(NoteEmbeddedImage.prefix) {
+                                Text("照片已保存在笔记中").foregroundStyle(.secondary)
+                            } else {
+                                TextField("https://", text: imageBinding(block.id, field: 1)).textFieldStyle(.roundedBorder).accessibilityLabel("图片地址")
+                            }
                             TextField("图片标题（可选）", text: imageBinding(block.id, field: 2)).textFieldStyle(.roundedBorder)
                         }.font(.caption).foregroundStyle(.secondary)
                     }.padding(12).background(.quaternary.opacity(0.2), in: RoundedRectangle(cornerRadius: 10))
@@ -154,6 +173,33 @@ struct BlockDocumentEditor: View {
                 Button("继续写正文", systemImage: "text.cursor") { insert(.text("\n")) }.buttonStyle(.borderless)
             }
         }
+        #if os(iOS)
+        .disabled(importingPhoto)
+        .photosPicker(isPresented: $showPhotos, selection: $selectedPhoto, matching: .images)
+        .overlay(alignment: .top) {
+            if importingPhoto {
+                HStack { ProgressView("正在添加照片…"); Button("取消") { selectedPhoto = nil } }
+                    .padding(12).background(.regularMaterial, in: Capsule())
+            }
+        }
+        .alert("照片未添加", isPresented: Binding(get: { photoIssue != nil }, set: { if !$0 { photoIssue = nil } })) {
+            Button("好", role: .cancel) { photoIssue = nil }
+        } message: { Text(photoIssue ?? "") }
+        .task(id: selectedPhoto) {
+            guard let selectedPhoto else { return }
+            importingPhoto = true
+            defer { importingPhoto = false }
+            do {
+                guard let photo = try await selectedPhoto.loadTransferable(type: NotePickedPhoto.self) else { throw NoteEmbeddedImage.ImportError.invalid }
+                guard !Task.isCancelled else { return }
+                try DocumentContentLimits.validate(text + "\n" + DocumentBlock(.image(alt: "照片", address: photo.address, title: "")).markdown)
+                buffer.focus = photoFocus
+                insert(.image(alt: "照片", address: photo.address, title: ""))
+            } catch {
+                if !Task.isCancelled { photoIssue = error.localizedDescription }
+            }
+        }
+        #endif
         .onChange(of: buffer.focusRequest) { _, focus in
             if let focus, focus.target.hasPrefix("image:") { imageFocus = focus.target }
         }
@@ -172,6 +218,13 @@ struct BlockDocumentEditor: View {
             guard !composing else { return }
             switch request?.action {
             case "insert-table": insert(.table(rows: [["列一", "列二"], ["", ""]], alignment: ["---", "---"]))
+            #if os(iOS)
+            case "insert-photo":
+                guard !importingPhoto else { return }
+                photoFocus = buffer.focus
+                selectedPhoto = nil
+                showPhotos = true
+            #endif
             case "insert-image": insert(.image(alt: "", address: "", title: ""))
             case "insert-code": insert(.code(language: "", body: ""))
             default:
@@ -271,3 +324,16 @@ struct VisualDocumentEditor: View {
         #endif
     }
 }
+
+#if os(iOS)
+private struct NotePickedPhoto: Transferable, Sendable {
+    let address: String
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .image) { received in
+            let url = received.file
+            let address = try await Task.detached(priority: .userInitiated) { try NoteEmbeddedImage.importFile(url) }.value
+            return NotePickedPhoto(address: address)
+        }
+    }
+}
+#endif

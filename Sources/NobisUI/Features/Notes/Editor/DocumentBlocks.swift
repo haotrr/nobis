@@ -73,9 +73,11 @@ enum DocumentBlocks {
             } else if let image = image(line.trimmingCharacters(in: .whitespaces)) {
                 flush(); result.append(DocumentBlock(.image(alt: image.alt, address: image.address, title: image.title), original: raw(index, index + 1), trailingNewline: index + 1 < lines.count)); index += 1
             } else {
+                // Consume non-parenthesis runs without per-character backtracking: embedded photos
+                // can contain hundreds of thousands of characters on the same line as prose.
                 // Images in a paragraph become visual blocks too; surrounding text stays editable.
                 let ns = line as NSString
-                let matches = (try? NSRegularExpression(pattern: #"!\[(?:\\.|[^\]])*\]\((?:[^()]|\([^()]*\))*\)"#))?.matches(in: line, range: NSRange(location: 0, length: ns.length)) ?? []
+                let matches = (try? NSRegularExpression(pattern: #"!\[(?:\\.|[^\]])*\]\((?:[^()]++|\([^()]*\))*\)"#))?.matches(in: line, range: NSRange(location: 0, length: ns.length)) ?? []
                 var offset = 0
                 for match in matches {
                     let spelling = ns.substring(with: match.range)

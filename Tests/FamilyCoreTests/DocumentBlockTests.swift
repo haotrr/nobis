@@ -4,6 +4,16 @@ import FamilyCore
 @testable import NobisUI
 
 @Suite("可视化文档内容") @MainActor struct DocumentBlockTests {
+    @Test func largeEmbeddedPhotoReopensAsImageBlock() {
+        let address = "data:image/jpeg;base64," + String(repeating: "ABcd0123+/", count: 62_400)
+        let image = DocumentBlock(.image(alt: "照片", address: address, title: "")).markdown
+        for prefix in ["", "图片之前😀"] {
+            let source = prefix + image + "图片之后"
+            let parsed = DocumentBlocks.parse(source)
+            #expect(parsed.contains { $0.content == .image(alt: "照片", address: address, title: "") })
+            #expect(parsed.map(\.markdown).joined() == source)
+        }
+    }
     @Test func mixedBlocksKeepOriginalSource() {
         let source = "# 出发\n\n| 名称 | 说明 |\n| :--- | ---: |\n| 相机 | **电池** |\n\n![海边](https://example.com/a.png \"海\")\n\n```swift\nlet x = \"**原样**\"\n- [ ] 不是待办\n```\n\n- [ ] 买票\n"
         let blocks = DocumentBlocks.parse(source)

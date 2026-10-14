@@ -52,7 +52,9 @@ private struct MarkdownRemoteImage: View {
     let address: String
     @State private var loaded = false
     var body: some View {
-        if let url = URL(string: address), url.scheme?.lowercased() == "https", url.host != nil {
+        if address.hasPrefix(NoteEmbeddedImage.prefix) {
+            NoteEmbeddedImageView(address: address, label: alt.isEmpty ? "文档照片" : alt)
+        } else if let url = URL(string: address), url.scheme?.lowercased() == "https", url.host != nil {
             if loaded {
                 AsyncImage(url: url) { phase in
                     NoteImageViewport(phase: phase, label: alt.isEmpty ? "文档图片" : alt)

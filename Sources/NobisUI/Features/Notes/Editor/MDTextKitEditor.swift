@@ -218,6 +218,7 @@ struct MDTextKitEditor: NSViewRepresentable {
 
         private func imageData(_ path: String, retry: Bool = false) -> Data? {
             if let data = images[path] { return data }
+            if let data = NoteEmbeddedImage.data(path) { images[path] = data; return data }
             guard imagesEnabled, !failedImages.contains(path), imageTasks[path] == nil,
                   let url = URL(string: path), url.scheme?.lowercased() == "https", url.host != nil else { return nil }
             imageTasks[path] = Task { @MainActor [weak self] in
