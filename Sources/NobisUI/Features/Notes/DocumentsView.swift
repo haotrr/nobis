@@ -51,7 +51,7 @@ struct DocumentsView: View {
                             if model.unreadComments(for: document.id) > 0 { Label("\(model.unreadComments(for: document.id))", systemImage: "bubble.fill").font(.caption).foregroundStyle(.tint).accessibilityLabel("有未读评注") }
                             if document.conflicted { Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange) }
                         }
-                        Text(documentExcerpt(document.body.notes)).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+                        documentExcerpt(document.body.notes).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
                         ViewThatFits(in: .horizontal) {
                             HStack {
                                 ResourceOwnership(model: model, spaceID: document.latest.spaceID)
@@ -643,19 +643,38 @@ struct DocumentEditor: View {
 }
 
 /// A compact reading excerpt instead of raw Markdown syntax in the navigation list.
-private func documentExcerpt(_ source: String) -> AttributedString {
-    let lines = MarkdownBlock.parse(source).compactMap { block -> String? in
+private func documentExcerpt(_ source: String) -> some View {
+    var result = Text("")
+    var spoken = ""
+    var remaining = 180
+    for block in MarkdownBlock.parse(source) {
+        let content: String
+        var checked: Bool?
         switch block {
-        case .heading(_, let text), .paragraph(let text), .quote(let text), .list(_, let text): return text
-        case .task(_, let checked, let text): return (checked ? "☑ " : "☐ ") + text
-        case .table(let rows): return rows.first?.joined(separator: " · ")
-        case .image(let alt, _): return alt.isEmpty ? "图片" : alt
-        case .code: return "代码片段"
-        case .divider: return nil
+        case .heading(_, let text), .paragraph(let text), .quote(let text), .list(_, let text): content = text
+        case .task(_, let completed, let text):
+            checked = completed
+            content = text
+        case .table(let rows): content = rows.first?.joined(separator: " · ") ?? ""
+        case .image(let alt, _): content = alt.isEmpty ? "图片" : alt
+        case .code: content = "代码片段"
+        case .divider: continue
+        }
+        guard !content.isEmpty, remaining > 0 else { continue }
+        let separator = spoken.isEmpty ? "" : "  "
+        let text = String(content.prefix(remaining))
+        remaining -= text.count + separator.count + (checked == nil ? 0 : 2)
+        var inline = (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
+        inline.link = nil
+        if let checked {
+            let symbol = Image(systemName: checked ? "checkmark.square" : "square")
+            result = Text("\(result)\(separator)\(symbol) \(Text(inline))")
+            spoken += separator + (checked ? "已完成：" : "未完成：") + String(inline.characters)
+        } else {
+            result = Text("\(result)\(separator)\(Text(inline))")
+            spoken += separator + String(inline.characters)
         }
     }
-    let text = String(lines.joined(separator: "  ").prefix(180))
-    var result = (try? AttributedString(markdown: text.isEmpty ? "暂无正文" : text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
-    result.link = nil
-    return result
+    return (spoken.isEmpty ? Text("暂无正文") : result)
+        .accessibilityLabel(spoken.isEmpty ? "暂无正文" : spoken)
 }
