@@ -11,13 +11,20 @@ struct DocumentsView: View {
     @State private var search = ""
     @State private var archived = false
     @State private var creating = false
+    @State private var deleting: Record?
+    @AppStorage("notes.sortOrder") private var sortOrder = "modifiedDescending"
     private var documents: [Record] {
         model.records(in: scope).filter {
             $0.body.kind == .document && (group.isEmpty || (group == "ungrouped" ? ($0.body.noteGroup ?? "").isEmpty : "group:" + ($0.body.noteGroup ?? "") == group)) && (!pinnedOnly || $0.body.isPinned == true) && (archived || $0.body.status != .archived) &&
             (search.isEmpty || $0.body.title.localizedCaseInsensitiveContains(search) || $0.body.notes.localizedCaseInsensitiveContains(search))
         }.sorted {
             if ($0.body.isPinned == true) != ($1.body.isPinned == true) { return $0.body.isPinned == true }
-            if $0.latest.createdAt != $1.latest.createdAt { return $0.latest.createdAt > $1.latest.createdAt }
+            if sortOrder == "title" {
+                let comparison = $0.body.title.localizedStandardCompare($1.body.title)
+                if comparison != .orderedSame { return comparison == .orderedAscending }
+            } else if $0.latest.createdAt != $1.latest.createdAt {
+                return sortOrder == "modifiedAscending" ? $0.latest.createdAt < $1.latest.createdAt : $0.latest.createdAt > $1.latest.createdAt
+            }
             return $0.id.uuidString < $1.id.uuidString
         }
     }
@@ -31,6 +38,7 @@ struct DocumentsView: View {
             }.pickerStyle(.menu)
             Toggle(isOn: $pinnedOnly) { Label("置顶", systemImage: "pin") }
                 .toggleStyle(.button).help("只看置顶笔记")
+            sortPicker
             Text("\(documents.count) 篇").font(.caption).foregroundStyle(.secondary)
             }.padding(.vertical, 4)
             LazyVStack(spacing: 16) {
@@ -65,14 +73,69 @@ struct DocumentsView: View {
                         }
                     }.padding(24).frame(maxWidth: .infinity, alignment: .leading).lifeCard()
                 }.buttonStyle(.plain)
+                    .contextMenu { managementMenu(document) }
             }
             }
+        }
+        .confirmationDialog("将笔记移入回收站？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), presenting: deleting) { document in
+            Button("移入回收站", role: .destructive) {
+                model.perform { try model.save(document.body, spaceID: document.latest.spaceID, existing: document, deleted: true) }
+                deleting = nil
+            }
+            Button("取消", role: .cancel) { deleting = nil }
+        } message: { document in
+            Text("“\(document.body.title)”及其评注可从回收站恢复。")
         }
         .onChange(of: scope) { _, _ in group = "" }
         .navigationTitle("笔记")
         .searchable(text: $search, prompt: "搜索标题和正文")
         .toolbar { ToolbarItem(placement: .primaryAction) { Button { creating = true } label: { Label("新建笔记", systemImage: "plus") }.keyboardShortcut("n").help("新建笔记（⌘N）") } }
         .navigationDestination(isPresented: $creating) { DocumentEditor(model: model, group: group.hasPrefix("group:") ? String(group.dropFirst(6)) : nil, embedded: true).navigationTitle("新建笔记") }
+    }
+    private var sortPicker: some View {
+        Picker("排序", selection: $sortOrder) {
+            Text("最近修改优先").tag("modifiedDescending")
+            Text("最早修改优先").tag("modifiedAscending")
+            Text("标题 A–Z").tag("title")
+        }.pickerStyle(.menu).help("置顶笔记始终排在前面")
+    }
+
+    @ViewBuilder private func managementMenu(_ document: Record) -> some View {
+        let writable = !document.conflicted && model.canWrite(spaceID: document.latest.spaceID)
+        Button(document.body.isPinned == true ? "取消置顶" : "置顶笔记", systemImage: "pin") {
+            update(document) { $0.isPinned = !($0.isPinned ?? false) }
+        }.disabled(!writable)
+        Menu {
+            Button("无项目", systemImage: document.body.projectIDs.isEmpty ? "checkmark" : "folder") {
+                update(document) { $0.projectIDs = [] }
+            }.disabled(document.body.projectIDs.isEmpty)
+            Divider()
+            let projects = model.activeRecords.filter {
+                $0.body.kind == .project && $0.latest.spaceID == document.latest.spaceID && $0.body.status != .archived && !$0.conflicted
+            }.sorted { $0.body.title.localizedStandardCompare($1.body.title) == .orderedAscending }
+            if projects.isEmpty { Text("此可见范围内没有可用项目") }
+            ForEach(projects) { project in
+                Button(project.body.title, systemImage: document.body.projectIDs.contains(project.id) ? "checkmark" : "folder") {
+                    update(document) { $0.projectIDs = [project.id] }
+                }.disabled(document.body.projectIDs == [project.id])
+            }
+        } label: { Label("移动到项目", systemImage: "folder") }
+            .disabled(!writable)
+        Button(document.body.status == .archived ? "取消归档" : "归档", systemImage: "archivebox") {
+            model.changeStatus(document, to: document.body.status == .archived ? .active : .archived)
+        }.disabled(!writable)
+        Divider()
+        sortPicker
+        Divider()
+        Button("移入回收站", systemImage: "trash", role: .destructive) { deleting = document }
+            .disabled(!writable)
+    }
+
+    private func update(_ document: Record, change: (inout RecordBody) -> Void) {
+        guard !document.conflicted, model.canWrite(spaceID: document.latest.spaceID) else { return }
+        var body = document.body
+        change(&body)
+        model.perform { try model.save(body, spaceID: document.latest.spaceID, existing: document) }
     }
 }
 
