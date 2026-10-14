@@ -1,0 +1,214 @@
+Vendor/MDTextKit/Sources/MDTextKitUI/MDAttributedStringRenderer+Theme.swift
+  s_acc4a8c629dad0::t_a49e50115c8f7c 1-309
+Vendor/MDTextKit/Sources/MDTextStorageCore/include/module.modulemap
+  s_acc4a8c629dad0::t_b4fa0277faf108 1-4
+Vendor/MDTextKit/Sources/MDTextStorageCore/include/MDAttributedStorage.h
+  s_acc4a8c629dad0::t_4bddac006e4135 1-14
+Vendor/MDTextKit/Sources/MDTextKitUI/MDTableAttachmentViewController.swift
+  s_acc4a8c629dad0::t_f20dd88e51eeb4 1-17,19-28,62-67,69-74,76,78-83,85-91,93-96,98-101,103-106,108-118,120-121,123-124,126-127,129-135,137-142,144-149,151,153-171,173-188,190-199,201-207,209-214,216-249,251-260,262-278,280-284,286-296,298-306,308-318,321-365,367,369-379,381-393,395-396,398-405,407-413,415-426,428-441,443-451,453-455,457-476,478-502
+  s_acc4a8c629dad0::t_28655a8a81dc11 18,29-61,68,75,77,84,92,97,102,107,119,122,125,128,136,143,150,152,172,189,200,208,215,250,261,279,285,297,307,319-320,366,368,380,394,397,406,414,427,442,452,456,477
+Vendor/MDTextKit/Tests/MDTextKitTests/TestTheme.swift
+  s_acc4a8c629dad0::t_3b15dc762f2f90 1-13
+Vendor/MDTextKit/Sources/MDTextKit/Stylers/MDBaseTextStyler.swift
+  s_acc4a8c629dad0::t_3c7b5e0792f497 1-192
+Tests/FamilyCoreTests/MDTextKitIntegrationTests.swift
+  s_acc4a8c629dad0::t_31399894a355f3 1-158
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisIOS-Cloud.xcscheme
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 4,7,18,29,34,57,74
+Vendor/MDTextKit/Sources/PolarMark/NSAttributedString+PolarMark.swift
+  s_acc4a8c629dad0::t_b2bbf6a81d4849 1-775
+Vendor/MDTextKit/Sources/MDTextKit/MDStringToAttributedStringIndexMap.swift
+  s_acc4a8c629dad0::t_d1bac956af92df 1-204
+Vendor/MDTextKit/Sources/PolarMark/PMKListInfo.swift
+  s_acc4a8c629dad0::t_3dd346c12a20f7 1-82
+Vendor/MDTextKit/Tests/MDTextKitTests/MDLayoutDumpTests.swift
+  s_acc4a8c629dad0::t_3a83d08cfcf9b0 1-132
+Vendor/MDTextKit/Sources/SFThemeKit/SFTheme.swift
+  s_acc4a8c629dad0::t_232a7e5aad0598 1-88
+Vendor/MDTextKit/Sources/PolarMark/PMKASTNode.swift
+  s_acc4a8c629dad0::t_022361f2caafd6 1-105
+Vendor/MDTextKit/Sources/PolarMark/PMKAST+Paste.swift
+  s_acc4a8c629dad0::t_48c2a1509d7623 1-86
+Vendor/MDTextKit/Tests/MDTextKitTests/MDUndoTests.swift
+  s_acc4a8c629dad0::t_a74286e9a5ee93 1-57
+Vendor/MDTextKit/Sources/PolarMark/Ice/BlockParser.swift
+  s_acc4a8c629dad0::t_dc2d29892302b3 1-574
+docs/feature-inventory.md
+  s_acc4a8c629dad0::t_fb0492368b1d8e 3,10
+Vendor/MDTextKit/Sources/MDTextKit/MDMarkdownHider.swift
+  s_acc4a8c629dad0::t_8b0a8687696f0d 1-259
+Sources/NobisUI/Features/Notes/Editor/MarkdownPreview.swift
+  s_acc4a8c629dad0::t_84b564343b7ba8 5,71-93
+Vendor/MDTextKit/Sources/MDTextKit/MDAttributedStringChange.swift
+  s_acc4a8c629dad0::t_3b0f0ef03ba816 1-104
+Vendor/MDTextKit/Tests/MDTextKitTests/MDFontDebugTests.swift
+  s_acc4a8c629dad0::t_b01e15f538da42 1-20
+Package.swift
+  s_acc4a8c629dad0::t_25dcd087065649 6,11-12
+Sources/NobisUI/Features/Notes/Editor/VisualDocumentEditor.swift
+  s_acc4a8c629dad0::t_9b7cd4aa70c69d 24,192-204
+Vendor/MDTextKit/Sources/SFThemeKit/SFThemeManager.swift
+  s_acc4a8c629dad0::t_1a734d025cd1d4 1-116
+docs/tech/T-261014-NB2Q3-mdtextkit/TODO.md
+  s_acc4a8c629dad0::t_3c73f60228a681 1-4,10,12,14-24,32-34,36
+  s_acc4a8c629dad0::t_cce7ae8a3bb16c 29
+  s_acc4a8c629dad0::t_1a1f40be492f76 5,7-9,11,13,25-28,30-31,35
+  s_acc4a8c629dad0::t_24e5baa7f2dd56 6,37
+Vendor/MDTextKit/Tests/MDTextKitTests/MDPasteboardSelectionTests.swift
+  s_acc4a8c629dad0::t_a0e039433e136b 1-81
+docs/features/documents.md
+  s_acc4a8c629dad0::t_7ef26968be7c54 11,23,56
+Vendor/MDTextKit/Sources/MDTextKit/MDTextOperations.swift
+  s_acc4a8c629dad0::t_c73ec486fe528c 1-303
+Vendor/MDTextKit/Sources/TextBundle/TextBundle.swift
+  s_acc4a8c629dad0::t_83ce78f0b84518 1-327
+Vendor/MDTextKit/Sources/MDTextKit/MDTextStorage.swift
+  s_acc4a8c629dad0::t_3b122289c4ead1 1-259
+Vendor/MDTextKit/Sources/MDTextKitDemo/Themes/Dark.theme
+  s_acc4a8c629dad0::t_83336bf069a853 1-143
+docs/repository-structure.md
+  s_acc4a8c629dad0::t_a1a8aaeb74f9fb 17-18
+README.md
+  s_acc4a8c629dad0::t_13c8e551d22c48 11
+Vendor/MDTextKit/Sources/PolarMark/PMKAST.swift
+  s_acc4a8c629dad0::t_84f3dccb1f5cf8 1-469
+Vendor/MDTextKit/Sources/MDTextKit/Stylers/MDInlineTextStylers.swift
+  s_acc4a8c629dad0::t_705a5c81b3f795 1-159,180-358
+  s_acc4a8c629dad0::t_2be8b920ebf240 160-179
+Vendor/MDTextKit/Sources/MDTextKitUI/MDTextView.swift
+  s_acc4a8c629dad0::t_912e709907b5e3 1-24,26-33,36-44,47-71,73-89,91-111,113-122,124-126,275-283,285,287-291,293-297,299,319-324,326-331,333,335-339,341,343-345,347-356,359-361,363-365,367-369,371-373,375-377,379-381,383-385,387-394,396-400,405-409,412-420,423-425,427-432,434-438,441-443,446,448-453,455-465,467-468,470-472,474-478,481,483-489,491-502,504,506-508,510-519,521-534,537-541,543-548,551-559,561-567,569-571,573-587,590-595,598-600,603-605,607-609,611-612,614-623,625-631,633,635-646,648,650-655,657-659,661-666,668-676,678-684,686-705,707-710,712-724,726
+  s_acc4a8c629dad0::t_eda1097f82bf8f 25,35,46,72,90,112,286,292,298,300-318,325,334,342,346,358,362,366,370,374,378,382,386,395,422,426,433,439,444,447,454,469,473,482,490,505,509,520,536,542,549,572,613,624,634,649,656,660,667,677,685,706,711,725
+  s_acc4a8c629dad0::t_2be8b920ebf240 34,45,123,127-274,284,332,340,357,401-404,410-411,421,440,445,466,479-480,503,535,550,560,568,588-589,596-597,601-602,606,610,632,647
+Vendor/MDTextKit/Tests/MDTextKitTests/MDHostAPITests.swift
+  s_acc4a8c629dad0::t_cb999817dd1cfa 1-134
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisMac.xcscheme
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 4,7,18,29,34,57,74
+Vendor/MDTextKit/Sources/MDTextKit/MDEditorController.swift
+  s_acc4a8c629dad0::t_452f243ff2d998 1-852
+Sources/NobisUI/Features/Settings/SettingsView.swift
+  s_acc4a8c629dad0::t_2543ea13575dce 98-104
+Vendor/MDTextKit/Sources/MDTextKitUI/MDEditorBottomBar.swift
+  s_acc4a8c629dad0::t_6d95b9fa2da802 1-69
+Vendor/MDTextKit/Sources/PolarMark/Ice/RuleConfig.swift
+  s_acc4a8c629dad0::t_7a959cc8323f22 1-48
+Vendor/MDTextKit/Sources/PolarMark/PMKAST+EditorAPI.swift
+  s_acc4a8c629dad0::t_3ac2bcc32c310b 1-110
+Vendor/MDTextKit/Tests/MDTextKitTests/MDLinePitchTests.swift
+  s_acc4a8c629dad0::t_cb995b1a0bcfe2 1-34
+Vendor/MDTextKit/Sources/PolarMark/PMKAttributes.swift
+  s_acc4a8c629dad0::t_b80f372d780b4b 1-162
+docs/components/README.md
+  s_acc4a8c629dad0::t_a3e319a472b42d 14-15
+Vendor/MDTextKit/Sources/MDTextStorageCore/MDAttributedStorage.m
+  s_acc4a8c629dad0::t_1ba5e2500c95d4 1-27
+Vendor/MDTextKit/Sources/MDTextKit/MDFormatting.swift
+  s_acc4a8c629dad0::t_5bb7a90b8b1a9c 1-71
+Vendor/MDTextKit/Sources/MDTextKit/MDNotificationToken.swift
+  s_acc4a8c629dad0::t_290ef895f59427 1-10
+Vendor/MDTextKit/Sources/MDTextKit/MDLayoutManager.swift
+  s_acc4a8c629dad0::t_33fc627e86e2b7 1-628
+Vendor/MDTextKit/Tests/PolarMarkTests/PMKFoldingTests.swift
+  s_acc4a8c629dad0::t_932b78fc18e817 1-44
+Vendor/MDTextKit/Sources/MDTextKitUI/MDTableAttachmentRenderer.swift
+  s_acc4a8c629dad0::t_d9594f34d9ed90 1-241
+Vendor/MDTextKit/Tests/TextBundleTests/TextBundleTests.swift
+  s_acc4a8c629dad0::t_6a3ef11bd90bc7 1-99
+Vendor/MDTextKit/Sources/MDTextKit/Attachments/MDAttachments.swift
+  s_acc4a8c629dad0::t_9853e7bea7f1be 1-423,436-556
+  s_acc4a8c629dad0::t_2be8b920ebf240 424-435
+Vendor/MDTextKit/LICENSE
+  s_acc4a8c629dad0::t_a98ded0740b831 1-21
+docs/tech/T-261014-NB2Q3-mdtextkit/PLAN.md
+  s_acc4a8c629dad0::t_3c73f60228a681 2,4,6,8,14,16
+  s_acc4a8c629dad0::t_24e5baa7f2dd56 1,3,5,7,9-13,15,17
+docs/verification.md
+  s_acc4a8c629dad0::t_cce7ae8a3bb16c 9
+  s_acc4a8c629dad0::t_deb2b47f697950 5-8,10-13
+Vendor/MDTextKit/README.md
+  s_acc4a8c629dad0::t_a503e07c5a9cab 1-81
+Vendor/MDTextKit/Sources/PolarMark/Ice/Lines.swift
+  s_acc4a8c629dad0::t_64f2e8eb62905b 1-75
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisMac-Cloud.xcscheme
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 4,7,18,29,34,57,74
+Vendor/MDTextKit/Sources/MDTextKitDemo/main.swift
+  s_acc4a8c629dad0::t_a5ba473ebd538a 1-334
+Vendor/MDTextKit/Sources/MDTextKit/MDAttributedStringDiffer.swift
+  s_acc4a8c629dad0::t_0133347b3fe22c 1-119
+Vendor/MDTextKit/Sources/MDTextKit/Stylers/MDBlockTextStylers.swift
+  s_acc4a8c629dad0::t_25bdd1d42a3dbe 1-619
+Vendor/MDTextKit/Sources/MDTextKitUI/MDEditorViewController.swift
+  s_acc4a8c629dad0::t_18b9ea97a5ad1b 1-232
+Vendor/MDTextKit/Package.swift
+  s_acc4a8c629dad0::t_360441fa2342ac 1-34
+Vendor/MDTextKit/Sources/PolarMark/PMKAST+Folding.swift
+  s_acc4a8c629dad0::t_f6481472d515ec 1-220
+Vendor/MDTextKit/Sources/MDTextKit/MDTextKitStyleKit.swift
+  s_acc4a8c629dad0::t_13854aa8d11ae8 1-259
+Vendor/MDTextKit/Sources/SFThemeKit/SFFontLoader.swift
+  s_acc4a8c629dad0::t_94e312674833aa 1-36
+DESIGN.md
+  s_acc4a8c629dad0::t_4eaf5c3df051ee 50-51
+Vendor/MDTextKit/NOBIS.md
+  s_acc4a8c629dad0::t_28655a8a81dc11 1-28
+Vendor/MDTextKit/Sources/MDTextKit/MDAttributedStringRenderer.swift
+  s_acc4a8c629dad0::t_c8305e69659a28 1-116
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisIOS.xcscheme
+  s_5731ffb60d29b4::t_3f0f02d1997ba0 4,7,18,29,34,57,74
+Vendor/MDTextKit/Sources/PolarMark/Ice/InlineParser.swift
+  s_acc4a8c629dad0::t_59c8c740c86a64 1-303
+docs/components/mdtextkit.md
+  s_acc4a8c629dad0::t_28655a8a81dc11 1-26
+Vendor/MDTextKit/Sources/MDTextKitUI/MDPasteboardReader.swift
+  s_acc4a8c629dad0::t_6dff32c33db352 1-166
+Vendor/MDTextKit/Sources/MDTextKit/Categories/NSAttributedString+MDTextKit.swift
+  s_acc4a8c629dad0::t_0bfd3624640998 1-640
+Sources/NobisUI/Resources/MDTextKit-LICENSE.txt
+  s_acc4a8c629dad0::t_d9db4314a4c87f 1-21
+Vendor/MDTextKit/Tests/PolarMarkTests/PolarMarkTests.swift
+  s_acc4a8c629dad0::t_f8e7d47b7837e9 1-147
+Vendor/MDTextKit/Sources/MDTextKitUI/MDSideActionsView.swift
+  s_acc4a8c629dad0::t_bbdf6b8da9389d 1-223
+Vendor/MDTextKit/Sources/PolarMark/PMKAST+Selection.swift
+  s_acc4a8c629dad0::t_fab4acaba3f845 1-65
+Vendor/MDTextKit/Tests/MDTextKitTests/MDTextKitTests.swift
+  s_acc4a8c629dad0::t_9a64ed260b171c 1-102
+Vendor/MDTextKit/Sources/MDTextKit/Attachments/SFTextAttachment.swift
+  s_acc4a8c629dad0::t_b082364e45a397 1-270
+Vendor/MDTextKit/Sources/MDTextKit/Attachments/MDCalloutIcon.swift
+  s_acc4a8c629dad0::t_89a7d0fc1e4b98 1-112
+Vendor/MDTextKit/Sources/MDTextKitDemo/Themes/Default.theme
+  s_acc4a8c629dad0::t_4328cb4ffca5d3 1-143
+Vendor/MDTextKit/Sources/PolarMark/PMKASTOperations.swift
+  s_acc4a8c629dad0::t_e1865312e2ef82 1-350
+docs/roadmap.md
+  s_acc4a8c629dad0::t_3c73f60228a681 48
+  s_acc4a8c629dad0::t_748fbf517f46fc 3,18
+  s_acc4a8c629dad0::t_cce7ae8a3bb16c 44
+Sources/NobisUI/Features/Notes/Editor/MDTextKitEditor.swift
+  s_acc4a8c629dad0::t_28655a8a81dc11 89
+  s_acc4a8c629dad0::t_1e6cad655a7919 1-88,90-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "815557c6ae3f8ba8199d609a41c9ee877ce1922f",
+  "prompts": {},
+  "sessions": {
+    "s_5731ffb60d29b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12b05-a062-7d31-b552-bc09febd3761",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    },
+    "s_acc4a8c629dad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1380c-f431-7b43-8a04-ec8c8d335b4d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
