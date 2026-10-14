@@ -818,10 +818,8 @@ struct DocumentEditorContent: View {
                             Button("表格", systemImage: "tablecells") { formatRequest = RichEditRequest(action: "insert-table") }
                             #if os(iOS)
                             Button("从相册选择", systemImage: "photo.on.rectangle") { formatRequest = RichEditRequest(action: "insert-photo") }
-                            Button("图片链接", systemImage: "link") { formatRequest = RichEditRequest(action: "insert-image") }
                             #else
                             Button("从文件选择图片", systemImage: "photo") { formatRequest = RichEditRequest(action: "insert-image-file") }
-                            Button("图片链接", systemImage: "link") { formatRequest = RichEditRequest(action: "insert-image") }
                             #endif
                             Button("代码块", systemImage: "chevron.left.forwardslash.chevron.right") { formatRequest = RichEditRequest(action: "insert-code") }
                         } label: { Image(systemName: "plus").touchTarget() }.disabled(blockFormattingDisabled).accessibilityLabel("插入内容")
@@ -924,7 +922,7 @@ private func documentExcerpt(_ source: String) -> some View {
     var result = Text("")
     var spoken = ""
     var remaining = 180
-    for block in MarkdownBlock.parse(source) {
+    for block in MarkdownBlock.parse(NoteExcerpt.hidingImageAddresses(in: source)) {
         let content: String
         var checked: Bool?
         switch block {

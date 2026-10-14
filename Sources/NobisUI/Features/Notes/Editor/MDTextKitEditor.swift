@@ -672,7 +672,6 @@ struct MDTextKitEditor: NSViewRepresentable {
         case "checklist": controller.toggleTaskList(in: view)
         case "toggle": controller.toggleTask(in: view, range: view.selectedRange(), style: 0)
         case "insert-table": insertBlock("| 列一 | 列二 |\n| --- | --- |\n|  |  |", into: view)
-        case "insert-image": insertBlock("![图片说明](https://)", into: view)
         case "insert-code": controller.toggleCodeBlock(in: view)
         default:
             if action.hasPrefix("link:") {

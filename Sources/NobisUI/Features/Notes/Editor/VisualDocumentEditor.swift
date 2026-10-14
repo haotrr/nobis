@@ -85,7 +85,9 @@ struct BlockDocumentEditor: View {
     @State private var showPhotos = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoIssue: String?
-    @State private var importingPhoto = false
+    @State private var photoImport = NoteImageImportState()
+    @State private var photoSource = ""
+    private var importingPhoto: Bool { photoImport.isLoading }
     @State private var photoFocus: NoteEditorFocus?
     #endif
 
@@ -202,7 +204,7 @@ struct BlockDocumentEditor: View {
         .photosPicker(isPresented: $showPhotos, selection: $selectedPhoto, matching: .images)
         .overlay(alignment: .top) {
             if importingPhoto {
-                HStack { ProgressView("正在添加照片…"); Button("取消") { selectedPhoto = nil } }
+                HStack { ProgressView("正在添加照片…"); Button("取消") { photoImport.cancel(); selectedPhoto = nil } }
                     .padding(12).background(.regularMaterial, in: Capsule())
             }
         }
@@ -211,18 +213,17 @@ struct BlockDocumentEditor: View {
         } message: { Text(photoIssue ?? "") }
         .task(id: selectedPhoto) {
             guard let selectedPhoto else { return }
-            importingPhoto = true
-            defer { importingPhoto = false }
+            let importID = photoImport.begin()
+            defer { photoImport.finish(importID) }
             do {
                 guard let photo = try await selectedPhoto.loadTransferable(type: NotePickedPhoto.self) else { throw NoteEmbeddedImage.ImportError.invalid }
-                guard !Task.isCancelled else { return }
-                try DocumentContentLimits.validate(text + "\n" + DocumentBlock(.image(alt: "照片", address: photo.address, title: "")).markdown)
-                buffer.focus = photoFocus
-                insert(.image(alt: "照片", address: photo.address, title: ""))
+                guard !Task.isCancelled, photoImport.accepts(importID) else { return }
+                try buffer.insertPhoto(address: photo.address, source: photoSource, at: photoFocus)
             } catch {
-                if !Task.isCancelled { photoIssue = error.localizedDescription }
+                if !Task.isCancelled, photoImport.accepts(importID) { photoIssue = error.localizedDescription }
             }
         }
+        .onDisappear { photoImport.cancel(); selectedPhoto = nil }
         #endif
         .onChange(of: buffer.focusRequest) { _, focus in
             if let focus, focus.target.hasPrefix("image:") { imageFocus = focus.target }
@@ -267,10 +268,11 @@ struct BlockDocumentEditor: View {
             case "insert-photo":
                 guard !importingPhoto else { return }
                 photoFocus = buffer.focus
+                photoSource = buffer.blocks.map(\.markdown).joined()
+                photoIssue = nil
                 selectedPhoto = nil
                 showPhotos = true
             #endif
-            case "insert-image": insert(.image(alt: "", address: "", title: ""))
             case "insert-code": insert(.code(language: "", body: ""))
             default:
                 requestTarget = activeText ?? buffer.blocks.first(where: { if case .text = $0.content { true } else { false } })?.id.uuidString

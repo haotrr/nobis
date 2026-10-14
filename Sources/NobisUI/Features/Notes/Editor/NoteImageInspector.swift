@@ -25,7 +25,8 @@ struct NoteImageInspector: View {
     @State private var issue: String?
     @State private var loading = false
     @State private var loadID = UUID()
-    @State private var importing = false
+    @State private var fileImport = NoteImageImportState()
+    private var importing: Bool { fileImport.isLoading }
     @State private var picking = false
     @State private var importURL: URL?
     @State private var discard = false
@@ -34,7 +35,8 @@ struct NoteImageInspector: View {
     #if os(iOS)
     @State private var photo: PhotosPickerItem?
     @State private var showPhotos = false
-    @State private var importingPhoto = false
+    @State private var photoImport = NoteImageImportState()
+    private var importingPhoto: Bool { photoImport.isLoading }
     #endif
     private var busy: Bool {
         #if os(iOS)
@@ -76,9 +78,9 @@ struct NoteImageInspector: View {
                 HStack {
                     ProgressView("正在读取图片…")
                     Button("取消读取") {
-                        importURL = nil
+                        fileImport.cancel(); importURL = nil
                         #if os(iOS)
-                        photo = nil
+                        photoImport.cancel(); photo = nil
                         #endif
                     }
                 }
@@ -116,30 +118,36 @@ struct NoteImageInspector: View {
         .photosPicker(isPresented: $showPhotos, selection: $photo, matching: .images)
         .task(id: photo) {
             guard let photo else { return }
-            importingPhoto = true
-            defer { importingPhoto = false }
+            let importID = photoImport.begin()
+            defer { photoImport.finish(importID) }
             do {
                 guard let picked = try await photo.loadTransferable(type: NotePickedPhoto.self) else { throw NoteEmbeddedImage.ImportError.invalid }
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, photoImport.accepts(importID) else { return }
                 draft.address = picked.address; previewAddress = picked.address; issue = nil
-            } catch { if !Task.isCancelled { issue = error.localizedDescription } }
+            } catch { if !Task.isCancelled, photoImport.accepts(importID) { issue = error.localizedDescription } }
         }
         #endif
         .task(id: importURL) {
             guard let url = importURL else { return }
-            importing = true
-            defer { importing = false; importURL = nil }
+            let importID = fileImport.begin()
+            defer { if fileImport.accepts(importID) { fileImport.finish(importID); importURL = nil } }
             do {
                 let address = try await Task.detached(priority: .userInitiated) {
                     let scoped = url.startAccessingSecurityScopedResource()
                     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                     return try NoteEmbeddedImage.importFile(url)
                 }.value
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, fileImport.accepts(importID) else { return }
                 draft.address = address; previewAddress = address; issue = nil
-            } catch { if !Task.isCancelled { issue = error.localizedDescription } }
+            } catch { if !Task.isCancelled, fileImport.accepts(importID) { issue = error.localizedDescription } }
         }
         .task(id: previewAddress + retry.uuidString) { await loadImage() }
+        .onDisappear {
+            fileImport.cancel(); importURL = nil
+            #if os(iOS)
+            photoImport.cancel(); photo = nil
+            #endif
+        }
     }
     @ViewBuilder private var imageActions: some View {
         Button(copied ? "已复制" : "复制图片", systemImage: "doc.on.doc") { copyImage() }.disabled(data == nil)

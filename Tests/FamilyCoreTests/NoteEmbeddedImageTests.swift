@@ -25,7 +25,7 @@ import MDTextKit
         #expect(rendered.pixelsHigh == 800)
         let buffer = DocumentBlockBuffer("之前😀之后")
         buffer.focus = NoteEditorFocus(target: buffer.blocks[0].id.uuidString, range: NSRange(location: 4, length: 0))
-        buffer.insert(.image(alt: "照片", address: address, title: ""))
+        try buffer.insertPhoto(address: address, source: "之前😀之后", at: buffer.focus)
         let markdown = buffer.blocks.map(\.markdown).joined()
         #expect(markdown.hasPrefix("之前😀\n![照片]"))
         #expect(markdown.hasSuffix("之后"))
