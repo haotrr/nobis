@@ -50,6 +50,24 @@ struct MDTextKitIntegrationTests {
         #expect(buffer.value == "- [x] 采购\n")
     }
 
+    @Test func completedTaskDoesNotStyleFollowingPlainLines() {
+        let source = "- [x] 哈哈\n我是谁？你是谁？\n迭代的是什么呢？\n\n正常正文"
+        let (buffer, coordinator) = make(source)
+        defer { coordinator.stop() }
+        let storage = coordinator.view.mdTextStorage
+        let text = storage.string as NSString
+        let ordinary = text.range(of: "我是谁").location
+        let baseline = text.range(of: "正常正文").location
+        let task = text.range(of: "哈哈").location
+        #expect(storage.attribute(.foregroundColor, at: ordinary, effectiveRange: nil) as? NSColor == storage.attribute(.foregroundColor, at: baseline, effectiveRange: nil) as? NSColor)
+        #expect(storage.attribute(.foregroundColor, at: task, effectiveRange: nil) as? NSColor != storage.attribute(.foregroundColor, at: baseline, effectiveRange: nil) as? NSColor)
+        coordinator.view.setSelectedRange(NSRange(location: task, length: 0))
+        NobisMDTextView.apply("toggle", to: coordinator.view)
+        #expect(buffer.value == source.replacingOccurrences(of: "[x]", with: "[ ]"))
+        coordinator.view.editorUndoManager.undo()
+        #expect(buffer.value == source)
+    }
+
     @Test func tableInsertionAndLinkPublishMarkdown() {
         let (buffer, coordinator) = make("正文")
         defer { coordinator.stop() }

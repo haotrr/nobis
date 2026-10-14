@@ -27,6 +27,20 @@ final class PolarMarkTests: XCTestCase {
         XCTAssertNil(s.attribute(.pmkStrongMarker, at: 9, effectiveRange: nil))
     }
 
+    func testTaskContinuationRequiresIndentation() {
+        for marker in ["- [ ] ", "- [x] "] {
+            let source = marker + "任务\n普通正文\n下一行"
+            let ast = PMKAST(markdown: source)
+            XCTAssertEqual(ast.rootNode.children.map { $0.type }, [.list, .paragraph])
+            let annotated = ast.annotatedString()
+            XCTAssertNil(annotated.attribute(.pmkListItem, at: (source as NSString).range(of: "普通正文").location, effectiveRange: nil))
+        }
+        let nested = PMKAST(markdown: "- [x] 任务\n  缩进说明\n  - [ ] 子任务\n普通正文")
+        XCTAssertEqual(nested.rootNode.children.map { $0.type }, [.list, .paragraph])
+        XCTAssertTrue(nested.rootNode.children[0].children[0].children.contains { $0.type == .list })
+        XCTAssertEqual(PMKAST(markdown: "- 普通列表\n续行").rootNode.children.map { $0.type }, [.list])
+    }
+
     func testLists() {
         let md = "- one\n- [ ] two\n\t- nested\n1. first\n2. second\n"
         let ast = PMKAST(markdown: md)

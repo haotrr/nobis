@@ -447,7 +447,9 @@ struct BlockParser {
                             break
                         }
                         if ccols > cols { lastContent = lk; lk += 1; continue }
-                        if case .text = ck, lk == lastContent + 1 { lastContent = lk; lk += 1; continue }
+                        // Task completion belongs to explicitly marked/indented content. An
+                        // unindented new line is ordinary prose, even without a blank line.
+                        if case .text = ck, t == .notTask, lk == lastContent + 1 { lastContent = lk; lk += 1; continue }
                         break
                     }
 

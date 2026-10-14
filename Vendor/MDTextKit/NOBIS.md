@@ -30,3 +30,5 @@ swift test --filter MDTextKitIntegrationTests
 升级时先对照此基线合并上游，再检查上述补丁、双平台构建和宿主测试。同步更新本文件的版本、MIT 许可及 `Sources/NobisUI/Resources/MDTextKit-LICENSE.txt`。详细集成约定见 [组件说明](../../docs/components/mdtextkit.md)。
 
 UIKit 宿主保留触屏表格、图片及代码块布局，正文与表格单元格使用新内核。语法标记以次要颜色保留可编辑，不移植 AppKit 的附件视图及隐藏标记布局。原生控件测试：`xcodebuild -project Nobis.xcodeproj -scheme NobisEditorTests -destination "platform=iOS Simulator,name=Nobis Design QA" test`。
+
+- 清单边界：任务项只吸收显式缩进的续行；无缩进普通正文在换行后退出任务范围，避免完成状态与颜色扩散。普通列表仍保留原有续行解析。
