@@ -1,0 +1,52 @@
+docs/feature-inventory.md
+  s_a3057a373e7ff5::t_17dc49f69e2827 10,12
+Sources/NobisUI/Features/Notes/DocumentsView.swift
+  s_a3057a373e7ff5::t_4e00ca4722746e 470-471,474-480,518,738,742,746,759,853,855,858-869,871,890
+  s_a3057a373e7ff5::t_9f4295e83c4c10 419-420,458-461,463,465,469,472-473,481,491
+docs/components/mdtextkit.md
+  s_a3057a373e7ff5::t_17dc49f69e2827 21-22
+Sources/FamilyCore/DocumentDraft.swift
+  s_a3057a373e7ff5::t_4e00ca4722746e 20-21,23-26,28,32-38,40-45,49-51
+Sources/NobisUI/Features/Notes/Editor/NoteDraftWriter.swift
+  s_a3057a373e7ff5::t_4e00ca4722746e 1-10,13-16,18-42
+  s_a3057a373e7ff5::t_6108f68a7e8bf5 11-12,17
+docs/features/documents.md
+  s_a3057a373e7ff5::t_17dc49f69e2827 31,62
+DESIGN.md
+  s_a3057a373e7ff5::t_17dc49f69e2827 78-80
+docs/verification.md
+  s_a3057a373e7ff5::t_ed66772f7eff91 5-13
+  s_a3057a373e7ff5::t_2f0946bd046a71 14-15
+Vendor/MDTextKit/NOBIS.md
+  s_a3057a373e7ff5::t_17dc49f69e2827 14
+Sources/NobisUI/Features/Notes/Editor/MarkdownTextEditor.swift
+  s_a3057a373e7ff5::t_8cc9420dcd4573 15-16,157-158,169,179-183,185-186,191-195,221,226-228,240-247,250,252,255-256,258-261,264,268-271,273-276,279-289,298,304
+Sources/NobisUI/Features/Notes/Editor/VisualDocumentEditor.swift
+  s_a3057a373e7ff5::t_0fba3b357dfec9 7-8,18-20,22-59,74,84,86-88,97,121,146,159-164,185-192,221,229-233,244-252,254
+Tests/FamilyCoreTests/DocumentBlockTests.swift
+  s_a3057a373e7ff5::t_2a61e87b945509 79-112
+Tests/FamilyCoreTests/NoteDraftWriterTests.swift
+  s_a3057a373e7ff5::t_ee681cd2719a6a 1-83
+Tests/FamilyCoreTests/NoteEditorWindowTests.swift
+  s_a3057a373e7ff5::t_0a48c7c4ca3023 19-26,52,76
+Tests/NobisIOSTests/MDTextKitUIKitTests.swift
+  s_a3057a373e7ff5::t_1df481b1a25a17 3,235-372
+Vendor/MDTextKit/Sources/MDTextKitUIKit/MDMarkdownTextView.swift
+  s_a3057a373e7ff5::t_5f482a730c3cb2 21-45,49-70,74,85-89,92,99,102,158,187,212,264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99fb212c1d05ab3287e925c14792469b06ff847b",
+  "prompts": {},
+  "sessions": {
+    "s_a3057a373e7ff5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13969-4bff-7f42-ad44-d61e05487b6c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
