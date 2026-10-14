@@ -1,0 +1,43 @@
+Sources/NobisUI/Shared/Styles/GlassStyle.swift
+  s_cad6dd87496815::t_56e3b4eb8b0277 29,32
+Sources/NobisUI/Features/Workspace/OrganizationViews.swift
+  s_cad6dd87496815::t_cdf6be71161b28 201-202
+  s_cad6dd87496815::t_56e3b4eb8b0277 45
+Sources/NobisUI/Shared/Styles/WorkspaceStyle.swift
+  s_cad6dd87496815::t_56e3b4eb8b0277 40
+docs/verification.md
+  s_cad6dd87496815::t_5ca0c4cb0bd080 5-12
+DESIGN.md
+  s_cad6dd87496815::t_36b723c325ee95 74
+Sources/NobisUI/Shared/Styles/NobisTheme.swift
+  s_cad6dd87496815::t_56e3b4eb8b0277 7-8
+  s_cad6dd87496815::t_62230b47fbe298 5-6
+Apps/Nobis/Shared/Assets.xcassets/BrandLogo.imageset/Contents.json
+  s_cad6dd87496815::t_bcab3aea896d3b 1-12
+Sources/NobisUI/App/Navigation/AppNavigationView.swift
+  s_cad6dd87496815::t_579aa50f37ad72 18-21
+Sources/NobisUI/Features/Finance/FinancialCharts.swift
+  s_cad6dd87496815::t_8c2e83e7e9272a 47
+Sources/NobisUI/Features/Notes/DocumentsView.swift
+  s_cad6dd87496815::t_f6eac4ab117695 815
+Sources/NobisUI/Features/Notes/Editor/MarkdownPreview.swift
+  s_cad6dd87496815::t_ad5a40ae46d876 26
+Sources/NobisUI/Features/Notes/Editor/VisualDocumentEditor.swift
+  s_cad6dd87496815::t_88e72c0081992c 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "273e3823fa6e5d487216ceb8032f1807c64fc49f",
+  "prompts": {},
+  "sessions": {
+    "s_cad6dd87496815": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13a18-b93d-7a40-9cd9-ed5740f622cf",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
