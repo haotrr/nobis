@@ -22,6 +22,20 @@ struct MDTextKitIntegrationTests {
         return (buffer, coordinator)
     }
 
+    @Test func fileImageInsertionPreservesSelectionAndUndo() {
+        let (buffer, coordinator) = make("前😀后文")
+        defer { coordinator.stop() }
+        let view = coordinator.view
+        view.setSelectedRange(NSRange(location: 1, length: 2))
+        view.insertMarkdownImage(alt: "图]片", address: "https://example.com/a b.jpg")
+        let inserted = buffer.value
+        #expect(inserted == "前😀\n![图\\]片](<https://example.com/a b.jpg>)\n后文")
+        view.editorUndoManager.undo()
+        #expect(buffer.value == "前😀后文")
+        view.editorUndoManager.redo()
+        #expect(buffer.value == inserted)
+    }
+
     @Test func sourceRoundTripAndReadOnlyTables() {
         let source = "# 中文 👨‍👩‍👧\n\n- [ ] 待办\n- [x] 完成\n\n| 项目 | 说明 |\n| --- | --- |\n| **文字** | A\\|B |\n\n> 引用\n\n```swift\n- [ ] 示例\n```\n\n![图片](https://example.com/test.png)\n"
         let (buffer, coordinator) = make(source, editable: false)

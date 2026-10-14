@@ -16,6 +16,7 @@
 | MDImageTextStyler / MDImageTextAttachment | 增加宿主图片数据回调，由 Nobis 异步加载 HTTPS 图片；组件渲染期间不做网络读取；宿主可预留固定尺寸，加载后原位更新附件图像并等比居中绘制，不触发全文重排 |
 | MDTableAttachmentViewController | 单元格监听已提交的 Markdown 变化，立即回写正文，共享正文撤销栈，局部恢复表格、单元格及选区；完整表格标记保留末行；序列化转义管线字符 |
 | MDFormatting | 全选区格式与混合格式区分，修正正文与列表混选判断 |
+| MDTextView+ImageInsertion | 新增图片 Markdown 序列化与选区末尾插入 API；保留选区正文、中文组词保护和原生撤销重做。宿主负责图片读取、存储及容量策略 |
 | MDEditorController | 附件变化先更新索引和解析状态，再通知宿主 |
 
 Nobis 适配层为 `Sources/NobisUI/Features/Notes/Editor/MDTextKitEditor.swift`：主题、链接白名单、图片加载、SwiftUI 绑定和工具栏命令。业务草稿、权限、保存、修订和清单投影仍由原模块负责。

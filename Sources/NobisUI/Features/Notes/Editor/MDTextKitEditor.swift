@@ -1,5 +1,7 @@
 #if os(macOS)
 import AppKit
+import UniformTypeIdentifiers
+import FamilyCore
 import SwiftUI
 import MDTextKit
 import MDTextKitUI
@@ -63,6 +65,8 @@ struct MDTextKitEditor: NSViewRepresentable {
         private var installing = false
         private var lastRequest: UUID?
         private var linkPopover: NSPopover?
+        private var imagePanel: NSOpenPanel?
+        private var importingImage = false
         private var linkKeyMonitor: Any?
         private weak var activeView: MDTextView?
         private var images: [String: Data] = [:]
@@ -169,7 +173,50 @@ struct MDTextKitEditor: NSViewRepresentable {
                     guard let self, !self.stopped, let target, target.isEditable, !target.hasMarkedText() else { return }
                     target.window?.makeFirstResponder(target)
                     if request.action == "show-link" { self.showLinkEditor(in: target) }
+                    else if request.action == "insert-image-file" { self.chooseImage(in: target) }
                     else { NobisMDTextView.apply(request.action, to: target) }
+                }
+            }
+        }
+
+        private func chooseImage(in target: MDTextView) {
+            guard imagePanel == nil, !importingImage, let window = target.window else { return }
+            let selection = target.selectedRange(), original = view.markdown
+            let panel = NSOpenPanel()
+            panel.allowedContentTypes = [.image]
+            panel.allowsMultipleSelection = false
+            panel.canChooseDirectories = false
+            panel.prompt = "插入图片"
+            imagePanel = panel
+            panel.beginSheetModal(for: window) { [weak self, weak target] response in
+                guard let self else { return }
+                self.imagePanel = nil
+                guard response == .OK, let url = panel.url, let target else { return }
+                self.importingImage = true
+                Task { @MainActor [weak self, weak target] in
+                    guard let self else { return }
+                    defer { self.importingImage = false }
+                    do {
+                        let address = try await Task.detached(priority: .userInitiated) {
+                            let scoped = url.startAccessingSecurityScopedResource()
+                            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                            return try NoteEmbeddedImage.importFile(url)
+                        }.value
+                        guard !self.stopped, let target, target.window != nil, target.isEditable else { return }
+                        guard self.view.markdown == original, !target.hasMarkedText() else {
+                            throw NoteImageInsertionError.contentChanged
+                        }
+                        try DocumentContentLimits.validate(original + "\n" + MDEditorController.markdownImage(alt: "图片", address: address))
+                        target.window?.makeFirstResponder(target)
+                        target.setSelectedRange(selection)
+                        target.insertMarkdownImage(alt: "图片", address: address)
+                    } catch {
+                        guard !self.stopped, let window = target?.window else { return }
+                        let alert = NSAlert()
+                        alert.messageText = "图片未插入"
+                        alert.informativeText = error.localizedDescription
+                        alert.beginSheetModal(for: window) { _ in }
+                    }
                 }
             }
         }
@@ -300,6 +347,8 @@ struct MDTextKitEditor: NSViewRepresentable {
             stopped = true
             observers.forEach { NotificationCenter.default.removeObserver($0) }
             observers.removeAll()
+            imagePanel?.cancel(nil)
+            imagePanel = nil
             imageTasks.values.forEach { $0.cancel() }
             imageTasks.removeAll()
         }
@@ -474,6 +523,10 @@ struct MDTextKitEditor: NSViewRepresentable {
         view.editorController.replaceCharacters(in: NSRange(location: end, length: 0),
             with: NSAttributedString(string: prefix + markdown + "\n\n"), in: view)
     }
+}
+private enum NoteImageInsertionError: LocalizedError {
+    case contentChanged
+    var errorDescription: String? { "读取图片期间正文已变化，请在新的光标位置重新插入。" }
 }
 private struct NoteLinkForm: View {
     @State var address: String

@@ -809,7 +809,8 @@ struct DocumentEditorContent: View {
                             Button("从相册选择", systemImage: "photo.on.rectangle") { formatRequest = RichEditRequest(action: "insert-photo") }
                             Button("图片链接", systemImage: "link") { formatRequest = RichEditRequest(action: "insert-image") }
                             #else
-                            Button("图片", systemImage: "photo") { formatRequest = RichEditRequest(action: "insert-image") }
+                            Button("从文件选择图片", systemImage: "photo") { formatRequest = RichEditRequest(action: "insert-image-file") }
+                            Button("图片链接", systemImage: "link") { formatRequest = RichEditRequest(action: "insert-image") }
                             #endif
                             Button("代码块", systemImage: "chevron.left.forwardslash.chevron.right") { formatRequest = RichEditRequest(action: "insert-code") }
                         } label: { Image(systemName: "plus").touchTarget() }.disabled(blockFormattingDisabled).accessibilityLabel("插入内容")
