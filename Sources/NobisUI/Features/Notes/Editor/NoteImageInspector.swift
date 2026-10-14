@@ -1,6 +1,9 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import FamilyCore
+#if os(iOS)
+import PhotosUI
+#endif
 
 struct NoteImageContent: Equatable {
     var alt: String
@@ -21,12 +24,25 @@ struct NoteImageInspector: View {
     @State private var data: Data?
     @State private var issue: String?
     @State private var loading = false
+    @State private var loadID = UUID()
     @State private var importing = false
     @State private var picking = false
     @State private var importURL: URL?
     @State private var discard = false
     @State private var copied = false
     @State private var retry = UUID()
+    #if os(iOS)
+    @State private var photo: PhotosPickerItem?
+    @State private var showPhotos = false
+    @State private var importingPhoto = false
+    #endif
+    private var busy: Bool {
+        #if os(iOS)
+        importing || importingPhoto
+        #else
+        importing
+        #endif
+    }
 
     init(content: NoteImageContent, canEdit: Bool = true, apply: @escaping (NoteImageContent?) throws -> Void, close: @escaping () -> Void) {
         original = content; self.canEdit = canEdit; self.apply = apply; self.close = close
@@ -41,21 +57,32 @@ struct NoteImageInspector: View {
                 Text("图片").font(.headline)
                 Spacer()
                 Button("关闭") { if dirty { discard = true } else { close() } }.keyboardShortcut(.cancelAction)
-                if canEdit { Button("应用") { commit(draft) }.disabled(!dirty || importing).keyboardShortcut(.defaultAction) }
+                if canEdit { Button("应用") { commit(draft) }.disabled(!dirty || busy).keyboardShortcut(.defaultAction) }
             }
-            GeometryReader { geometry in
+            if let data {
+                NoteZoomImage(data: data, label: draft.alt.isEmpty ? "笔记图片" : draft.alt).id(previewAddress)
+            } else {
                 ZStack {
                     Color.primary.opacity(0.04)
-                    if let image { image.resizable().scaledToFit().frame(width: geometry.size.width, height: geometry.size.height).accessibilityLabel(draft.alt.isEmpty ? "笔记图片" : draft.alt) }
-                    else if loading { ProgressView("正在加载图片") }
+                    if loading { ProgressView("正在加载图片") }
                     else { VStack { Label("图片暂时无法显示", systemImage: "photo"); Button("重试") { retry = UUID() } } }
-                }
-            }.frame(height: 300)
+                }.frame(height: 300)
+            }
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 16) { imageActions }.fixedSize(horizontal: true, vertical: false)
                 VStack(alignment: .leading, spacing: 12) { imageActions }.frame(maxWidth: .infinity, alignment: .leading)
             }.buttonStyle(.borderless)
-            if importing { ProgressView("正在读取图片…") }
+            if busy {
+                HStack {
+                    ProgressView("正在读取图片…")
+                    Button("取消读取") {
+                        importURL = nil
+                        #if os(iOS)
+                        photo = nil
+                        #endif
+                    }
+                }
+            }
             if canEdit {
                 TextField("图片说明", text: $draft.alt).textFieldStyle(.roundedBorder)
                 TextField("图片标题（可选）", text: $draft.title).textFieldStyle(.roundedBorder)
@@ -74,7 +101,7 @@ struct NoteImageInspector: View {
         #if os(macOS)
         .frame(minWidth: 480, idealWidth: 680, minHeight: 520, idealHeight: 640)
         #endif
-        .interactiveDismissDisabled(dirty || importing)
+        .interactiveDismissDisabled(dirty || busy)
         .confirmationDialog("放弃这次图片修改？", isPresented: $discard) {
             Button("放弃修改", role: .destructive) { close() }
             Button("继续编辑", role: .cancel) {}
@@ -85,6 +112,19 @@ struct NoteImageInspector: View {
             case .failure(let error): issue = error.localizedDescription
             }
         }
+        #if os(iOS)
+        .photosPicker(isPresented: $showPhotos, selection: $photo, matching: .images)
+        .task(id: photo) {
+            guard let photo else { return }
+            importingPhoto = true
+            defer { importingPhoto = false }
+            do {
+                guard let picked = try await photo.loadTransferable(type: NotePickedPhoto.self) else { throw NoteEmbeddedImage.ImportError.invalid }
+                guard !Task.isCancelled else { return }
+                draft.address = picked.address; previewAddress = picked.address; issue = nil
+            } catch { if !Task.isCancelled { issue = error.localizedDescription } }
+        }
+        #endif
         .task(id: importURL) {
             guard let url = importURL else { return }
             importing = true
@@ -104,8 +144,13 @@ struct NoteImageInspector: View {
     @ViewBuilder private var imageActions: some View {
         Button(copied ? "已复制" : "复制图片", systemImage: "doc.on.doc") { copyImage() }.disabled(data == nil)
         if canEdit {
-            Button("替换图片", systemImage: "photo") { picking = true }.disabled(importing)
-            Button("删除图片", role: .destructive) { commit(nil) }.disabled(importing)
+            Menu {
+                #if os(iOS)
+                Button("从相册选择") { photo = nil; showPhotos = true }
+                #endif
+                Button("从文件选择") { picking = true }
+            } label: { Label("替换图片", systemImage: "photo") }.disabled(busy)
+            Button("删除图片", role: .destructive) { commit(nil) }.disabled(busy)
         }
     }
     private func commit(_ value: NoteImageContent?) {
@@ -117,8 +162,9 @@ struct NoteImageInspector: View {
         } catch { issue = error.localizedDescription }
     }
     @MainActor private func loadImage() async {
+        let operation = UUID(); loadID = operation
         image = nil; data = nil; copied = false; loading = true
-        defer { loading = false }
+        defer { if loadID == operation { loading = false } }
         let address = previewAddress
         do {
             let bytes: Data

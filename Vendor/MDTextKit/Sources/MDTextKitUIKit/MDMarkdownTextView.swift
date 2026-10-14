@@ -80,6 +80,14 @@ import PolarMark
     }
 
     /// Only attributes change; UIKit keeps ownership of keyboard edits and undo groups.
+    public var searchRanges: [NSRange] = [] {
+        didSet {
+            guard oldValue != searchRanges else { return }
+            renderedSource = nil
+            renderMarkdown()
+        }
+    }
+
     public func renderMarkdown() {
         guard markedTextRange == nil, !rendering else { return }
         let source = markdown
@@ -112,6 +120,9 @@ import PolarMark
                     styled.addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: range)
                 }
             }
+        }
+        for range in searchRanges where range.location >= 0 && NSMaxRange(range) <= styled.length {
+            styled.addAttribute(.backgroundColor, value: UIColor.systemYellow.withAlphaComponent(0.32), range: range)
         }
         let manager = undoManager
         manager?.disableUndoRegistration()

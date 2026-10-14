@@ -72,6 +72,7 @@ struct BlockDocumentEditor: View {
     var request: RichEditRequest?
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
     var onFind: () -> Void = {}
+    var search: NoteSearchSession
     @State private var imageEditing: DocumentBlock?
     @State private var composing = false
     @ScaledMetric(relativeTo: .body) private var compactLineHeight = 21.0
@@ -88,8 +89,8 @@ struct BlockDocumentEditor: View {
     @State private var photoFocus: NoteEditorFocus?
     #endif
 
-    init(text: Binding<String>, request: RichEditRequest? = nil, onSelection: @escaping (NoteEditorSelection) -> Void = { _ in }, onFind: @escaping () -> Void = {}) {
-        _text = text; self.request = request; self.onSelection = onSelection; self.onFind = onFind
+    init(text: Binding<String>, request: RichEditRequest? = nil, onSelection: @escaping (NoteEditorSelection) -> Void = { _ in }, onFind: @escaping () -> Void = {}, search: NoteSearchSession = NoteSearchSession()) {
+        _text = text; self.search = search; self.request = request; self.onSelection = onSelection; self.onFind = onFind
         _buffer = State(initialValue: DocumentBlockBuffer(text.wrappedValue))
     }
     var body: some View {
@@ -99,7 +100,7 @@ struct BlockDocumentEditor: View {
                 case .text:
                     MarkdownTextEditor(text: textBinding(block.id), request: requestTarget == block.id.uuidString ? pendingRequest : nil,
                                        onFocus: { activeText = block.id.uuidString }, sharedUndoManager: buffer.undo, onFind: onFind, onSelection: { selectionChanged($0, target: block.id.uuidString) },
-                                       expandsToContent: true, focusRequest: focusRequest(block.id.uuidString))
+                                       expandsToContent: true, focusRequest: focusRequest(block.id.uuidString), searchRanges: highlightRanges(block))
                         .frame(maxWidth: .infinity)
                 case .code(let language, let body):
                     VStack(alignment: .leading, spacing: 8) {
@@ -109,7 +110,7 @@ struct BlockDocumentEditor: View {
                                 .textFieldStyle(.plain).font(.caption).accessibilityLabel("代码语言")
                             blockMenu(block)
                         }
-                        MarkdownTextEditor(text: Binding(get: { code(block.id).1 }, set: { value in edit(block.id) { $0.content = .code(language: code(block.id).0, body: value) } }), onFocus: { activeText = "code:\(block.id)" }, sharedUndoManager: buffer.undo, onFind: onFind, plainText: true, onSelection: { selectionChanged($0, target: "code:\(block.id)") }, focusRequest: focusRequest("code:\(block.id)"))
+                        MarkdownTextEditor(text: Binding(get: { code(block.id).1 }, set: { value in edit(block.id) { $0.content = .code(language: code(block.id).0, body: value) } }), onFocus: { activeText = "code:\(block.id)" }, sharedUndoManager: buffer.undo, onFind: onFind, plainText: true, onSelection: { selectionChanged($0, target: "code:\(block.id)") }, focusRequest: focusRequest("code:\(block.id)"), searchRanges: highlightRanges(block))
                             .frame(height: max(92, min(480, CGFloat(body.components(separatedBy: "\n").count) * compactLineHeight + 24)))
                             .accessibilityLabel(language.isEmpty ? "代码内容" : "\(language) 代码内容")
 
@@ -142,7 +143,7 @@ struct BlockDocumentEditor: View {
                                     HStack(spacing: 1) {
                                         ForEach(rows[row].indices, id: \.self) { column in
                                             let key = "\(block.id)-\(row)-\(column)"
-                                            MarkdownTextEditor(text: cellBinding(block.id, row, column), request: requestTarget == key ? pendingRequest : nil, onFocus: { activeText = key }, sharedUndoManager: buffer.undo, onFind: onFind, inlineOnly: true, onSelection: { selectionChanged($0, target: key) }, focusRequest: focusRequest(key))
+                                            MarkdownTextEditor(text: cellBinding(block.id, row, column), request: requestTarget == key ? pendingRequest : nil, onFocus: { activeText = key }, sharedUndoManager: buffer.undo, onFind: onFind, inlineOnly: true, onSelection: { selectionChanged($0, target: key) }, focusRequest: focusRequest(key), searchRanges: highlightRanges(block, row: row, column: column))
                                                 .frame(width: 180, height: max(44, CGFloat(rows[row][column].components(separatedBy: "\n").count) * compactLineHeight + 16))
                                                 .background(row == 0 ? Color.accentColor.opacity(0.08) : Color.clear)
                                                 .accessibilityLabel("第 \(row + 1) 行，第 \(column + 1) 列")
@@ -239,8 +240,19 @@ struct BlockDocumentEditor: View {
         }
         .onChange(of: request) { _, request in
             guard !composing else { return }
+            if let plan = request?.replacement {
+                do {
+                    let next = try plan.applying(to: buffer.blocks)
+                    buffer.undo.beginUndoGrouping()
+                    buffer.replace(next, undo: buffer.undo)
+                    buffer.undo.endUndoGrouping()
+                    search.didReplace(plan, text: next.map(\.markdown).joined())
+                } catch { search.issue = error.localizedDescription }
+                return
+            }
             if let match = request?.match, buffer.blocks.indices.contains(match.block) {
                 let block = buffer.blocks[match.block]
+                guard match.isValid(in: block) else { return }
                 let target: String
                 if let row = match.row, let column = match.column { target = "\(block.id)-\(row)-\(column)" }
                 else if case .code = block.content { target = "code:\(block.id)" }
@@ -265,6 +277,11 @@ struct BlockDocumentEditor: View {
                 pendingRequest = request
             }
         }
+    }
+    private func highlightRanges(_ block: DocumentBlock, row: Int? = nil, column: Int? = nil) -> [NSRange] {
+        guard let index = buffer.blocks.firstIndex(where: { $0.id == block.id }) else { return [] }
+        guard search.isPresented else { return [] }
+        return search.matches.filter { $0.block == index && $0.row == row && $0.column == column && $0.isValid(in: block) }.flatMap { $0.segments ?? [$0.range] }
     }
     private func selectionChanged(_ state: NoteEditorSelection, target: String) {
         composing = state.composing
@@ -350,19 +367,28 @@ struct VisualDocumentEditor: View {
     var preserveSelection = false
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
     var search: NoteSearchSession = NoteSearchSession()
+    @State private var forwardedRequest: RichEditRequest?
     var body: some View {
         Group {
             #if os(macOS)
-            MDTextKitEditor(text: $text, request: search.request ?? request, preserveSelection: preserveSelection || search.isPresented, onSelection: selectionChanged, onFind: { search.open() })
+            MDTextKitEditor(text: $text, request: forwardedRequest, preserveSelection: preserveSelection || search.isPresented, onSelection: selectionChanged, onFind: { search.open() }, search: search)
             #else
-            BlockDocumentEditor(text: $text, request: search.request ?? request, onSelection: selectionChanged, onFind: { search.open() })
+            BlockDocumentEditor(text: $text, request: forwardedRequest, onSelection: selectionChanged, onFind: { search.open() }, search: search)
             #endif
         }
         .onChange(of: request) { _, value in
+            forwardedRequest = value
             search.request = nil
             if value?.action == "show-find" { search.open() }
         }
-        .onChange(of: text) { _, _ in search.index = -1 }
+        .onChange(of: search.request) { _, value in
+            if let value { forwardedRequest = value }
+        }
+        .onChange(of: search.isPresented) { _, visible in
+            if !visible { forwardedRequest = nil }
+        }
+        .onChange(of: text) { _, value in search.refresh(in: value) }
+        .onAppear { search.refresh(in: text); forwardedRequest = search.request ?? request }
     }
     private func selectionChanged(_ selection: NoteEditorSelection) {
         search.composing = selection.composing
@@ -371,7 +397,7 @@ struct VisualDocumentEditor: View {
 }
 
 #if os(iOS)
-private struct NotePickedPhoto: Transferable, Sendable {
+struct NotePickedPhoto: Transferable, Sendable {
     let address: String
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(importedContentType: .image) { received in

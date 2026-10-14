@@ -34,6 +34,7 @@ struct MDTextKitEditor: NSViewRepresentable {
     var preserveSelection = false
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
     var onFind: () -> Void = {}
+    var search: NoteSearchSession? = nil
 
     func makeCoordinator() -> Coordinator {
         if let coordinator = runtime?.coordinator { return coordinator }
@@ -174,6 +175,7 @@ struct MDTextKitEditor: NSViewRepresentable {
                 needsImageRefresh = true
             } else if enabledImages { needsImageRefresh = true }
             refreshImagesIfPossible()
+            highlightMatches(host.search)
             if let request = host.request, request.id != lastRequest {
                 lastRequest = request.id
                 let target = activeView.flatMap { $0 === view || $0.isDescendant(of: view) ? $0 : nil } ?? view
@@ -182,7 +184,11 @@ struct MDTextKitEditor: NSViewRepresentable {
                 Task { @MainActor [weak self, weak target] in
                     guard let self, !self.stopped, let target, target.isEditable, !target.hasMarkedText() else { return }
                     target.window?.makeFirstResponder(target)
-                    if let match = request.match { self.selectMatch(match) }
+                    if let plan = request.replacement {
+                        do { try self.replaceMatches(plan); host.search?.didReplace(plan, text: self.view.markdown) }
+                        catch { host.search?.issue = error.localizedDescription }
+                    }
+                    else if let match = request.match { self.selectMatch(match) }
                     else if request.action == "show-find" { host.onFind() }
                     else if request.action == "show-link" { self.showLinkEditor(in: target) }
                     else if request.action == "insert-image-file" { self.chooseImage(in: target) }
@@ -195,6 +201,7 @@ struct MDTextKitEditor: NSViewRepresentable {
             let blocks = DocumentBlocks.parse(view.markdown)
             guard blocks.indices.contains(match.block), !view.hasMarkedText() else { return }
             let block = blocks[match.block]
+            guard match.isValid(in: block) else { return }
             var offset = blocks.prefix(match.block).reduce(0) { $0 + $1.markdown.utf16.count }
             if let row = match.row, let column = match.column {
                 let mapped = view.mdTextStorage.attributedStringRange(fromStringRange: NSRange(location: offset, length: block.markdown.utf16.count))
@@ -212,6 +219,58 @@ struct MDTextKitEditor: NSViewRepresentable {
                 view.window?.makeFirstResponder(view)
                 view.setSelectedRange(mapped)
                 view.scrollRangeToVisible(mapped)
+            }
+        }
+
+        func replaceMatches(_ plan: NoteSearchReplacement) throws {
+            guard view.isEditable, !view.hasMarkedText(), activeView?.hasMarkedText() != true else { throw NoteImageEditError.changed }
+            let before = DocumentBlocks.parse(view.markdown)
+            let after = try plan.applying(to: before)
+            var offset = 0
+            var changes: [(NSRange, String)] = []
+            for (old, new) in zip(before, after) {
+                let range = NSRange(location: offset, length: old.markdown.utf16.count)
+                if old.markdown != new.markdown { changes.append((range, new.markdown)) }
+                offset += range.length
+            }
+            guard !changes.isEmpty else { return }
+            view.window?.makeFirstResponder(view)
+            view.editorUndoManager.beginUndoGrouping()
+            defer { view.editorUndoManager.endUndoGrouping() }
+            for (range, text) in changes.reversed() {
+                let mapped = view.mdTextStorage.attributedStringRange(fromStringRange: range)
+                view.editorController.replaceCharacters(in: mapped, with: NSAttributedString(string: text), in: view)
+            }
+            view.editorController.notifyTextChanges(in: view)
+        }
+
+        func highlightMatches(_ search: NoteSearchSession?) {
+            guard !view.hasMarkedText(), activeView?.hasMarkedText() != true else { return }
+            let full = NSRange(location: 0, length: view.mdTextStorage.length)
+            view.layoutManager?.removeTemporaryAttribute(.backgroundColor, forCharacterRange: full)
+            let blocks = DocumentBlocks.parse(view.markdown)
+            var offset = 0
+            for (index, block) in blocks.enumerated() {
+                let mapped = view.mdTextStorage.attributedStringRange(fromStringRange: NSRange(location: offset, length: block.markdown.utf16.count))
+                if case .table = block.content {
+                    view.mdTextStorage.enumerateAttribute(.attachment, in: mapped) { value, _, _ in
+                        guard let attachment = value as? MDTableTextAttachment,
+                              let table = attachment.attachmentViewController as? MDTableAttachmentViewController else { return }
+                        let hits = search?.isPresented == true ? search?.matches.filter { $0.block == index && $0.isValid(in: block) } ?? [] : []
+                        table.setSearchMatches(hits.flatMap { hit -> [(Int, Int, NSRange)] in
+                            guard let row = hit.row, let column = hit.column else { return [] }
+                            return (hit.segments ?? [hit.range]).map { (row, column, $0) }
+                        })
+                    }
+                } else {
+                    var start = offset
+                    if case .code = block.content { start += (block.markdown as NSString).range(of: "\n").location + 1 }
+                    for range in (search?.isPresented == true ? search?.matches.filter { $0.block == index && $0.isValid(in: block) }.flatMap { $0.segments ?? [$0.range] } ?? [] : []) where start + NSMaxRange(range) <= view.markdown.utf16.count {
+                        let hit = view.mdTextStorage.attributedStringRange(fromStringRange: NSRange(location: start + range.location, length: range.length))
+                        view.layoutManager?.addTemporaryAttribute(.backgroundColor, value: NSColor.systemYellow.withAlphaComponent(0.32), forCharacterRange: hit)
+                    }
+                }
+                offset += block.markdown.utf16.count
             }
         }
 

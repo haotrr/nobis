@@ -15,6 +15,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
     var expandsToContent = false
     var focusRequest: NoteEditorFocus?
+    var searchRanges: [NSRange] = []
     func makeCoordinator() -> Coordinator { Coordinator(text: $text, onFocus: onFocus, plainText: plainText) }
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
@@ -158,6 +159,7 @@ struct MarkdownTextEditor: UIViewRepresentable {
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
     var expandsToContent = false
     var focusRequest: NoteEditorFocus?
+    var searchRanges: [NSRange] = []
     func makeCoordinator() -> Coordinator { Coordinator(text: $text, onFocus: onFocus, plainText: plainText) }
     func makeUIView(context: Context) -> UITextView {
         let view = MDMarkdownTextView()
@@ -192,6 +194,7 @@ struct MarkdownTextEditor: UIViewRepresentable {
         context.coordinator.onSelection = onSelection
         context.coordinator.inlineOnly = inlineOnly
         view.isScrollEnabled = !expandsToContent
+        (view as? MDMarkdownTextView)?.searchRanges = searchRanges
         if let focusRequest, context.coordinator.lastFocus != focusRequest.id {
             context.coordinator.lastFocus = focusRequest.id
             (view as? MDMarkdownTextView)?.requestFocus(selection: focusRequest.range)

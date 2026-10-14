@@ -27,6 +27,82 @@ import SwiftUI
         return view
     }
 
+    func testSearchHighlightsPreserveCompositionAndUndo() {
+        let view = editor("前😀目标目标")
+        let source = view.markdown
+        view.searchRanges = [NSRange(location: 3, length: 2), NSRange(location: 5, length: 2)]
+        XCTAssertNotNil(view.textStorage.attribute(.backgroundColor, at: 3, effectiveRange: nil))
+        XCTAssertEqual(view.markdown, source)
+        view.selectedRange = NSRange(location: source.utf16.count, length: 0)
+        view.setMarkedText("ni", selectedRange: NSRange(location: 2, length: 0))
+        view.searchRanges = []
+        XCTAssertNotNil(view.markedTextRange)
+        view.insertText("你"); view.unmarkText(); view.renderMarkdown()
+        XCTAssertNil(view.textStorage.attribute(.backgroundColor, at: 3, effectiveRange: nil))
+        XCTAssertTrue(view.markdown.hasSuffix("你"))
+    }
+
+    func testClosingSearchDoesNotReplayEarlierFormattingCommand() async throws {
+        let search = NoteSearchSession(); search.query = "目标"; search.isPresented = true
+        let commands = NoteSearchCommands()
+        let host = UIHostingController(rootView: NoteSearchFixture(source: "目标", search: search, commands: commands))
+        window.rootViewController = host; window.makeKeyAndVisible()
+        func editors(_ view: UIView) -> [MDMarkdownTextView] {
+            (view as? MDMarkdownTextView).map { [$0] } ?? view.subviews.flatMap(editors)
+        }
+        try await Task.sleep(for: .milliseconds(150))
+        let view = try XCTUnwrap(editors(host.view).first)
+        view.becomeFirstResponder(); view.selectedRange = NSRange(location: 0, length: 2)
+        try await Task.sleep(for: .milliseconds(100))
+        commands.request = RichEditRequest(action: "bold")
+        try await Task.sleep(for: .milliseconds(150))
+        XCTAssertEqual(view.markdown, "**目标**")
+        search.navigate(1, in: view.markdown)
+        try await Task.sleep(for: .milliseconds(150))
+        search.close()
+        try await Task.sleep(for: .milliseconds(150))
+        XCTAssertEqual(view.markdown, "**目标**")
+    }
+
+    func testReplaceAllAcrossNativeEditorsAndUndo() async throws {
+        let source = "正文目标\n\n| 名称 |\n| --- |\n| 表格目标 |\n\n```swift\n代码目标\n```\n"
+        let search = NoteSearchSession(); search.query = "目标"; search.isPresented = true
+        let host = UIHostingController(rootView: NoteSearchFixture(source: source, search: search))
+        window.rootViewController = host; window.makeKeyAndVisible()
+        try await Task.sleep(for: .milliseconds(200))
+        func editors(_ view: UIView) -> [MDMarkdownTextView] {
+            (view as? MDMarkdownTextView).map { [$0] } ?? view.subviews.flatMap(editors)
+        }
+        XCTAssertEqual(search.matches.count, 3)
+        search.replacement = "新的😀"; search.replace(all: true, in: source)
+        try await Task.sleep(for: .milliseconds(200))
+        let views = editors(host.view)
+        XCTAssertEqual(views.filter { $0.markdown.contains("新的😀") }.count, 3)
+        XCTAssertTrue(search.matches.isEmpty)
+        let manager = try XCTUnwrap(views.first?.undoManager)
+        manager.undo()
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(editors(host.view).filter { $0.markdown.contains("目标") }.count, 3)
+        XCTAssertEqual(search.matches.count, 3)
+        manager.redo()
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(editors(host.view).filter { $0.markdown.contains("新的😀") }.count, 3)
+    }
+
+    func testNativeImageZoomAndResizeReset() {
+        let scroll = NoteImageScrollView(frame: CGRect(x: 0, y: 0, width: 300, height: 240))
+        window.rootViewController!.view.addSubview(scroll)
+        scroll.layoutIfNeeded()
+        scroll.setZoomScale(3, animated: false)
+        XCTAssertEqual(scroll.zoomScale, 3, accuracy: 0.01)
+        XCTAssertGreaterThan(scroll.contentSize.width, scroll.bounds.width)
+        scroll.setContentOffset(CGPoint(x: 100, y: 60), animated: false)
+        XCTAssertEqual(scroll.contentOffset.x, 100, accuracy: 0.01)
+        scroll.frame.size = CGSize(width: 600, height: 200)
+        scroll.layoutIfNeeded()
+        XCTAssertEqual(scroll.zoomScale, 1, accuracy: 0.01)
+    }
+
     func testImageInspectorLayoutsDoNotModifyDocument() async throws {
         let pixels = UIGraphicsImageRenderer(size: CGSize(width: 120, height: 80)).image { context in
             UIColor.systemTeal.setFill(); context.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
@@ -76,6 +152,8 @@ import SwiftUI
             XCTAssertTrue(active.text.contains(expected))
             XCTAssertEqual((active.text as NSString).substring(with: active.selectedRange), "目标")
         }
+        search.showsReplacement = true
+        search.replacement = "替换内容"
         for (name, size, style) in [("portrait-light", CGSize(width: 390, height: 844), UIUserInterfaceStyle.light),
                                      ("landscape-dark", CGSize(width: 844, height: 390), UIUserInterfaceStyle.dark)] {
             window.frame.size = size
@@ -503,12 +581,15 @@ import SwiftUI
 
 }
 
+@MainActor @Observable private final class NoteSearchCommands { var request: RichEditRequest? }
+
 private struct NoteSearchFixture: View {
     @State var source: String
     let search: NoteSearchSession
+    var commands: NoteSearchCommands? = nil
     var body: some View {
         ScrollView {
-            VisualDocumentEditor(text: $source, search: search).padding(16)
+            VisualDocumentEditor(text: $source, request: commands?.request, search: search).padding(16)
         }
         .safeAreaInset(edge: .top) { NoteDocumentSearchBar(session: search, text: source).padding(8).background(.regularMaterial) }
         .dynamicTypeSize(.xxxLarge)

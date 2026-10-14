@@ -303,9 +303,52 @@ import SFThemeKit
 
     // MARK: Layout / rendering
 
+    private var searchMatches: [(row: Int, column: Int, range: NSRange)] = []
+    public func setSearchMatches(_ matches: [(row: Int, column: Int, range: NSRange)]) {
+        guard !searchMatches.elementsEqual(matches, by: { $0.row == $1.row && $0.column == $1.column && $0.range == $1.range }) else { return }
+        searchMatches = matches
+        relayout(needsLayout: false)
+    }
+
+    private func searchRows() -> [[MDTableAttachmentRenderer.Cell]] {
+        var rows = model.rows
+        for hit in searchMatches where rows.indices.contains(hit.row) && rows[hit.row].indices.contains(hit.column) {
+            let value = NSMutableAttributedString(attributedString: rows[hit.row][hit.column].text)
+            if let range = Self.sourceRange(hit.range, in: value.string), NSMaxRange(range) <= value.length {
+                value.addAttribute(.backgroundColor, value: NSColor.systemYellow.withAlphaComponent(0.32), range: range)
+            }
+            rows[hit.row][hit.column].text = value
+        }
+        return rows
+    }
+
+    private static func sourceRange(_ range: NSRange, in text: String) -> NSRange? {
+        let source = text as NSString
+        var boundaries = [0], offset = 0
+        while offset < source.length {
+            let rest = source.substring(from: offset)
+            if let br = rest.range(of: "^<br ?/?>", options: .regularExpression) { offset += rest[br].utf16.count }
+            else if source.character(at: offset) == 92, offset + 1 < source.length,
+               source.character(at: offset + 1) == 92 || source.character(at: offset + 1) == 124 { offset += 2 }
+            else { offset += 1 }
+            boundaries.append(offset)
+        }
+        guard range.location >= 0, range.location < boundaries.count, NSMaxRange(range) < boundaries.count else { return nil }
+        return NSRange(location: boundaries[range.location], length: boundaries[NSMaxRange(range)] - boundaries[range.location])
+    }
+
     public func relayout(needsLayout: Bool) {
-        guard let att = textAttachment, let l = gridRenderer.layout(rows: model.rows, columns: model.columns) else { return }
+        guard let att = textAttachment, let l = gridRenderer.layout(rows: searchRows(), columns: model.columns) else { return }
         layout = l
+        if let tv = cellTextView, !tv.hasMarkedText() {
+            tv.layoutManager?.removeTemporaryAttribute(.backgroundColor, forCharacterRange: NSRange(location: 0, length: tv.mdTextStorage.length))
+            for hit in searchMatches where hit.row == tv.indexPath.row && hit.column == tv.indexPath.column {
+                if let range = Self.sourceRange(hit.range, in: tv.markdown) {
+                    let mapped = tv.mdTextStorage.attributedStringRange(fromStringRange: range)
+                    tv.layoutManager?.addTemporaryAttribute(.backgroundColor, value: NSColor.systemYellow.withAlphaComponent(0.32), forCharacterRange: mapped)
+                }
+            }
+        }
         let image = gridRenderer.image(for: l, blanking: cellTextView?.indexPath)
         tableView.image = image
         att.temporaryImage = image

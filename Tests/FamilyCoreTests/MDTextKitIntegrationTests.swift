@@ -22,6 +22,46 @@ struct MDTextKitIntegrationTests {
         return (buffer, coordinator)
     }
 
+    @Test func unifiedReplacementAndHighlightsKeepNativeUndo() throws {
+        let source = "前😀目标\n\n| 名称 |\n| --- |\n| 表格目标 |\n\n```swift\n代码目标\n```\n"
+        let (buffer, coordinator) = make(source)
+        defer { coordinator.stop() }
+        let view = coordinator.view
+        view.editorUndoManager.groupsByEvent = false
+        let search = NoteSearchSession(); search.query = "目标"; search.isPresented = true; search.refresh(in: source)
+        coordinator.highlightMatches(search)
+        let first = search.matches[0].range
+        let display = view.mdTextStorage.attributedStringRange(fromStringRange: first)
+        #expect(view.layoutManager?.temporaryAttribute(.backgroundColor, atCharacterIndex: display.location, effectiveRange: nil) != nil)
+        var table: MDTableAttachmentViewController?
+        view.mdTextStorage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: view.mdTextStorage.length)) { value, _, _ in
+            if let attachment = value as? MDTableTextAttachment { table = attachment.attachmentViewController as? MDTableAttachmentViewController }
+        }
+        let cell = try #require(table?.layout?.display[1][0])
+        let cellHit = (cell.string as NSString).range(of: "目标")
+        #expect(cell.attribute(.backgroundColor, at: cellHit.location, effectiveRange: nil) != nil)
+        #expect(view.markdown == source)
+        #expect(!view.editorUndoManager.canUndo)
+        try coordinator.replaceMatches(NoteSearchReplacement(source: source, matches: search.matches, replacement: "新的😀"))
+        #expect(!buffer.value.contains("目标"))
+        #expect(buffer.value.components(separatedBy: "新的😀").count == 4)
+        view.editorUndoManager.undo()
+        #expect(buffer.value == source)
+        view.editorUndoManager.redo()
+        #expect(!buffer.value.contains("目标"))
+        search.close(); coordinator.highlightMatches(search)
+        #expect(view.layoutManager?.temporaryAttribute(.backgroundColor, atCharacterIndex: 0, effectiveRange: nil) == nil)
+    }
+
+    @Test func nativeImageZoomResetsAfterResize() {
+        let view = NoteImageScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        view.layoutSubtreeIfNeeded()
+        view.magnification = 3
+        #expect(view.magnification == 3)
+        view.setFrameSize(NSSize(width: 600, height: 300)); view.layoutSubtreeIfNeeded()
+        #expect(view.magnification == 1)
+    }
+
     @Test func imageInspectorEditsAndDeletesThroughNativeUndo() throws {
         let source = "前😀\n![旧图](https://example.com/a.png)\n后文"
         let (buffer, coordinator) = make(source)
