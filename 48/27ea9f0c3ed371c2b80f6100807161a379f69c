@@ -1,0 +1,41 @@
+docs/verification.md
+  s_525142cbb7f3b1::t_e5c471085af9d2 5-11
+Sources/NobisUI/Features/Notes/Editor/NoteImageImportState.swift
+  s_525142cbb7f3b1::t_4fa4123bcadcfc 1-30
+Tests/FamilyCoreTests/NoteImageImportTests.swift
+  s_525142cbb7f3b1::t_ca814ab1a18e19 1-41
+Sources/NobisUI/Features/Notes/Editor/NoteImageInspector.swift
+  s_525142cbb7f3b1::t_4fa4123bcadcfc 28-29,38-39,81,83,121-122,125,127,132-133,140,142,145-150
+DESIGN.md
+  s_525142cbb7f3b1::t_4402330fc5d4b5 86
+Sources/NobisUI/Features/Notes/Editor/VisualDocumentEditor.swift
+  s_525142cbb7f3b1::t_4fa4123bcadcfc 88-90,207,216-217,220-221,223,226,271-272
+Sources/NobisUI/Features/Notes/DocumentsView.swift
+  s_525142cbb7f3b1::t_ca814ab1a18e19 925
+Sources/NobisUI/Features/Notes/Editor/NoteExcerpt.swift
+  s_525142cbb7f3b1::t_ca814ab1a18e19 1-5,21,25-30
+  s_525142cbb7f3b1::t_dd26bec6f39516 22
+  s_525142cbb7f3b1::t_106036e98976fb 6-20,23-24
+docs/tech/T-261014-NB2Q3-mdtextkit/TODO.md
+  s_525142cbb7f3b1::t_e5c471085af9d2 73-80
+Tests/FamilyCoreTests/NoteEmbeddedImageTests.swift
+  s_525142cbb7f3b1::t_67c14e991972e1 28
+docs/features/documents.md
+  s_525142cbb7f3b1::t_ee344144edc81b 62,89-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4827ea9f0c3ed371c2b80f6100807161a379f69c",
+  "prompts": {},
+  "sessions": {
+    "s_525142cbb7f3b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a139c3-4494-7c32-85c0-a13170a05e01",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
