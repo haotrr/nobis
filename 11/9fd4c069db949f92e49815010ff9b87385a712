@@ -1,0 +1,35 @@
+Sources/NobisUI/Features/Notes/DocumentsView.swift
+  s_a3057a373e7ff5::t_95f0e4e8ecc28c 812-813
+docs/verification.md
+  s_a3057a373e7ff5::t_7424df72e0cdb1 13
+  s_a3057a373e7ff5::t_bc23113d69f9aa 5-10
+Vendor/MDTextKit/NOBIS.md
+  s_a3057a373e7ff5::t_bc23113d69f9aa 19
+docs/feature-inventory.md
+  s_a3057a373e7ff5::t_bc23113d69f9aa 10
+Sources/NobisUI/Features/Notes/Editor/MDTextKitEditor.swift
+  s_a3057a373e7ff5::t_95f0e4e8ecc28c 3-4,68-69,176,182-217,219-223,350-351
+  s_a3057a373e7ff5::t_ef1feaaebec932 218,527-530
+DESIGN.md
+  s_a3057a373e7ff5::t_bc23113d69f9aa 85-86
+Tests/FamilyCoreTests/MDTextKitIntegrationTests.swift
+  s_a3057a373e7ff5::t_c293190d49798f 25-38
+Vendor/MDTextKit/Sources/MDTextKitUI/MDTextView+ImageInsertion.swift
+  s_a3057a373e7ff5::t_fdff97bbc6d7e6 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "119fd4c069db949f92e49815010ff9b87385a712",
+  "prompts": {},
+  "sessions": {
+    "s_a3057a373e7ff5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13969-4bff-7f42-ad44-d61e05487b6c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
