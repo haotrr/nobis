@@ -112,7 +112,7 @@ struct TodayWorkspace: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var textSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    private var accent: Color { colorScheme == .dark ? Color(red: 0.65, green: 0.82, blue: 0.73) : Color(red: 0.24, green: 0.43, blue: 0.36) }
+    private var accent: Color { NobisTheme.accent }
     private var cardColumns: [GridItem] {
         if horizontalSizeClass == .compact || textSize.isAccessibilitySize { return [GridItem(.flexible())] }
         return [GridItem(.adaptive(minimum: 340), spacing: 20, alignment: .top)]

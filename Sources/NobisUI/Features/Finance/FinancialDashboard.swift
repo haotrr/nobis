@@ -82,7 +82,7 @@ struct FinancialRecordEditor: View {
                 hasChanges: onFinish != nil ? model.recordPanel.hasChanges : existing == nil || hasLocalChanges,
                 saveTitle: existing == nil ? "保存" : "保存修改"))
         }
-        .tint(colorScheme == .dark ? Color(red: 0.65, green: 0.82, blue: 0.73) : Color(red: 0.24, green: 0.43, blue: 0.36))
+        .tint(NobisTheme.accent)
         .interactiveDismissDisabled(onFinish == nil && hasLocalChanges)
         .confirmationDialog("放弃尚未保存的内容？", isPresented: $confirmingDiscard) {
             Button("放弃修改", role: .destructive) { dismiss() }

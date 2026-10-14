@@ -204,7 +204,7 @@ private struct NoteEditorWindowContent: View {
             }.padding(.horizontal, 16).padding(.vertical, 8).background(.regularMaterial)
         }
         .environment(\.noteEditorRuntime, session.runtime)
-        .tint(colorScheme == .dark ? Color(red: 0.65, green: 0.82, blue: 0.73) : Color(red: 0.24, green: 0.43, blue: 0.36))
+        .tint(NobisTheme.accent)
         .onChange(of: model.accessEpoch) { _, _ in session.finish() }
     }
 }

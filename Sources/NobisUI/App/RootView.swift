@@ -23,7 +23,7 @@ public struct NobisRootView: View {
         }
         .id(model.accessEpoch)
         .sheet(isPresented: Binding(get: { model.cloud.invitation != nil }, set: { if !$0 { model.cloud.invitation = nil } })) { FamilyInvitationView(model: model) }
-        .tint(colorScheme == .dark ? Color(red: 0.65, green: 0.82, blue: 0.73) : Color(red: 0.24, green: 0.43, blue: 0.36))
+        .tint(NobisTheme.accent)
         .alert("操作未完成", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("知道了", role: .cancel) { model.error = nil } } message: { Text(model.error ?? "") }
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
             Task { await model.updateNotifications(requestPermission: false) }

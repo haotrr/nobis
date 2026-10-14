@@ -10,7 +10,7 @@
 
 ## 视觉与布局
 
-- 参考 Today 的安静阅读风格，采用浅色渐变背景、松绿色强调色、圆角内容卡片；深色使用适配后的语义文字与表面。
+- 参考 Today 的安静阅读风格，采用浅色渐变背景、珊瑚红强调色、圆角内容卡片；深色使用适配后的语义文字与表面。
 - 侧栏与主内容背景连续，背景铺满可用区域；正文保留必要内边距，避免边缘白缝和无效留白。
 - 工作页面以导航标题定位，正文直接进入筛选和内容；问候集中在今天页，空状态可提供简短引导。
 - 卡片标题只提供新的分组信息，副标题按需展示；数量跟随相关分区，不重复放在摘要和卡片中。
@@ -71,7 +71,7 @@ Mac 同一笔记在应用内仅保留一个编辑实例；默认内嵌，弹出�
 
 ## 名称与图标
 
-应用与产物名称统一 Nobis；Target、Scheme 和 bundle identifier 保留平台区分，不改变数据身份。图标为暖白背景、深松绿与鼠尾草绿交叠的 N 字带。母版为 `docs/design/nobis-icon-master.png`，资源位于 `Apps/Nobis/Shared/Assets.xcassets/AppIcon.appiconset`，包含 macOS 各尺寸与 iOS 1024 像素资源。
+应用与产物名称统一 Nobis；Target、Scheme 和 bundle identifier 保留平台区分，不改变数据身份。图标使用珊瑚红底、白色 Nobis 字标，保留提供的原图构图。品牌红为 sRGB `#FD5E53`；浅色界面文字与控件强调色使用同色系深红 `#C4372D`，深色界面使用品牌红。实心主按钮使用品牌红和深色文字；状态色保留各自语义。主题由 `NobisTheme` 与共享 `AccentColor` 资源统一管理。母版为 `docs/design/nobis-icon-master.png`，资源位于 `Apps/Nobis/Shared/Assets.xcassets/AppIcon.appiconset`，包含 macOS 各尺寸与 iOS 1024 像素资源。
 
 设计规则不等于所有设备验收通过，具体证据与未覆盖项见[验证状态](docs/verification.md)。
 

@@ -66,7 +66,7 @@ struct RecordEditor: View {
         switch kind { case .comment: [.active, .completed]; case .document, .category, .monthlyIncome, .assetSnapshot: [.active, .archived]; case .project: [.draft, .active, .completed, .archived]; case .task: [.active, .completed, .cancelled]; case .subscription: [.active, .paused, .cancelled, .archived]; case .event: [.active, .cancelled]; case .transaction: existing?.body.status == .confirmed ? [.confirmed, .voided] : [.draft, .confirmed, .voided] }
     }
     @Environment(\.colorScheme) private var colorScheme
-    private var lifeTint: Color { colorScheme == .dark ? Color(red: 0.65, green: 0.82, blue: 0.73) : Color(red: 0.24, green: 0.43, blue: 0.36) }
+    private var lifeTint: Color { NobisTheme.accent }
     var body: some View {
         VStack(spacing: 0) {
             LifeDetail {

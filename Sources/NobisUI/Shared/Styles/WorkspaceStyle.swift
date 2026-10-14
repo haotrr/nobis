@@ -10,7 +10,7 @@ struct DirectSelection<Value: Hashable>: View {
     var showsTitle = true
     let label: (Value) -> String
     @Environment(\.colorScheme) private var scheme
-    private var selectionColor: Color { scheme == .dark ? Color(red: 0.65, green: 0.82, blue: 0.73) : Color(red: 0.24, green: 0.43, blue: 0.36) }
+    private var selectionColor: Color { NobisTheme.accent }
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -269,7 +269,7 @@ struct LifePage<Content: View>: View {
             .environment(\.lifeCompact, geometry.size.width < 560)
         }.background { LifeBackground() }
             .lifeInlineNavigationTitle()
-            .tint(scheme == .dark ? Color(red: 0.65, green: 0.82, blue: 0.73) : Color(red: 0.24, green: 0.43, blue: 0.36))
+            .tint(NobisTheme.accent)
     }
 }
 
@@ -341,7 +341,7 @@ struct LifeDetail<Content: View>: View {
         }
         }.background { LifeBackground() }
             .lifeInlineNavigationTitle()
-            .tint(scheme == .dark ? Color(red: 0.65, green: 0.82, blue: 0.73) : Color(red: 0.24, green: 0.43, blue: 0.36))
+            .tint(NobisTheme.accent)
     }
 }
 
@@ -566,8 +566,8 @@ private struct LifePrimaryActionStyle: ButtonStyle {
         configuration.label
             .padding(.horizontal, 16).padding(.vertical, 8)
             .frame(minHeight: 44)
-            .foregroundStyle(isEnabled ? Color.white : Color.secondary)
-            .background(isEnabled ? Color(red: 0.24, green: 0.43, blue: 0.36) : Color.primary.opacity(0.08), in: Capsule())
+            .foregroundStyle(isEnabled ? NobisTheme.onBrand : Color.secondary)
+            .background(isEnabled ? NobisTheme.brand : Color.primary.opacity(0.08), in: Capsule())
             .opacity(configuration.isPressed ? 0.8 : 1)
     }
 }
