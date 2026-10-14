@@ -41,7 +41,7 @@ struct NoteOutlineMenu: View {
                     session.request = RichEditRequest(action: "find-match", match: entry.match)
                 }
             }
-        } label: { Image(systemName: "list.bullet.indent").touchTarget() }
+        } label: { NoteToolbarLabel(symbol: "list.bullet.indent", menu: true) }
         .accessibilityLabel("文档大纲").help("文档大纲与章节跳转").disabled(session.composing)
     }
 }

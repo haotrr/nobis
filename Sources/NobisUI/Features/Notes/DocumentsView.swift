@@ -769,7 +769,7 @@ struct DocumentEditorContent: View {
     }
     private var saveActions: some View {
         HStack(spacing: 12) {
-            Button(dirty ? "关闭" : "完成", action: cancel).keyboardShortcut(.cancelAction)
+            Button(dirty ? "关闭" : "完成", action: cancel).lifeSecondaryAction().keyboardShortcut(.cancelAction)
             Button("保存", action: save).keyboardShortcut("s").lifePrimaryAction()
                 .disabled(!(existing == nil || dirty) || value.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }.fixedSize()
@@ -782,7 +782,7 @@ struct DocumentEditorContent: View {
     }
     private func formattingBar(width: CGFloat) -> some View {
                     ScrollView(.horizontal) {
-                    HStack {
+                    HStack(spacing: 4) {
                         Menu {
                             ForEach(1...3, id: \.self) { level in formatButton("标题 \(level)", action: "heading:\(level)") }
                             formatButton("正文", action: "body")
@@ -796,15 +796,15 @@ struct DocumentEditorContent: View {
                             formatButton("引用", action: "quote")
                             Divider()
                             formatButton("清除格式", action: "clear")
-                        } label: { Image(systemName: "textformat").touchTarget() }.help("文字格式").accessibilityLabel("文字格式")
+                        } label: { NoteToolbarLabel(symbol: "textformat", menu: true) }.help("文字格式").accessibilityLabel("文字格式")
                         Button {
 #if os(macOS)
                             formatRequest = RichEditRequest(action: "show-link")
 #else
                             showLink = true
 #endif
-                        } label: { Image(systemName: "link").touchTarget() }
-                            .disabled(!editorSelection.enabled || editorSelection.composing).help("选中文字后添加链接").keyboardShortcut("k")
+                        } label: { NoteToolbarLabel(symbol: "link") }
+                            .disabled(!editorSelection.enabled || editorSelection.composing).accessibilityLabel("添加链接").help("选中文字后添加链接").keyboardShortcut("k")
                             .popover(isPresented: $state.showLink) {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("选中文字的链接").font(.headline)
@@ -812,8 +812,8 @@ struct DocumentEditorContent: View {
                                     Button("应用") { formatRequest = RichEditRequest(action: "link:" + linkURL); showLink = false }
                                 }.padding(20).frame(width: 300).background { LifeBackground() }
                             }
-                        Button { formatRequest = RichEditRequest(action: "checklist") } label: { Image(systemName: "checklist").touchTarget() }.disabled(blockFormattingDisabled).tint(editorSelection.selected.contains("checklist") ? NobisTheme.accent : nil).help("转为清单").accessibilityLabel("转为清单")
-                        Button { formatRequest = RichEditRequest(action: "toggle") } label: { Image(systemName: "checkmark.circle").touchTarget() }.disabled(blockFormattingDisabled).help("切换当前清单完成状态").accessibilityLabel("切换清单完成状态")
+                        Button { formatRequest = RichEditRequest(action: "checklist") } label: { NoteToolbarLabel(symbol: "checklist", selected: editorSelection.selected.contains("checklist")) }.disabled(blockFormattingDisabled).help("转为清单").accessibilityLabel("转为清单")
+                        Button { formatRequest = RichEditRequest(action: "toggle") } label: { NoteToolbarLabel(symbol: "checkmark.circle") }.disabled(blockFormattingDisabled).help("切换当前清单完成状态").accessibilityLabel("切换清单完成状态")
                         Menu {
                             Button("表格", systemImage: "tablecells") { formatRequest = RichEditRequest(action: "insert-table") }
                             #if os(iOS)
@@ -822,15 +822,15 @@ struct DocumentEditorContent: View {
                             Button("从文件选择图片", systemImage: "photo") { formatRequest = RichEditRequest(action: "insert-image-file") }
                             #endif
                             Button("代码块", systemImage: "chevron.left.forwardslash.chevron.right") { formatRequest = RichEditRequest(action: "insert-code") }
-                        } label: { Image(systemName: "plus").touchTarget() }.disabled(blockFormattingDisabled).accessibilityLabel("插入内容")
-                        Spacer()
+                        } label: { NoteToolbarLabel(symbol: "plus", menu: true) }.disabled(blockFormattingDisabled).accessibilityLabel("插入内容")
+                        Spacer(minLength: 16)
                         NoteOutlineMenu(text: value.notes, session: state.search)
-                        Button { formatRequest = RichEditRequest(action: "show-find") } label: { Image(systemName: "magnifyingglass").touchTarget() }.help("查找整篇笔记").accessibilityLabel("查找整篇笔记").keyboardShortcut("f").disabled(editorSelection.composing)
-                        Button { importing = true } label: { Image(systemName: "square.and.arrow.down").touchTarget() }
-                            .buttonStyle(.borderless).keyboardShortcut("o")
+                        Button { formatRequest = RichEditRequest(action: "show-find") } label: { NoteToolbarLabel(symbol: "magnifyingglass") }.help("查找整篇笔记").accessibilityLabel("查找整篇笔记").keyboardShortcut("f").disabled(editorSelection.composing)
+                        Button { importing = true } label: { NoteToolbarLabel(symbol: "square.and.arrow.down") }
+                            .keyboardShortcut("o")
                             .accessibilityLabel("导入 Markdown 文件").help("导入 Markdown（⌘O）")
-                        Button { showHelp = true } label: { Image(systemName: "questionmark.circle").touchTarget() }
-                            .buttonStyle(.borderless).accessibilityLabel("Markdown 与快捷键").help("写作帮助")
+                        Button { showHelp = true } label: { NoteToolbarLabel(symbol: "questionmark.circle") }
+                            .accessibilityLabel("Markdown 与快捷键").help("写作帮助")
                             .popover(isPresented: $state.showHelp) {
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 14) {
@@ -845,7 +845,9 @@ struct DocumentEditorContent: View {
                                     }.padding(24)
                                 }.frame(idealWidth: 320, idealHeight: 360).background { LifeBackground() }
                             }
-                    }.frame(minWidth: max(0, width - 32))
+                    }.noteToolbarControls()
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(minWidth: max(0, width - 32))
                     }.scrollIndicators(.hidden)
     }
     private func restoreDraft() {

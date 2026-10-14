@@ -244,27 +244,23 @@ struct NoteDocumentSearchBar: View {
             if session.showsReplacement {
                 TextField("替换为（留空表示删除）", text: $session.replacement).textFieldStyle(.roundedBorder)
                 HStack {
-                    Button("替换当前") { session.replace(all: false, in: text) }
-                    Button("全部替换") { session.replace(all: true, in: text) }
+                    Button { session.replace(all: false, in: text) } label: { NoteToolbarLabel(title: "替换当前") }
+                    Button { session.replace(all: true, in: text) } label: { NoteToolbarLabel(title: "全部替换") }
                     Spacer()
-                }.disabled(matches.isEmpty || session.composing)
+                }.noteToolbarControls().disabled(matches.isEmpty || session.composing)
             }
-            HStack {
-                Text(session.query.isEmpty ? "输入查找内容" : matches.isEmpty ? "无匹配" : (session.index < 0 ? "共 \(matches.count) 处" : "\(session.index + 1) / \(matches.count)"))
-                    .font(.caption).foregroundStyle(countColor).accessibilityLabel("查找结果")
-                Spacer()
-                Button("上一个", systemImage: "chevron.up") { session.navigate(-1, in: text) }
-                    .labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44).help("上一个匹配")
-                    .keyboardShortcut("g", modifiers: [.command, .shift]).disabled(matches.isEmpty || session.composing)
-                Button("下一个", systemImage: "chevron.down") { session.navigate(1, in: text) }
-                    .labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44).help("下一个匹配")
-                    .keyboardShortcut("g").disabled(matches.isEmpty || session.composing)
-                Menu {
-                    Toggle("显示替换", isOn: $session.showsReplacement)
-                    Toggle("区分大小写", isOn: $session.caseSensitive)
-                } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("查找选项")
-                Button("完成") { session.close(); focused = false }
-            }.buttonStyle(.borderless)
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    resultCount.fixedSize()
+                    Spacer(minLength: 8)
+                    navigationControls
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    resultCount
+                    ScrollView(.horizontal) { navigationControls }
+                        .scrollIndicators(.hidden)
+                }
+            }
             if let issue = session.issue { Text(issue).font(.caption).foregroundStyle(.red) }
 
         }
@@ -275,4 +271,24 @@ struct NoteDocumentSearchBar: View {
         .onChange(of: session.caseSensitive) { _, _ in session.refresh(in: text) }
         .onChange(of: text) { _, _ in session.refresh(in: text) }
     }
+    private var resultCount: some View {
+        Text(session.query.isEmpty ? "输入查找内容" : matches.isEmpty ? "无匹配" : (session.index < 0 ? "共 \(matches.count) 处" : "\(session.index + 1) / \(matches.count)"))
+            .font(.caption).foregroundStyle(countColor).accessibilityLabel("查找结果")
+    }
+    private var navigationControls: some View {
+        HStack(spacing: 4) {
+            Button { session.navigate(-1, in: text) } label: { NoteToolbarLabel(symbol: "chevron.up") }
+                .accessibilityLabel("上一个匹配").help("上一个匹配")
+                .keyboardShortcut("g", modifiers: [.command, .shift]).disabled(matches.isEmpty || session.composing)
+            Button { session.navigate(1, in: text) } label: { NoteToolbarLabel(symbol: "chevron.down") }
+                .accessibilityLabel("下一个匹配").help("下一个匹配")
+                .keyboardShortcut("g").disabled(matches.isEmpty || session.composing)
+            Menu {
+                Toggle("显示替换", isOn: $session.showsReplacement)
+                Toggle("区分大小写", isOn: $session.caseSensitive)
+            } label: { NoteToolbarLabel(symbol: "ellipsis.circle", menu: true) }.accessibilityLabel("查找选项")
+            Button { session.close(); focused = false } label: { NoteToolbarLabel(title: "完成") }
+        }.noteToolbarControls().fixedSize(horizontal: true, vertical: true)
+    }
+
 }

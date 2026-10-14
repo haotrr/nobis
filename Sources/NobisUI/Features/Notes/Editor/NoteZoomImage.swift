@@ -14,10 +14,10 @@ struct NoteZoomImage: View {
             NoteZoomViewport(data: data, label: label, command: command)
                 .frame(height: 300).clipped()
             HStack {
-                Button("缩小", systemImage: "minus.magnifyingglass") { command = NoteImageZoomCommand(factor: 0.5) }
-                Button("放大", systemImage: "plus.magnifyingglass") { command = NoteImageZoomCommand(factor: 2) }
-                Button("适合窗口") { command = NoteImageZoomCommand() }
-            }.labelStyle(.iconOnly).buttonStyle(.borderless)
+                Button { command = NoteImageZoomCommand(factor: 0.5) } label: { NoteToolbarLabel(symbol: "minus.magnifyingglass") }.accessibilityLabel("缩小")
+                Button { command = NoteImageZoomCommand(factor: 2) } label: { NoteToolbarLabel(symbol: "plus.magnifyingglass") }.accessibilityLabel("放大")
+                Button { command = NoteImageZoomCommand() } label: { NoteToolbarLabel(title: "适合窗口") }
+            }.noteToolbarControls()
         }
     }
 }

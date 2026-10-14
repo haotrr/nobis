@@ -58,8 +58,8 @@ struct NoteImageInspector: View {
             HStack {
                 Text("图片").font(.headline)
                 Spacer()
-                Button("关闭") { if dirty { discard = true } else { close() } }.keyboardShortcut(.cancelAction)
-                if canEdit { Button("应用") { commit(draft) }.disabled(!dirty || busy).keyboardShortcut(.defaultAction) }
+                Button("关闭") { if dirty { discard = true } else { close() } }.lifeSecondaryAction().keyboardShortcut(.cancelAction)
+                if canEdit { Button("应用") { commit(draft) }.lifePrimaryAction().disabled(!dirty || busy).keyboardShortcut(.defaultAction) }
             }
             if let data {
                 NoteZoomImage(data: data, label: draft.alt.isEmpty ? "笔记图片" : draft.alt).id(previewAddress)
@@ -73,7 +73,7 @@ struct NoteImageInspector: View {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 16) { imageActions }.fixedSize(horizontal: true, vertical: false)
                 VStack(alignment: .leading, spacing: 12) { imageActions }.frame(maxWidth: .infinity, alignment: .leading)
-            }.buttonStyle(.borderless)
+            }.noteToolbarControls()
             if busy {
                 HStack {
                     ProgressView("正在读取图片…")
@@ -150,15 +150,15 @@ struct NoteImageInspector: View {
         }
     }
     @ViewBuilder private var imageActions: some View {
-        Button(copied ? "已复制" : "复制图片", systemImage: "doc.on.doc") { copyImage() }.disabled(data == nil)
+        Button { copyImage() } label: { NoteToolbarLabel(symbol: "doc.on.doc", title: copied ? "已复制" : "复制图片") }.disabled(data == nil)
         if canEdit {
             Menu {
                 #if os(iOS)
                 Button("从相册选择") { photo = nil; showPhotos = true }
                 #endif
                 Button("从文件选择") { picking = true }
-            } label: { Label("替换图片", systemImage: "photo") }.disabled(busy)
-            Button("删除图片", role: .destructive) { commit(nil) }.disabled(busy)
+            } label: { NoteToolbarLabel(symbol: "photo", title: "替换图片", menu: true) }.disabled(busy)
+            Button(role: .destructive) { commit(nil) } label: { NoteToolbarLabel(title: "删除图片", destructive: true) }.disabled(busy)
         }
     }
     private func commit(_ value: NoteImageContent?) {
