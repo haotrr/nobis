@@ -1,0 +1,21 @@
+docs/tech/T-261014-NB2Q3-mdtextkit/TODO.md
+  s_525142cbb7f3b1::t_82f6a545908913 72
+docs/verification.md
+  s_525142cbb7f3b1::t_fc6ae083408cdf 10-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cefb5dd4f581e8a481c3061d4e86ca4fe99f0e4e",
+  "prompts": {},
+  "sessions": {
+    "s_525142cbb7f3b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a139c3-4494-7c32-85c0-a13170a05e01",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
