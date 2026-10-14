@@ -144,6 +144,12 @@ struct DocumentsView: View {
 
     @ViewBuilder private func managementMenu(_ document: Record) -> some View {
         let writable = !document.conflicted && model.canWrite(spaceID: document.latest.spaceID)
+        #if os(macOS)
+        Button("在独立窗口打开", systemImage: "macwindow") {
+            NoteEditorWindows.shared.open(model: model, existing: document)
+        }.disabled(!writable)
+        Divider()
+        #endif
         Button("重命名与分组", systemImage: "pencil") {
             metadataTitle = document.body.title; metadataGroup = document.body.noteGroup ?? ""
             metadataIssue = nil; editingMetadata = document
@@ -471,7 +477,7 @@ private struct DocumentCommentEditor: View {
     }
 }
 
-struct DocumentEditor: View {
+struct DocumentEditorContent: View {
     let model: AppModel
     @State private var existing: Record?
     @Environment(\.dismiss) private var dismiss
@@ -497,8 +503,12 @@ struct DocumentEditor: View {
     private let embedded: Bool
     private let onFinish: (() -> Void)?
     private let creationProject: Record?
+    private let onReady: ((@escaping () -> Void, @escaping () -> Void) -> Void)?
+    private let onSaved: ((UUID) -> Void)?
+    private let onWindowState: ((String, Bool) -> Void)?
     private var draftKey: UUID? { existing?.id ?? creationProject?.id ?? initialSpaceID }
-    init(model: AppModel, existing: Record? = nil, project: Record? = nil, group: String? = nil, embedded: Bool = false, onFinish: (() -> Void)? = nil) {
+    init(model: AppModel, existing: Record? = nil, project: Record? = nil, group: String? = nil, embedded: Bool = false, onFinish: (() -> Void)? = nil, onReady: ((@escaping () -> Void, @escaping () -> Void) -> Void)? = nil, onSaved: ((UUID) -> Void)? = nil, onWindowState: ((String, Bool) -> Void)? = nil) {
+        self.onReady = onReady; self.onSaved = onSaved; self.onWindowState = onWindowState
         self.embedded = embedded; self.onFinish = onFinish
         self.creationProject = project
         self.model = model; _existing = State(initialValue: existing)
@@ -627,8 +637,9 @@ struct DocumentEditor: View {
             Button("放弃修改", role: .destructive) { do { if let draftKey { try model.draftStore.remove(draftKey) }; draftWritable = false; finish() } catch { issue = error.localizedDescription } }
             Button("继续编辑", role: .cancel) { }
         }
-        .onAppear(perform: restoreDraft)
-        .onChange(of: value) { _, _ in persistDraft() }
+        .onAppear { restoreDraft(); onReady?(cancel, save); onWindowState?(value.title, dirty) }
+        .onChange(of: value) { _, _ in persistDraft(); onWindowState?(value.title, dirty) }
+        .onChange(of: dirty) { _, _ in onWindowState?(value.title, dirty) }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persistDraft() } }
         .fileImporter(isPresented: $importing, allowedContentTypes: MarkdownDocument.readableContentTypes) { result in
             do {
@@ -746,8 +757,12 @@ struct DocumentEditor: View {
         } catch { issue = error.localizedDescription; draftStatus = "草稿保存失败，请保留此窗口" }
     }
     private func finish() { if let onFinish { onFinish() } else { dismiss() } }
-    private func cancel() { if dirty { discard = true } else { finish() } }
+    private func cancel() {
+        guard !editorSelection.composing else { issue = "请先完成当前中文组词，再关闭笔记。"; return }
+        if dirty { discard = true } else { finish() }
+    }
     private func save() {
+        guard !editorSelection.composing else { issue = "请先完成当前中文组词，再保存笔记。"; return }
         guard let spaceID else { issue = "请选择可见范围。"; return }
         do {
             guard draftWritable else { throw NobisError.validation("草稿尚未成功读取，请重新打开编辑器。") }
@@ -762,6 +777,7 @@ struct DocumentEditor: View {
             expected = Set(existing?.heads.map(\.id) ?? [])
             initial = value; initialSpaceID = spaceID
             issue = nil; draftStatus = "笔记已保存在此设备"
+            onSaved?(id)
         }
         catch { issue = error.localizedDescription }
     }
