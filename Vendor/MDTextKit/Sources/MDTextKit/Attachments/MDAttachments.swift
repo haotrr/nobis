@@ -423,11 +423,12 @@ public final class MDImageTextAttachment: SFTextAttachmentFileBackedView {
     public var resolvedFileURL: URL?
     public var imageData: Data?
     public var placeholderSize = CGSize(width: 120, height: 24)
+    public var reservedImageSize: CGSize?
 
     public override func updateAttachmentImage() {
         guard let data = imageData ?? resolvedFileURL.flatMap({ try? Data(contentsOf: $0) }) else {
             temporaryImage = nil
-            attachmentSize = placeholderSize
+            attachmentSize = reservedImageSize ?? placeholderSize
             return
         }
         let maxPx = (maxTextContainerWidth > 0 ? maxTextContainerWidth : 1200) * (NSScreen.main?.backingScaleFactor ?? 1)
@@ -444,17 +445,26 @@ public final class MDImageTextAttachment: SFTextAttachmentFileBackedView {
             }
         }
         temporaryImage = image
-        attachmentSize = image?.size ?? placeholderSize
+        attachmentSize = reservedImageSize ?? image?.size ?? placeholderSize
     }
 
     public override func drawAttachment(in rect: CGRect) {
-        if let img = temporaryImage { img.draw(in: rect); return }
+        if let img = temporaryImage {
+            guard img.size.width > 0, img.size.height > 0 else { return }
+            let scale = min(rect.width / img.size.width, rect.height / img.size.height)
+            let size = CGSize(width: img.size.width * scale, height: img.size.height * scale)
+            img.draw(in: CGRect(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2, width: size.width, height: size.height))
+            return
+        }
         // missing file placeholder
         NSColor.secondaryLabelColor.withAlphaComponent(0.15).setFill()
         NSBezierPath(roundedRect: rect, xRadius: 4, yRadius: 4).fill()
         let name = (filePath as NSString?)?.lastPathComponent ?? "image"
         let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor]
-        NSAttributedString(string: "⨯ " + name, attributes: attrs).draw(at: NSPoint(x: rect.minX + 6, y: rect.minY + 4))
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath(rect: rect).addClip()
+        NSAttributedString(string: "图片 · " + name, attributes: attrs).draw(at: NSPoint(x: rect.minX + 6, y: rect.midY - 6))
+        NSGraphicsContext.restoreGraphicsState()
     }
 
     public override func attachmentBounds(for textContainer: NSTextContainer?, proposedLineFragment lineFrag: CGRect, glyphPosition position: CGPoint,
@@ -477,6 +487,7 @@ public final class MDImageTextAttachment: SFTextAttachmentFileBackedView {
     public override func copyAttachment() -> Self {
         let c = super.copyAttachment()
         c.maxTextContainerWidth = maxTextContainerWidth; c.alwaysUseFullWidth = alwaysUseFullWidth
+        c.reservedImageSize = reservedImageSize; c.placeholderSize = placeholderSize
         c.resolvedFileURL = resolvedFileURL; c.imageData = imageData; c.temporaryImage = temporaryImage
         return c
     }

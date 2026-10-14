@@ -159,6 +159,7 @@ import PolarMark
     public var fileResolver: ((String) -> URL?)?
     /// Host-owned asynchronous fetch/cache; this callback never performs network I/O.
     public var dataResolver: ((String) -> Data?)?
+    public var reservedImageSize: CGSize?
 
     public override func styleText(in s: NSMutableAttributedString, range: NSRange, replacementBlock: @escaping MDStylerReplacementBlock) {
         let ns = s.string as NSString
@@ -174,6 +175,7 @@ import PolarMark
             if let decoded = path.removingPercentEncoding { path = decoded }
             let a = MDImageTextAttachment(representedAttributedText: s.attributedSubstring(from: whole))
             a.maxTextContainerWidth = self.maxTextContainerWidth
+            a.reservedImageSize = self.reservedImageSize
             a.setFilePath(path)
             a.resolvedFileURL = self.fileResolver?(path)
             a.imageData = self.dataResolver?(path)

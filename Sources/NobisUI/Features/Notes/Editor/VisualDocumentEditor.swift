@@ -134,14 +134,12 @@ struct BlockDocumentEditor: View {
                         HStack { Label("图片", systemImage: "photo").font(.caption).foregroundStyle(.secondary); Spacer(); blockMenu(block) }
                         if let url = URL(string: address), url.scheme?.lowercased() == "https", url.host != nil {
                             AsyncImage(url: url) { phase in
-                                switch phase {
-                                case .success(let image): image.resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 420).accessibilityLabel(alt.isEmpty ? "笔记图片" : alt)
-                                case .failure: Label("图片暂时无法加载，可检查或替换地址", systemImage: "photo.badge.exclamationmark").foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 100)
-                                default: ProgressView("正在加载图片").frame(maxWidth: .infinity, minHeight: 100)
-                                }
+                                NoteImageViewport(phase: phase, label: alt.isEmpty ? "笔记图片" : alt)
                             }.id(address)
                         } else {
-                            Label(address.isEmpty ? "添加图片地址后显示图片" : "请使用 HTTPS 图片地址", systemImage: "photo").foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 100)
+                            NoteImageCanvas {
+                                Label(address.isEmpty ? "添加图片地址后显示图片" : "请使用 HTTPS 图片地址", systemImage: "photo").foregroundStyle(.secondary).padding(12)
+                            }
                         }
                         TextField("图片说明", text: imageBinding(block.id, field: 0), axis: .vertical).textFieldStyle(.plain).font(.callout).accessibilityLabel("图片说明").focused($imageFocus, equals: "image:\(block.id)")
                         DisclosureGroup("替换图片与设置") {

@@ -97,6 +97,7 @@ struct MDTextKitEditor: NSViewRepresentable {
                 if !self.preserveSelection, let responder = self.view.window?.firstResponder as? NSTextView,
                    responder !== self.view, !responder.isDescendant(of: self.view) { state.enabled = false }
                 if state != self.reported { self.reported = state; self.onSelection(state) }
+                self.refreshImagesIfPossible()
             }
         }
 
@@ -118,6 +119,7 @@ struct MDTextKitEditor: NSViewRepresentable {
                 guard ["https", "http", "mailto"].contains(url.scheme?.lowercased() ?? "") else { return }
                 NSWorkspace.shared.open(url)
             }
+            controller.attributedStringRenderer.imageStyler.reservedImageSize = CGSize(width: 560, height: 420)
             controller.attributedStringRenderer.imageStyler.dataResolver = { [weak self] path in self?.imageData(path) }
             let center = NotificationCenter.default
             observers.append(center.addObserver(forName: MDTextViewTextDidChangeNotification, object: view, queue: nil) { [weak self] _ in
@@ -221,12 +223,17 @@ struct MDTextKitEditor: NSViewRepresentable {
                           let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
                           response.url?.scheme?.lowercased() == "https",
                           data.count <= 20 * 1_024 * 1_024, NSImage(data: data) != nil else { return }
-                    self.images[path] = data
-                    self.needsImageRefresh = true
-                    self.refreshImagesIfPossible()
+                    self.receiveImage(data, path: path)
                 } catch { /* The component keeps a readable image placeholder. */ }
             }
             return nil
+        }
+
+        func receiveImage(_ data: Data, path: String) {
+            guard !stopped else { return }
+            images[path] = data
+            needsImageRefresh = true
+            refreshImagesIfPossible()
         }
 
         private func refreshImagesIfPossible() {
@@ -234,8 +241,16 @@ struct MDTextKitEditor: NSViewRepresentable {
             if let cell = view.window?.firstResponder as? MDTextView, cell !== view, cell.isDescendant(of: view) { return }
             needsImageRefresh = false
             installing = true
-            view.editorController.restyleAll(in: view)
-            view.invalidateMeasurement()
+            // Reserved bounds do not change: update pixels without rebuilding text,
+            // selection, undo, or the enclosing scroll view's content geometry.
+            view.textStorage?.enumerateAttribute(.attachment, in: NSRange(location: 0, length: view.textStorage?.length ?? 0)) { value, range, _ in
+                guard let attachment = value as? MDImageTextAttachment, let path = attachment.filePath,
+                      let data = imageData(path), attachment.imageData != data else { return }
+                attachment.imageData = data
+                attachment.updateAttachmentImage()
+                view.layoutManager?.invalidateDisplay(forCharacterRange: range)
+            }
+            view.needsDisplay = true
             installing = false
         }
 

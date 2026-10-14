@@ -370,4 +370,55 @@ import SwiftUI
         XCTAssertEqual(view.selectedRange.location, 250)
     }
 
+    @MainActor @Observable final class ImageHarness {
+        var phase = AsyncImagePhase.empty
+    }
+    private struct ImageMarker: UIViewRepresentable {
+        let view: UIView
+        func makeUIView(context: Context) -> UIView { view }
+        func updateUIView(_ uiView: UIView, context: Context) {}
+    }
+    private struct ImageHarnessView: View {
+        @Bindable var state: ImageHarness
+        let marker: UIView
+        var body: some View {
+            ScrollView {
+                VStack(spacing: 0) {
+                    NoteImageViewport(phase: state.phase, label: "测试图片")
+                    ImageMarker(view: marker).frame(height: 40)
+                    Color.clear.frame(height: 1200)
+                }
+            }
+        }
+    }
+    func testImagePhasesKeepFollowingContentAndScrollPosition() async {
+        let state = ImageHarness(), marker = UIView()
+        let host = UIHostingController(rootView: ImageHarnessView(state: state, marker: marker))
+        window.rootViewController = host
+        await settleLayout()
+        var ancestor = marker.superview
+        while ancestor != nil && !(ancestor is UIScrollView) { ancestor = ancestor?.superview }
+        guard let scroll = ancestor as? UIScrollView else { return XCTFail("缺少页面滚动容器") }
+        for width in [CGFloat(280), 700] {
+            host.view.frame = CGRect(x: 0, y: 0, width: width, height: 500)
+            await settleLayout()
+            scroll.setContentOffset(CGPoint(x: 0, y: 150), animated: false)
+            XCTAssertGreaterThan(marker.convert(CGPoint.zero, to: scroll).y, 100)
+            let origin = marker.convert(CGPoint.zero, to: window)
+            let size = scroll.contentSize, offset = scroll.contentOffset
+            for dimensions in [CGSize(width: 20, height: 300), CGSize(width: 300, height: 20)] {
+                let image = UIGraphicsImageRenderer(size: dimensions).image { context in
+                    UIColor.systemGreen.setFill(); context.fill(CGRect(origin: .zero, size: dimensions))
+                }
+                for phase in [AsyncImagePhase.success(Image(uiImage: image)), .failure(URLError(.timedOut)), .empty] {
+                    state.phase = phase
+                    await settleLayout()
+                    XCTAssertEqual(marker.convert(CGPoint.zero, to: window).y, origin.y, accuracy: 0.5)
+                    XCTAssertEqual(scroll.contentSize.height, size.height, accuracy: 0.5)
+                    XCTAssertEqual(scroll.contentOffset.y, offset.y, accuracy: 0.5)
+                }
+            }
+        }
+    }
+
 }

@@ -55,15 +55,13 @@ private struct MarkdownRemoteImage: View {
         if let url = URL(string: address), url.scheme?.lowercased() == "https", url.host != nil {
             if loaded {
                 AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image): image.resizable().scaledToFit().frame(maxHeight: 420).accessibilityLabel(alt.isEmpty ? "文档图片" : alt)
-                    case .failure: Label("图片无法加载：\(alt)", systemImage: "photo.badge.exclamationmark")
-                    default: ProgressView("正在加载图片")
-                    }
+                    NoteImageViewport(phase: phase, label: alt.isEmpty ? "文档图片" : alt)
                 }
             } else {
-                Button { loaded = true } label: { Label("加载图片：\(alt.isEmpty ? url.host! : alt)", systemImage: "photo") }
-                    .help("从 \(url.host!) 加载外部图片").touchTarget()
+                NoteImageCanvas {
+                    Button { loaded = true } label: { Label("加载图片：\(alt.isEmpty ? url.host! : alt)", systemImage: "photo") }
+                        .help("从 \(url.host!) 加载外部图片").touchTarget().padding(12)
+                }
             }
         } else { Label(alt.isEmpty ? "图片需要 HTTPS 地址" : "\(alt) · 图片需要 HTTPS 地址", systemImage: "photo") }
     }

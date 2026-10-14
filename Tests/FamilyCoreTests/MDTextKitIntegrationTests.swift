@@ -363,5 +363,38 @@ struct MDTextKitIntegrationTests {
         #expect(buffer.value == source)
     }
 
+    @Test func imageArrivalPreservesGeometrySelectionAndScroll() throws {
+        let path = "https://example.com/image.png"
+        let source = "![图片](\(path))\n\n" + String(repeating: "后续中文正文\n", count: 80)
+        let (buffer, coordinator) = make(source)
+        defer { coordinator.stop() }
+        let view = coordinator.view
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 360, height: 300))
+        scroll.documentView = view
+        view.setFrameSize(view.measuredSize(width: 340))
+        view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0))
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 450))
+        let size = view.measuredSize(width: 340), selection = view.selectedRange(), offset = scroll.contentView.bounds.origin
+        var images: [MDImageTextAttachment] = []
+        view.textStorage?.enumerateAttribute(.attachment, in: NSRange(location: 0, length: view.textStorage!.length)) { value, _, _ in
+            if let image = value as? MDImageTextAttachment { images.append(image) }
+        }
+        let attachment = try #require(images.first)
+        let reserved = attachment.attachmentSize
+        #expect(reserved == CGSize(width: 560, height: 420))
+        for dimensions in [NSSize(width: 20, height: 200), NSSize(width: 300, height: 20)] {
+            let image = NSImage(size: dimensions, flipped: false) { rect in NSColor.systemGreen.setFill(); rect.fill(); return true }
+            coordinator.receiveImage(try #require(image.tiffRepresentation), path: path)
+            view.invalidateMeasurement() // Confirm stable layout even if a later pass remeasures.
+            #expect(attachment.temporaryImage != nil)
+            #expect(attachment.attachmentSize == reserved)
+            #expect(view.measuredSize(width: 340) == size)
+            #expect(view.selectedRange() == selection)
+            #expect(scroll.contentView.bounds.origin == offset)
+            #expect(buffer.value == source)
+        }
+        #expect(attachment.copyAttachment().reservedImageSize == reserved)
+    }
+
 }
 #endif
