@@ -1,0 +1,44 @@
+DESIGN.md
+  s_a3057a373e7ff5::t_7b696f8ed9d784 81-82
+Sources/NobisUI/Features/Notes/Editor/MDTextKitEditor.swift
+  s_a3057a373e7ff5::t_7b696f8ed9d784 248
+  s_a3057a373e7ff5::t_5b2d84e93a2b4f 100,122,226,232-238,244-247,249-253
+docs/verification.md
+  s_a3057a373e7ff5::t_088bf953a759a3 5-11
+Vendor/MDTextKit/NOBIS.md
+  s_a3057a373e7ff5::t_7b696f8ed9d784 16
+docs/features/documents.md
+  s_a3057a373e7ff5::t_7b696f8ed9d784 67
+docs/components/mdtextkit.md
+  s_a3057a373e7ff5::t_7b696f8ed9d784 12
+Sources/NobisUI/Features/Notes/Editor/MarkdownPreview.swift
+  s_a3057a373e7ff5::t_03c9adc7d6999e 58,61-64
+Sources/NobisUI/Features/Notes/Editor/NoteImageViewport.swift
+  s_a3057a373e7ff5::t_b4dcbdc5dcd93d 1-31
+Sources/NobisUI/Features/Notes/Editor/VisualDocumentEditor.swift
+  s_a3057a373e7ff5::t_ac07a7755fd5a7 137,140-142
+Tests/FamilyCoreTests/MDTextKitIntegrationTests.swift
+  s_a3057a373e7ff5::t_0b745e13295f7b 366-398
+Tests/NobisIOSTests/MDTextKitUIKitTests.swift
+  s_a3057a373e7ff5::t_ed65c829659269 373-423
+Vendor/MDTextKit/Sources/MDTextKit/Attachments/MDAttachments.swift
+  s_a3057a373e7ff5::t_6c3059547ed413 426,431,448,452-458,464-467,490
+Vendor/MDTextKit/Sources/MDTextKit/Stylers/MDInlineTextStylers.swift
+  s_a3057a373e7ff5::t_8010e03c4b116b 162,178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "76666b1c65be875a0ceed0ced63f02f25abf8c9e",
+  "prompts": {},
+  "sessions": {
+    "s_a3057a373e7ff5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13969-4bff-7f42-ad44-d61e05487b6c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
