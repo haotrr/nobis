@@ -1,0 +1,70 @@
+DESIGN.md
+  s_525142cbb7f3b1::t_b8ed60cfc75470 91-92
+Sources/NobisUI/Features/Notes/Editor/VisualDocumentEditor.swift
+  s_525142cbb7f3b1::t_7c8c21d0356c4c 75,92-93,103,113,146,243-248,250-252,281-282,390,400
+  s_525142cbb7f3b1::t_b5d0ceea9d16fe 370,374,376,380,384-389,391
+  s_525142cbb7f3b1::t_b5f7b737b7f55b 255,283-284
+  s_525142cbb7f3b1::t_9636bf1b589e22 249,285
+Sources/NobisUI/Features/Notes/Editor/NoteImageInspector.swift
+  s_525142cbb7f3b1::t_fdfc4641f6d3fb 27,165,167
+  s_525142cbb7f3b1::t_04b1a2183d995f 4-6,34-45,60,62-64,67,69-70,75-85,104,115-127,147-153
+docs/features/documents.md
+  s_525142cbb7f3b1::t_b8ed60cfc75470 10-11,62,67,71,73,77,88
+Sources/NobisUI/Features/Notes/Editor/MarkdownTextEditor.swift
+  s_525142cbb7f3b1::t_7c8c21d0356c4c 18,162,197
+Vendor/MDTextKit/Sources/MDTextKitUIKit/MDMarkdownTextView.swift
+  s_525142cbb7f3b1::t_7c8c21d0356c4c 83-90,124-126
+Sources/NobisUI/Features/Notes/Editor/NoteZoomImage.swift
+  s_525142cbb7f3b1::t_04b1a2183d995f 1-115
+docs/verification.md
+  s_525142cbb7f3b1::t_56f49e57ab74fb 8
+  s_525142cbb7f3b1::t_4a727233f532b1 5-7,9-12
+docs/tech/T-261014-NB2Q3-mdtextkit/TODO.md
+  s_525142cbb7f3b1::t_56f49e57ab74fb 71
+  s_525142cbb7f3b1::t_b8ed60cfc75470 41,64-70
+docs/feature-inventory.md
+  s_525142cbb7f3b1::t_b8ed60cfc75470 10
+Vendor/MDTextKit/NOBIS.md
+  s_525142cbb7f3b1::t_b8ed60cfc75470 40-41
+docs/components/mdtextkit.md
+  s_525142cbb7f3b1::t_b8ed60cfc75470 12,47-48
+Tests/NobisIOSTests/MDTextKitUIKitTests.swift
+  s_525142cbb7f3b1::t_b5f7b737b7f55b 155-156
+  s_525142cbb7f3b1::t_4638c095de4848 43,45-66,69,71,73-75,90,104,584-585,589,592
+  s_525142cbb7f3b1::t_da2f6236b80af7 30-42,44,67-68,70,72,76-89,91-103,105
+Sources/NobisUI/Features/Notes/Editor/MDTextKitEditor.swift
+  s_525142cbb7f3b1::t_de328b84db9cff 260-262
+  s_525142cbb7f3b1::t_b5f7b737b7f55b 204,259,268
+  s_525142cbb7f3b1::t_7c8c21d0356c4c 37,178,187,189-191,225-258,263-267,269-275
+  s_525142cbb7f3b1::t_1d10f274fdab44 188,276
+Sources/NobisUI/Features/Notes/Editor/RichMarkdown.swift
+  s_525142cbb7f3b1::t_6f65091418d45d 32
+Sources/NobisUI/Features/Notes/Editor/NoteDocumentSearch.swift
+  s_525142cbb7f3b1::t_e26afc92b61078 100-104,106-113,119-121,123-128,130-158,160
+  s_525142cbb7f3b1::t_b5f7b737b7f55b 13-22,122,129,241-243
+  s_525142cbb7f3b1::t_6f65091418d45d 2,26,34,92-99,105,114-118,159,161-162,167-169,172,175-187,189,191,196-205,207,218-220,222,236,244-251,253,262-266,268-269,272,274-276
+  s_525142cbb7f3b1::t_de328b84db9cff 3,11-12,29-31,36-40,47,57-89,221
+  s_525142cbb7f3b1::t_672dfceecd6908 206,208-217
+Tests/FamilyCoreTests/MDTextKitIntegrationTests.swift
+  s_525142cbb7f3b1::t_8bd446e6e106a6 25-64
+Tests/FamilyCoreTests/NoteSearchReplacementTests.swift
+  s_525142cbb7f3b1::t_61610fb4780aee 1-85
+Vendor/MDTextKit/Sources/MDTextKitUI/MDTableAttachmentViewController.swift
+  s_525142cbb7f3b1::t_9bdf12afcaaf95 306-339,341,343-351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9de2644ac44e3ce5d9923a266ed1d302bd4654eb",
+  "prompts": {},
+  "sessions": {
+    "s_525142cbb7f3b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a139c3-4494-7c32-85c0-a13170a05e01",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
