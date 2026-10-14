@@ -35,3 +35,12 @@ Mac 与 iOS 笔记均接入仓库内的 [MDTextKit](../../Vendor/MDTextKit/NOBIS
 | 草稿、修订和清单业务 | `Sources/FamilyCore` 与现有 `DocumentsView` |
 
 验证命令及本轮覆盖范围见[验证状态](../verification.md)。上游基线与本地补丁必须同步记入 `Vendor/MDTextKit/NOBIS.md`，避免升级时覆盖修复。
+
+## 基础操作接入
+
+- `PMKAST.clearFormatting` 为双端提供一致的清除格式及标题恢复正文操作。
+- `NoteDocumentSearch` / `NoteSearchSession` 统一查找范围、顺序与顶部查找栏；Mac 用源码／显示坐标转换并进入表格单元格，iOS 用内容块及单元格焦点定位。
+- `NoteTableEditing` 管理 iOS 当前行列插入、删除和移动，复用结构撤销。
+- Mac `addFilesBlock` 接入现有图片导入链路，原生粘贴与拖入均保存压缩副本，不依赖源文件位置。
+
+大纲由宿主 `NoteOutline` 从正文 AST 提取标题，复用整篇查找的定位请求。图片面板由宿主 `NoteImageInspector` 共享；Mac 将图片源范围交给原生控制器替换，iOS 通过块缓冲更新，两端保留原撤销与草稿链路。源内容变化会拒绝过期修改；未改动上游组件基线。

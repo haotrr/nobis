@@ -27,6 +27,86 @@ import SwiftUI
         return view
     }
 
+    func testImageInspectorLayoutsDoNotModifyDocument() async throws {
+        let pixels = UIGraphicsImageRenderer(size: CGSize(width: 120, height: 80)).image { context in
+            UIColor.systemTeal.setFill(); context.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
+        }
+        let data = try XCTUnwrap(pixels.jpegData(compressionQuality: 0.8))
+        let content = NoteImageContent(alt: "示例图片", address: NoteEmbeddedImage.prefix + data.base64EncodedString(), title: "")
+        var applied = false
+        let root = NoteImageInspector(content: content, apply: { _ in applied = true }, close: {})
+            .environment(\.dynamicTypeSize, .xxxLarge)
+        let host = UIHostingController(rootView: AnyView(root))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        for (name, size, style) in [("image-portrait-light", CGSize(width: 390, height: 844), UIUserInterfaceStyle.light),
+                                  ("image-landscape-dark", CGSize(width: 844, height: 390), UIUserInterfaceStyle.dark)] {
+            window.frame.size = size
+            host.overrideUserInterfaceStyle = style
+            host.rootView = AnyView(root.environment(\.colorScheme, style == .dark ? .dark : .light))
+            host.view.frame = window.bounds
+            try await Task.sleep(for: .milliseconds(200))
+            host.view.layoutIfNeeded()
+            let screenshot = UIGraphicsImageRenderer(bounds: host.view.bounds).image { context in
+                host.view.layer.render(in: context.cgContext)
+            }
+            let attachment = XCTAttachment(image: screenshot)
+            attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        }
+        XCTAssertFalse(applied)
+    }
+
+    func testWholeDocumentSearchReachesTableAndCodeAcrossLayouts() async throws {
+        let source = "# 标题\n正文目标\n\n| 名称 |\n| --- |\n| 表格目标 |\n\n```swift\n代码目标\n```\n"
+        let search = NoteSearchSession()
+        search.query = "目标"
+        search.isPresented = true
+        let root = NoteSearchFixture(source: source, search: search)
+        let host = UIHostingController(rootView: AnyView(root.environment(\.colorScheme, .light)))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        try await Task.sleep(for: .milliseconds(150))
+        func textViews(_ view: UIView) -> [UITextView] {
+            (view as? UITextView).map { [$0] } ?? view.subviews.flatMap(textViews)
+        }
+        for expected in ["正文目标", "表格目标", "代码目标"] {
+            search.navigate(1, in: source)
+            try await Task.sleep(for: .milliseconds(150))
+            let active = try XCTUnwrap(textViews(host.view).first(where: \.isFirstResponder))
+            XCTAssertTrue(active.text.contains(expected))
+            XCTAssertEqual((active.text as NSString).substring(with: active.selectedRange), "目标")
+        }
+        for (name, size, style) in [("portrait-light", CGSize(width: 390, height: 844), UIUserInterfaceStyle.light),
+                                     ("landscape-dark", CGSize(width: 844, height: 390), UIUserInterfaceStyle.dark)] {
+            window.frame.size = size
+            host.overrideUserInterfaceStyle = style
+            host.rootView = AnyView(root.environment(\.colorScheme, style == .dark ? .dark : .light))
+            host.view.frame = window.bounds
+            host.view.setNeedsLayout(); host.view.layoutIfNeeded()
+            try await Task.sleep(for: .milliseconds(100))
+            let screenshot = UIGraphicsImageRenderer(bounds: host.view.bounds).image { _ in
+                host.view.layer.render(in: UIGraphicsGetCurrentContext()!)
+            }
+            let attachment = XCTAttachment(image: screenshot)
+            attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        }
+    }
+
+    func testExtendedFormattingAndClearPreserveMarkedText() {
+        let view = editor("中文😀")
+        view.selectedRange = NSRange(location: 0, length: view.markdown.utf16.count)
+        view.performMarkdownAction("strike")
+        XCTAssertEqual(view.markdown, "~~中文😀~~")
+        view.performMarkdownAction("clear")
+        XCTAssertEqual(view.markdown, "中文😀")
+        view.selectedRange = NSRange(location: view.markdown.utf16.count, length: 0)
+        view.setMarkedText("ni", selectedRange: NSRange(location: 2, length: 0))
+        let composing = view.markdown
+        for action in ["clear", "heading:1", "ordered", "quote", "inline-code"] { view.performMarkdownAction(action) }
+        XCTAssertEqual(view.markdown, composing)
+        XCTAssertNotNil(view.markedTextRange)
+    }
+
     func testChecklistReturnExitAndToggleUndoAfterChineseComposition() {
         let view = editor("- [ ] ")
         view.undoManager?.groupsByEvent = false
@@ -421,4 +501,16 @@ import SwiftUI
         }
     }
 
+}
+
+private struct NoteSearchFixture: View {
+    @State var source: String
+    let search: NoteSearchSession
+    var body: some View {
+        ScrollView {
+            VisualDocumentEditor(text: $source, search: search).padding(16)
+        }
+        .safeAreaInset(edge: .top) { NoteDocumentSearchBar(session: search, text: source).padding(8).background(.regularMaterial) }
+        .dynamicTypeSize(.xxxLarge)
+    }
 }

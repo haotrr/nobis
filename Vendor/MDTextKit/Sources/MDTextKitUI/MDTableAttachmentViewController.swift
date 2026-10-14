@@ -198,7 +198,7 @@ import SFThemeKit
             return true
         }
         image.isTemplate = true
-        image.accessibilityDescription = "Table options"
+        image.accessibilityDescription = "表格操作"
         return image
     }()
     private var trackingArea: NSTrackingArea?
@@ -360,6 +360,26 @@ import SFThemeKit
         }
     }
 
+    public func selectMatch(row: Int, column: Int, range: NSRange) {
+        beginEditing(at: (row, column))
+        guard let tv = cellTextView else { return }
+        // The host's cell text decodes table escapes; the native cell keeps them
+        // in Markdown. Map UTF-16 boundaries before converting to display offsets.
+        let source = tv.markdown as NSString
+        var boundaries = [0], offset = 0
+        while offset < source.length {
+            if source.character(at: offset) == 92, offset + 1 < source.length,
+               source.character(at: offset + 1) == 92 || source.character(at: offset + 1) == 124 { offset += 2 }
+            else { offset += 1 }
+            boundaries.append(offset)
+        }
+        guard range.location < boundaries.count, NSMaxRange(range) < boundaries.count else { return }
+        let sourceRange = NSRange(location: boundaries[range.location], length: boundaries[NSMaxRange(range)] - boundaries[range.location])
+        let mapped = tv.mdTextStorage.attributedStringRange(fromStringRange: sourceRange)
+        tv.setSelectedRange(mapped)
+        tv.scrollRangeToVisible(mapped)
+    }
+
     // MARK: Cell editing
 
     public func beginEditing(at ip: (row: Int, column: Int), clickPoint: CGPoint? = nil) {
@@ -371,6 +391,7 @@ import SFThemeKit
         let rect = l.rects[ip.row][ip.column]
         let tv = MDTableCellTextView(frame: NSRect(origin: .zero, size: rect.size), editorController: cellEditorController)
         tv.controller = self
+        tv.onFind = hostTextView?.onFind
         tv.indexPath = ip
         tv.autoresizingMask = [.width, .height]
         tv.allowsUndo = false
@@ -547,19 +568,19 @@ import SFThemeKit
     @objc private func showTableMenu(_ sender: NSButton) {
         let menu = NSMenu()
         func add(_ title: String, _ sel: Selector) { menu.addItem(withTitle: title, action: sel, keyEquivalent: "").target = self }
-        add("Add Row", #selector(addRow)); add("Add Row Above", #selector(addRowAbove)); add("Delete Row", #selector(deleteRow))
-        add("Move Row Up", #selector(moveRowUp)); add("Move Row Down", #selector(moveRowDown))
+        add("在当前行下方插入", #selector(addRow)); add("在当前行上方插入", #selector(addRowAbove)); add("删除当前行", #selector(deleteRow))
+        add("当前行上移", #selector(moveRowUp)); add("当前行下移", #selector(moveRowDown))
         menu.addItem(.separator())
-        add("Add Column", #selector(addColumn)); add("Add Column Before", #selector(addColumnBefore)); add("Delete Column", #selector(deleteColumn))
-        add("Move Column Left", #selector(moveColumnLeft)); add("Move Column Right", #selector(moveColumnRight))
+        add("在当前列右侧插入", #selector(addColumn)); add("在当前列左侧插入", #selector(addColumnBefore)); add("删除当前列", #selector(deleteColumn))
+        add("当前列左移", #selector(moveColumnLeft)); add("当前列右移", #selector(moveColumnRight))
         menu.addItem(.separator())
         let align = NSMenu()
         for (t, sel) in [("Left", #selector(alignLeft)), ("Center", #selector(alignCenter)), ("Right", #selector(alignRight))] { align.addItem(withTitle: t, action: sel, keyEquivalent: "").target = self }
-        let alignItem = NSMenuItem(title: "Align Column", action: nil, keyEquivalent: ""); alignItem.submenu = align; menu.addItem(alignItem)
+        let alignItem = NSMenuItem(title: "列对齐", action: nil, keyEquivalent: ""); alignItem.submenu = align; menu.addItem(alignItem)
         menu.addItem(.separator())
         let copy = NSMenu()
         for (t, sel) in [("Markdown", #selector(copyMarkdown)), ("CSV", #selector(copyCSV)), ("HTML", #selector(copyHTML))] { copy.addItem(withTitle: t, action: sel, keyEquivalent: "").target = self }
-        let copyItem = NSMenuItem(title: "Copy Table As", action: nil, keyEquivalent: ""); copyItem.submenu = copy; menu.addItem(copyItem)
+        let copyItem = NSMenuItem(title: "复制表格为", action: nil, keyEquivalent: ""); copyItem.submenu = copy; menu.addItem(copyItem)
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height), in: sender)
     }
 

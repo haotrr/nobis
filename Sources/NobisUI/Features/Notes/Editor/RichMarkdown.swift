@@ -29,7 +29,7 @@ enum NoteTypography {
     }
 }
 
-struct RichEditRequest: Equatable { let id = UUID(); let action: String }
+struct RichEditRequest: Equatable { let id = UUID(); let action: String; var match: NoteSearchMatch? = nil }
 enum RichMarkdown {
     static func applying(_ action: String, to source: NSAttributedString, selection: NSRange) -> NSAttributedString {
         let value = NSMutableAttributedString(attributedString: source)

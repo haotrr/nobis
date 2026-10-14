@@ -9,6 +9,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
     var request: RichEditRequest?
     var onFocus: (() -> Void)?
     var sharedUndoManager: UndoManager?
+    var onFind: () -> Void = {}
     var plainText = false
     var inlineOnly = false
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
@@ -151,6 +152,7 @@ struct MarkdownTextEditor: UIViewRepresentable {
     var request: RichEditRequest?
     var onFocus: (() -> Void)?
     var sharedUndoManager: UndoManager?
+    var onFind: () -> Void = {}
     var plainText = false
     var inlineOnly = false
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
@@ -161,6 +163,7 @@ struct MarkdownTextEditor: UIViewRepresentable {
         let view = MDMarkdownTextView()
         view.onViewportChange = { [weak coordinator = context.coordinator] view in coordinator?.revealCaret(view) }
         view.documentUndoManager = sharedUndoManager
+        view.onFind = onFind
         view.onCompositionChange = { [weak coordinator = context.coordinator, weak view] in
             guard let view else { return }; coordinator?.reportSelection(view)
         }

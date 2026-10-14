@@ -33,6 +33,7 @@ struct MDTextKitEditor: NSViewRepresentable {
     var loadImages = true
     var preserveSelection = false
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
+    var onFind: () -> Void = {}
 
     func makeCoordinator() -> Coordinator {
         if let coordinator = runtime?.coordinator { return coordinator }
@@ -66,6 +67,7 @@ struct MDTextKitEditor: NSViewRepresentable {
         private var lastRequest: UUID?
         private var linkPopover: NSPopover?
         private var imagePanel: NSOpenPanel?
+        private var imageSheet: NSWindow?
         private var importingImage = false
         private var linkKeyMonitor: Any?
         private weak var activeView: MDTextView?
@@ -82,15 +84,17 @@ struct MDTextKitEditor: NSViewRepresentable {
         func selectionState(for target: MDTextView) -> NoteEditorSelection {
             let format = target.editorController.formatting(in: target)
             var state = NoteEditorSelection(enabled: target.isEditable, composing: target.hasMarkedText(), inTable: target !== view)
-            if format.headingLevel == 2 { state.selected.insert("heading") }
+            if let level = format.headingLevel, level > 0 { state.selected.insert("heading:\(level)") }
             if format.headingLevel == 0 { state.selected.insert("body") }
-            if format.headingLevel == nil { state.mixed.formUnion(["heading", "body"]) }
-            for (style, action) in [(MDFormatting.InlineStyle.strong, "bold"), (.emphasis, "italic")] {
+            if format.headingLevel == nil { state.mixed.formUnion(["heading:1", "heading:2", "heading:3", "body"]) }
+            for (style, action) in [(MDFormatting.InlineStyle.strong, "bold"), (.emphasis, "italic"), (.strikethrough, "strike"), (.code, "inline-code")] {
                 if format.inline.contains(style) { state.selected.insert(action) }
                 if format.mixedInline.contains(style) { state.mixed.insert(action) }
             }
             if format.list == .bullet { state.selected.insert("list") }
             if format.list == .task { state.selected.insert("checklist") }
+            if format.list == .ordered { state.selected.insert("ordered") }
+            if format.isBlockquote { state.selected.insert("quote") }
             return state
         }
 
@@ -120,7 +124,12 @@ struct MDTextKitEditor: NSViewRepresentable {
             view.mdTextContainer.maxColumSize = 0
             view.setAccessibilityLabel("笔记正文")
             view.installTableEditing(themeManager: theme)
+            view.inspectImage = { [weak self] index in self?.showImageInspector(at: index) }
             view.retryImage = { [weak self] path in self?.retryImage(path) }
+            view.addFilesBlock = { [weak self] urls, selection in
+                guard let self else { return }
+                self.importImages(urls, into: self.view, selection: selection, original: self.view.markdown)
+            }
             view.openURL = { url in
                 guard ["https", "http", "mailto"].contains(url.scheme?.lowercased() ?? "") else { return }
                 NSWorkspace.shared.open(url)
@@ -146,6 +155,7 @@ struct MDTextKitEditor: NSViewRepresentable {
 
         func update(_ host: MDTextKitEditor) {
             binding = host.$text
+            view.onFind = host.onFind
             onSelection = host.onSelection
             preserveSelection = host.preserveSelection
             defer { reportSelection() }
@@ -172,11 +182,63 @@ struct MDTextKitEditor: NSViewRepresentable {
                 Task { @MainActor [weak self, weak target] in
                     guard let self, !self.stopped, let target, target.isEditable, !target.hasMarkedText() else { return }
                     target.window?.makeFirstResponder(target)
-                    if request.action == "show-link" { self.showLinkEditor(in: target) }
+                    if let match = request.match { self.selectMatch(match) }
+                    else if request.action == "show-find" { host.onFind() }
+                    else if request.action == "show-link" { self.showLinkEditor(in: target) }
                     else if request.action == "insert-image-file" { self.chooseImage(in: target) }
                     else { NobisMDTextView.apply(request.action, to: target) }
                 }
             }
+        }
+
+        func selectMatch(_ match: NoteSearchMatch) {
+            let blocks = DocumentBlocks.parse(view.markdown)
+            guard blocks.indices.contains(match.block), !view.hasMarkedText() else { return }
+            let block = blocks[match.block]
+            var offset = blocks.prefix(match.block).reduce(0) { $0 + $1.markdown.utf16.count }
+            if let row = match.row, let column = match.column {
+                let mapped = view.mdTextStorage.attributedStringRange(fromStringRange: NSRange(location: offset, length: block.markdown.utf16.count))
+                view.scrollRangeToVisible(mapped)
+                if let container = view.textContainer { view.layoutManager?.ensureLayout(for: container) }
+                view.mdTextStorage.enumerateAttribute(.attachment, in: mapped) { value, _, stop in
+                    if let attachment = value as? MDTableTextAttachment,
+                       let table = attachment.attachmentViewController as? MDTableAttachmentViewController {
+                        table.selectMatch(row: row, column: column, range: match.range); stop.pointee = true
+                    }
+                }
+            } else {
+                if case .code = block.content { offset += (block.markdown as NSString).range(of: "\n").location + 1 }
+                let mapped = view.mdTextStorage.attributedStringRange(fromStringRange: NSRange(location: offset + match.range.location, length: match.range.length))
+                view.window?.makeFirstResponder(view)
+                view.setSelectedRange(mapped)
+                view.scrollRangeToVisible(mapped)
+            }
+        }
+
+        func showImageInspector(at index: Int) {
+            guard imageSheet == nil, !view.hasMarkedText(), let window = view.window else { return }
+            let sourceRange = view.mdTextStorage.markdownRange(fromAttributedRange: NSRange(location: index, length: 1))
+            guard let edit = NoteImageEdit(source: view.markdown, at: sourceRange.location) else { return }
+            let sheet = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 680, height: 640), styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+            sheet.title = "图片"
+            sheet.contentViewController = NSHostingController(rootView: NoteImageInspector(content: edit.content, canEdit: view.isEditable, apply: { [weak self] value in
+                guard let self, !self.stopped, self.view.isEditable, !self.view.hasMarkedText() else { throw NoteImageEditError.changed }
+                try self.applyImageEdit(edit, replacement: value)
+            }, close: { [weak self, weak sheet, weak window] in
+                if let sheet { window?.endSheet(sheet) }
+                self?.imageSheet = nil
+            }))
+            imageSheet = sheet
+            window.beginSheet(sheet)
+        }
+
+        func applyImageEdit(_ edit: NoteImageEdit, replacement: NoteImageContent?) throws {
+            guard view.isEditable, !view.hasMarkedText() else { throw NoteImageEditError.changed }
+            _ = try edit.applying(to: view.markdown, replacement: replacement)
+            let replacementText = edit.replacementText(replacement)
+            let range = view.mdTextStorage.attributedStringRange(fromStringRange: edit.range)
+            view.editorController.replaceCharacters(in: range, with: NSAttributedString(string: replacementText), in: view)
+            view.editorController.notifyTextChanges(in: view)
         }
 
         private func chooseImage(in target: MDTextView) {
@@ -192,31 +254,39 @@ struct MDTextKitEditor: NSViewRepresentable {
                 guard let self else { return }
                 self.imagePanel = nil
                 guard response == .OK, let url = panel.url, let target else { return }
-                self.importingImage = true
-                Task { @MainActor [weak self, weak target] in
-                    guard let self else { return }
-                    defer { self.importingImage = false }
-                    do {
-                        let address = try await Task.detached(priority: .userInitiated) {
+                self.importImages([url], into: target, selection: selection, original: original)
+            }
+        }
+
+        private func importImages(_ urls: [URL], into target: MDTextView, selection: NSRange, original: String) {
+            guard !importingImage, target.isEditable, !target.hasMarkedText(), !urls.isEmpty else { return }
+            importingImage = true
+            Task { @MainActor [weak self, weak target] in
+                guard let self else { return }
+                defer { self.importingImage = false }
+                do {
+                    let addresses = try await Task.detached(priority: .userInitiated) {
+                        try urls.map { url in
                             let scoped = url.startAccessingSecurityScopedResource()
                             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                             return try NoteEmbeddedImage.importFile(url)
-                        }.value
-                        guard !self.stopped, let target, target.window != nil, target.isEditable else { return }
-                        guard self.view.markdown == original, !target.hasMarkedText() else {
-                            throw NoteImageInsertionError.contentChanged
                         }
-                        try DocumentContentLimits.validate(original + "\n" + MDEditorController.markdownImage(alt: "图片", address: address))
-                        target.window?.makeFirstResponder(target)
-                        target.setSelectedRange(selection)
-                        target.insertMarkdownImage(alt: "图片", address: address)
-                    } catch {
-                        guard !self.stopped, let window = target?.window else { return }
-                        let alert = NSAlert()
-                        alert.messageText = "图片未插入"
-                        alert.informativeText = error.localizedDescription
-                        alert.beginSheetModal(for: window) { _ in }
-                    }
+                    }.value
+                    guard !self.stopped, let target, target.window != nil, target.isEditable else { return }
+                    guard self.view.markdown == original, !target.hasMarkedText() else { throw NoteImageInsertionError.contentChanged }
+                    let markdown = addresses.map { MDEditorController.markdownImage(alt: "图片", address: $0) }.joined(separator: "\n")
+                    try DocumentContentLimits.validate(original + "\n" + markdown)
+                    target.window?.makeFirstResponder(target)
+                    target.setSelectedRange(selection)
+                    target.editorUndoManager.beginUndoGrouping()
+                    for address in addresses { target.insertMarkdownImage(alt: "图片", address: address) }
+                    target.editorUndoManager.endUndoGrouping()
+                } catch {
+                    guard !self.stopped, let window = target?.window else { return }
+                    let alert = NSAlert()
+                    alert.messageText = "图片未插入"
+                    alert.informativeText = error.localizedDescription
+                    alert.beginSheetModal(for: window) { _ in }
                 }
             }
         }
@@ -347,6 +417,7 @@ struct MDTextKitEditor: NSViewRepresentable {
             stopped = true
             observers.forEach { NotificationCenter.default.removeObserver($0) }
             observers.removeAll()
+            if let sheet = imageSheet { sheet.sheetParent?.endSheet(sheet) }; imageSheet = nil
             imagePanel?.cancel(nil)
             imagePanel = nil
             imageTasks.values.forEach { $0.cancel() }
@@ -383,7 +454,38 @@ struct MDTextKitEditor: NSViewRepresentable {
     private var revealScheduled = false
     var imageStates: [String: Bool] = [:] // true means failed; false means loading.
     var retryImage: ((String) -> Void)?
+    var inspectImage: ((Int) -> Void)?
+    private var contextImageIndex: Int?
     private var imageStatusViews: [Int: NoteImageStatusView] = [:]
+
+    private func imageIndex(at point: NSPoint) -> Int? {
+        guard let layoutManager, let textContainer, mdTextStorage.length > 0 else { return nil }
+        let local = NSPoint(x: point.x - textContainerOrigin.x, y: point.y - textContainerOrigin.y)
+        let glyph = layoutManager.glyphIndex(for: local, in: textContainer)
+        guard glyph < layoutManager.numberOfGlyphs else { return nil }
+        let index = layoutManager.characterIndexForGlyph(at: glyph)
+        guard mdTextStorage.textAttachment(at: index) is MDImageTextAttachment else { return nil }
+        return index
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2, !hasMarkedText(), let index = imageIndex(at: convert(event.locationInWindow, from: nil)) {
+            inspectImage?(index); return
+        }
+        super.mouseDown(with: event)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        if !hasMarkedText(), let index = imageIndex(at: convert(event.locationInWindow, from: nil)) {
+            contextImageIndex = index
+            let menu = NSMenu()
+            let item = NSMenuItem(title: isEditable ? "查看与编辑图片" : "查看图片", action: #selector(openContextImage), keyEquivalent: "")
+            item.target = self; menu.addItem(item)
+            return menu
+        }
+        return super.menu(for: event)
+    }
+    @objc private func openContextImage() { if let contextImageIndex { inspectImage?(contextImageIndex) } }
 
     override func accessibilityChildren() -> [Any]? {
         let controls: [NSView] = imageStatusViews.values.flatMap { $0.subviews.filter { !$0.isHidden } }
@@ -493,9 +595,20 @@ struct MDTextKitEditor: NSViewRepresentable {
         switch action {
         case "bold": controller.toggleStrong(in: view)
         case "italic": controller.toggleEmphasis(in: view)
+        case "strike": controller.toggleStrikethrough(in: view)
+        case "inline-code": controller.toggleCode(in: view)
+        case "ordered": controller.toggleOrderedList(in: view)
+        case "quote": controller.toggleBlockQuote(in: view)
+        case "heading:1", "heading:2", "heading:3":
+            controller.toggleHeading(in: view, headingLevel: Int(action.suffix(1)) ?? 2)
+        case "clear", "body":
+            let sourceRange = view.mdTextStorage.markdownRange(fromAttributedRange: view.selectedRange())
+            if let result = PMKAST(markdown: view.markdown).clearFormatting(selection: sourceRange, headingsOnly: action == "body") {
+                let range = view.mdTextStorage.attributedStringRange(fromStringRange: result.replacementRange)
+                controller.replaceCharacters(in: range, with: NSAttributedString(string: result.replacementString), in: view)
+                view.setSelectedRange(view.mdTextStorage.attributedStringRange(fromStringRange: result.proposedSelection))
+            }
         case "heading": if controller.formatting(in: view).headingLevel != 2 { controller.toggleHeading(in: view, headingLevel: 2) }
-        case "body":
-            if let level = controller.formatting(in: view).headingLevel { controller.toggleHeading(in: view, headingLevel: level) }
         case "list": controller.toggleUnorderedList(in: view)
         case "checklist": controller.toggleTaskList(in: view)
         case "toggle": controller.toggleTask(in: view, range: view.selectedRange(), style: 0)

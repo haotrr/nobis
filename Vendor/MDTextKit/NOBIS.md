@@ -16,6 +16,8 @@
 | MDImageTextStyler / MDImageTextAttachment | 增加宿主图片数据回调，由 Nobis 异步加载 HTTPS 图片；组件渲染期间不做网络读取；宿主可预留固定尺寸，加载后原位更新附件图像并等比居中绘制，不触发全文重排 |
 | MDTableAttachmentViewController | 单元格监听已提交的 Markdown 变化，立即回写正文，共享正文撤销栈，局部恢复表格、单元格及选区；完整表格标记保留末行；序列化转义管线字符 |
 | MDFormatting | 全选区格式与混合格式区分，修正正文与列表混选判断 |
+| PMKAST+ClearFormatting | 双端共用行内／标题清除及选区映射，保留内容结构；支持仅取消标题 |
+| MDTextView / MDTextKitUIKit / 表格 | 宿主整篇查找回调、表格单元格匹配定位与转义管线坐标转换、当前行列菜单中文标签；Mac 显式接收图片文件拖放及 PNG 粘贴类型；UIKit 增加标题级别、编号列表、引用、删除线与行内代码命令 |
 | MDTextView+ImageInsertion | 新增图片 Markdown 序列化与选区末尾插入 API；保留选区正文、中文组词保护和原生撤销重做。宿主负责图片读取、存储及容量策略 |
 | MDEditorController | 附件变化先更新索引和解析状态，再通知宿主 |
 

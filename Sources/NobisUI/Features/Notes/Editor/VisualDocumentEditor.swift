@@ -71,6 +71,8 @@ struct BlockDocumentEditor: View {
     @Binding var text: String
     var request: RichEditRequest?
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
+    var onFind: () -> Void = {}
+    @State private var imageEditing: DocumentBlock?
     @State private var composing = false
     @ScaledMetric(relativeTo: .body) private var compactLineHeight = 21.0
     @State private var buffer: DocumentBlockBuffer
@@ -86,8 +88,8 @@ struct BlockDocumentEditor: View {
     @State private var photoFocus: NoteEditorFocus?
     #endif
 
-    init(text: Binding<String>, request: RichEditRequest? = nil, onSelection: @escaping (NoteEditorSelection) -> Void = { _ in }) {
-        _text = text; self.request = request; self.onSelection = onSelection
+    init(text: Binding<String>, request: RichEditRequest? = nil, onSelection: @escaping (NoteEditorSelection) -> Void = { _ in }, onFind: @escaping () -> Void = {}) {
+        _text = text; self.request = request; self.onSelection = onSelection; self.onFind = onFind
         _buffer = State(initialValue: DocumentBlockBuffer(text.wrappedValue))
     }
     var body: some View {
@@ -96,7 +98,7 @@ struct BlockDocumentEditor: View {
                 switch block.content {
                 case .text:
                     MarkdownTextEditor(text: textBinding(block.id), request: requestTarget == block.id.uuidString ? pendingRequest : nil,
-                                       onFocus: { activeText = block.id.uuidString }, sharedUndoManager: buffer.undo, onSelection: { selectionChanged($0, target: block.id.uuidString) },
+                                       onFocus: { activeText = block.id.uuidString }, sharedUndoManager: buffer.undo, onFind: onFind, onSelection: { selectionChanged($0, target: block.id.uuidString) },
                                        expandsToContent: true, focusRequest: focusRequest(block.id.uuidString))
                         .frame(maxWidth: .infinity)
                 case .code(let language, let body):
@@ -107,7 +109,7 @@ struct BlockDocumentEditor: View {
                                 .textFieldStyle(.plain).font(.caption).accessibilityLabel("代码语言")
                             blockMenu(block)
                         }
-                        MarkdownTextEditor(text: Binding(get: { code(block.id).1 }, set: { value in edit(block.id) { $0.content = .code(language: code(block.id).0, body: value) } }), onFocus: { activeText = "code:\(block.id)" }, sharedUndoManager: buffer.undo, plainText: true, onSelection: { selectionChanged($0, target: "code:\(block.id)") }, focusRequest: focusRequest("code:\(block.id)"))
+                        MarkdownTextEditor(text: Binding(get: { code(block.id).1 }, set: { value in edit(block.id) { $0.content = .code(language: code(block.id).0, body: value) } }), onFocus: { activeText = "code:\(block.id)" }, sharedUndoManager: buffer.undo, onFind: onFind, plainText: true, onSelection: { selectionChanged($0, target: "code:\(block.id)") }, focusRequest: focusRequest("code:\(block.id)"))
                             .frame(height: max(92, min(480, CGFloat(body.components(separatedBy: "\n").count) * compactLineHeight + 24)))
                             .accessibilityLabel(language.isEmpty ? "代码内容" : "\(language) 代码内容")
 
@@ -118,10 +120,19 @@ struct BlockDocumentEditor: View {
                             Label("表格", systemImage: "tablecells").font(.caption).foregroundStyle(.secondary)
                             Spacer()
                             Menu {
-                                Button("添加行") { transformTable(block.id) { rows, _ in rows.append(Array(repeating: "", count: rows.first?.count ?? 2)) } }
-                                Button("添加列") { transformTable(block.id) { rows, alignment in for index in rows.indices { rows[index].append("") }; alignment.append("---") } }
-                                if rows.count > 1 { Button("删除末行", role: .destructive) { transformTable(block.id) { rows, _ in rows.removeLast() } } }
-                                if (rows.first?.count ?? 0) > 1 { Button("删除末列", role: .destructive) { transformTable(block.id) { rows, alignment in for index in rows.indices { rows[index].removeLast() }; if !alignment.isEmpty { alignment.removeLast() } } } }
+                                let cell = buffer.tableCell(block.id)
+                                Button("在当前行上方插入") { buffer.changeTable(block.id, action: .rowBefore) }
+                                Button("在当前行下方插入") { buffer.changeTable(block.id, action: .rowAfter) }
+                                Button("删除当前行", role: .destructive) { buffer.changeTable(block.id, action: .deleteRow) }.disabled(cell.row == 0 || rows.count <= 1)
+                                Button("当前行上移") { buffer.changeTable(block.id, action: .rowUp) }.disabled(cell.row <= 1)
+                                Button("当前行下移") { buffer.changeTable(block.id, action: .rowDown) }.disabled(cell.row == 0 || cell.row >= rows.count - 1)
+                                Divider()
+                                Button("在当前列左侧插入") { buffer.changeTable(block.id, action: .columnBefore) }
+                                Button("在当前列右侧插入") { buffer.changeTable(block.id, action: .columnAfter) }
+                                Button("删除当前列", role: .destructive) { buffer.changeTable(block.id, action: .deleteColumn) }.disabled((rows.first?.count ?? 0) <= 1)
+                                Button("当前列左移") { buffer.changeTable(block.id, action: .columnLeft) }.disabled(cell.column == 0)
+                                Button("当前列右移") { buffer.changeTable(block.id, action: .columnRight) }.disabled(cell.column >= (rows.first?.count ?? 1) - 1)
+
                             } label: { Image(systemName: "tablecells.badge.ellipsis") }.accessibilityLabel("调整表格").disabled(composing)
                             blockMenu(block)
                         }
@@ -131,7 +142,7 @@ struct BlockDocumentEditor: View {
                                     HStack(spacing: 1) {
                                         ForEach(rows[row].indices, id: \.self) { column in
                                             let key = "\(block.id)-\(row)-\(column)"
-                                            MarkdownTextEditor(text: cellBinding(block.id, row, column), request: requestTarget == key ? pendingRequest : nil, onFocus: { activeText = key }, sharedUndoManager: buffer.undo, inlineOnly: true, onSelection: { selectionChanged($0, target: key) }, focusRequest: focusRequest(key))
+                                            MarkdownTextEditor(text: cellBinding(block.id, row, column), request: requestTarget == key ? pendingRequest : nil, onFocus: { activeText = key }, sharedUndoManager: buffer.undo, onFind: onFind, inlineOnly: true, onSelection: { selectionChanged($0, target: key) }, focusRequest: focusRequest(key))
                                                 .frame(width: 180, height: max(44, CGFloat(rows[row][column].components(separatedBy: "\n").count) * compactLineHeight + 16))
                                                 .background(row == 0 ? Color.accentColor.opacity(0.08) : Color.clear)
                                                 .accessibilityLabel("第 \(row + 1) 行，第 \(column + 1) 列")
@@ -144,7 +155,12 @@ struct BlockDocumentEditor: View {
                     }
                 case .image(let alt, let address, let title):
                     VStack(alignment: .leading, spacing: 10) {
-                        HStack { Label("图片", systemImage: "photo").font(.caption).foregroundStyle(.secondary); Spacer(); blockMenu(block) }
+                        HStack {
+                            Label("图片", systemImage: "photo").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button("查看与编辑") { imageEditing = block }.disabled(composing)
+                            blockMenu(block)
+                        }
                         if address.hasPrefix(NoteEmbeddedImage.prefix) {
                             NoteEmbeddedImageView(address: address, label: alt.isEmpty ? "笔记照片" : alt)
                         } else if let url = URL(string: address), url.scheme?.lowercased() == "https", url.host != nil {
@@ -171,6 +187,13 @@ struct BlockDocumentEditor: View {
             }
             if case .text = buffer.blocks.last?.content { } else {
                 Button("继续写正文", systemImage: "text.cursor") { insert(.text("\n")) }.buttonStyle(.borderless)
+            }
+        }
+        .sheet(item: $imageEditing) { block in
+            if case .image(let alt, let address, let title) = block.content {
+                NoteImageInspector(content: NoteImageContent(alt: alt, address: address, title: title), apply: { replacement in
+                    try buffer.replaceImage(block, with: replacement)
+                }, close: { imageEditing = nil })
             }
         }
         #if os(iOS)
@@ -216,6 +239,16 @@ struct BlockDocumentEditor: View {
         }
         .onChange(of: request) { _, request in
             guard !composing else { return }
+            if let match = request?.match, buffer.blocks.indices.contains(match.block) {
+                let block = buffer.blocks[match.block]
+                let target: String
+                if let row = match.row, let column = match.column { target = "\(block.id)-\(row)-\(column)" }
+                else if case .code = block.content { target = "code:\(block.id)" }
+                else { target = block.id.uuidString }
+                activeText = target
+                buffer.focusRequest = NoteEditorFocus(target: target, range: match.range)
+                return
+            }
             switch request?.action {
             case "insert-table": insert(.table(rows: [["列一", "列二"], ["", ""]], alignment: ["---", "---"]))
             #if os(iOS)
@@ -310,18 +343,30 @@ struct NoteEditorSelection: Equatable {
     var mixed: Set<String> = []
 }
 
-/// Both platforms keep the same Markdown draft and save boundary.
+/// Both platforms keep the same Markdown draft and search scope.
 struct VisualDocumentEditor: View {
     @Binding var text: String
     var request: RichEditRequest?
     var preserveSelection = false
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
+    var search: NoteSearchSession = NoteSearchSession()
     var body: some View {
-        #if os(macOS)
-        MDTextKitEditor(text: $text, request: request, preserveSelection: preserveSelection, onSelection: onSelection)
-        #else
-        BlockDocumentEditor(text: $text, request: request, onSelection: onSelection)
-        #endif
+        Group {
+            #if os(macOS)
+            MDTextKitEditor(text: $text, request: search.request ?? request, preserveSelection: preserveSelection || search.isPresented, onSelection: selectionChanged, onFind: { search.open() })
+            #else
+            BlockDocumentEditor(text: $text, request: search.request ?? request, onSelection: selectionChanged, onFind: { search.open() })
+            #endif
+        }
+        .onChange(of: request) { _, value in
+            search.request = nil
+            if value?.action == "show-find" { search.open() }
+        }
+        .onChange(of: text) { _, _ in search.index = -1 }
+    }
+    private func selectionChanged(_ selection: NoteEditorSelection) {
+        search.composing = selection.composing
+        onSelection(selection)
     }
 }
 

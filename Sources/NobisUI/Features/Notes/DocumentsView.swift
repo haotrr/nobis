@@ -503,6 +503,7 @@ private struct DocumentCommentEditor: View {
     var showHelp = false
     var formatRequest: RichEditRequest?
     var editorSelection = NoteEditorSelection()
+    let search = NoteSearchSession()
     var showLink = false
     var linkURL = ""
     var issue: String?
@@ -683,7 +684,7 @@ struct DocumentEditorContent: View {
                         } label: { Text("所属项目 · \(projectName)").font(.callout).foregroundStyle(.secondary) }
                     }
                     #endif
-                    VisualDocumentEditor(text: $state.value.notes, request: formatRequest, preserveSelection: showLink, onSelection: { editorSelection = $0 })
+                    VisualDocumentEditor(text: $state.value.notes, request: formatRequest, preserveSelection: showLink, onSelection: { editorSelection = $0 }, search: state.search)
                         .frame(minHeight: max(220, geometry.size.height - 240), alignment: .top)
                         .id("note-body")
 
@@ -695,9 +696,12 @@ struct DocumentEditorContent: View {
             }.scrollDismissesKeyboard(.interactively)
                 .background { LifeBackground() }
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    if !compactHeight {
-                        formattingBar(width: geometry.size.width).padding(.horizontal, 16)
-                            .padding(.vertical, 8).background(.regularMaterial)
+                    VStack(spacing: 0) {
+                        if state.search.isPresented { NoteDocumentSearchBar(session: state.search, text: value.notes).padding(8).background(.regularMaterial) }
+                        if !compactHeight {
+                            formattingBar(width: geometry.size.width).padding(.horizontal, 16)
+                                .padding(.vertical, 8).background(.regularMaterial)
+                        }
                     }
                 }
             #if os(iOS)
@@ -774,17 +778,24 @@ struct DocumentEditorContent: View {
     private func formatButton(_ title: String, action: String) -> some View {
         Button { formatRequest = RichEditRequest(action: action) } label: {
             Label(title, systemImage: editorSelection.mixed.contains(action) ? "minus" : editorSelection.selected.contains(action) ? "checkmark" : "circle")
-        }.disabled(!editorSelection.enabled || editorSelection.composing || (editorSelection.inTable && ["heading", "body", "list"].contains(action)))
+        }.disabled(!editorSelection.enabled || editorSelection.composing || (editorSelection.inTable && (action.hasPrefix("heading") || ["body", "list", "ordered", "quote"].contains(action))))
     }
     private func formattingBar(width: CGFloat) -> some View {
                     ScrollView(.horizontal) {
                     HStack {
                         Menu {
-                            formatButton("标题", action: "heading")
+                            ForEach(1...3, id: \.self) { level in formatButton("标题 \(level)", action: "heading:\(level)") }
                             formatButton("正文", action: "body")
                             formatButton("粗体", action: "bold")
                             formatButton("斜体", action: "italic")
+                            formatButton("删除线", action: "strike")
+                            formatButton("行内代码", action: "inline-code")
+                            Divider()
                             formatButton("项目列表", action: "list")
+                            formatButton("编号列表", action: "ordered")
+                            formatButton("引用", action: "quote")
+                            Divider()
+                            formatButton("清除格式", action: "clear")
                         } label: { Image(systemName: "textformat").touchTarget() }.help("文字格式").accessibilityLabel("文字格式")
                         Button {
 #if os(macOS)
@@ -815,6 +826,8 @@ struct DocumentEditorContent: View {
                             Button("代码块", systemImage: "chevron.left.forwardslash.chevron.right") { formatRequest = RichEditRequest(action: "insert-code") }
                         } label: { Image(systemName: "plus").touchTarget() }.disabled(blockFormattingDisabled).accessibilityLabel("插入内容")
                         Spacer()
+                        NoteOutlineMenu(text: value.notes, session: state.search)
+                        Button { formatRequest = RichEditRequest(action: "show-find") } label: { Image(systemName: "magnifyingglass").touchTarget() }.help("查找整篇笔记").accessibilityLabel("查找整篇笔记").keyboardShortcut("f").disabled(editorSelection.composing)
                         Button { importing = true } label: { Image(systemName: "square.and.arrow.down").touchTarget() }
                             .buttonStyle(.borderless).keyboardShortcut("o")
                             .accessibilityLabel("导入 Markdown 文件").help("导入 Markdown（⌘O）")

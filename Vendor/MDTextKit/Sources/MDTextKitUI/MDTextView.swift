@@ -523,8 +523,15 @@ import SFThemeKit
         return types
     }
 
+    public var onFind: (() -> Void)?
+    open override func performFindPanelAction(_ sender: Any?) {
+        if let onFind, (sender as? NSMenuItem)?.tag == NSTextFinder.Action.showFindInterface.rawValue {
+            guard !hasMarkedText() else { return }; onFind()
+        } else { super.performFindPanelAction(sender) }
+    }
+
     open override var readablePasteboardTypes: [NSPasteboard.PasteboardType] {
-        [MDTextView.attributedStringPboardType, .fileURL, .pdf, .tiff, NSPasteboard.PasteboardType("com.apple.drawing")] + super.readablePasteboardTypes
+        [MDTextView.attributedStringPboardType, .fileURL, .pdf, .tiff, .png, NSPasteboard.PasteboardType("com.apple.drawing")] + super.readablePasteboardTypes
     }
 
     open override func writeSelection(to pboard: NSPasteboard, type: NSPasteboard.PasteboardType) -> Bool {
@@ -631,6 +638,11 @@ import SFThemeKit
         editorController.replaceCharacters(in: dest, with: m, in: self)
     }
 
+    private func acceptsImageDrop(_ pasteboard: NSPasteboard) -> Bool {
+        isEditable && !hasMarkedText() && addFilesBlock != nil && internalDraggingRange.location == NSNotFound &&
+            pasteboard.availableType(from: [.fileURL, .tiff, .png]) != nil
+    }
+
     // MARK: Drag & drop
 
     public var internalDraggingRange = NSRange(location: NSNotFound, length: 0)
@@ -649,10 +661,12 @@ import SFThemeKit
             let g = mdLayoutManager.glyphRange(forCharacterRange: selectedRange(), actualCharacterRange: nil)
             selectionRectDuringDrag = mdLayoutManager.boundingRect(forGlyphRange: g, in: mdTextContainer).offsetBy(dx: textContainerOrigin.x, dy: textContainerOrigin.y)
         }
+        if acceptsImageDrop(sender.draggingPasteboard) { return .copy }
         return super.draggingEntered(sender)
     }
 
     open override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        if acceptsImageDrop(sender.draggingPasteboard) { return .copy }
         guard singleLineDragging else { return super.draggingUpdated(sender) }
         let old = lineInsertionPointRect
         lineInsertionPointRect = lineInsertionPointRect(for: sender.draggingLocation)
@@ -675,10 +689,14 @@ import SFThemeKit
     }
 
     open override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        super.prepareForDragOperation(sender) || !lineInsertionPointRect.equalTo(.zero)
+        acceptsImageDrop(sender.draggingPasteboard) || super.prepareForDragOperation(sender) || !lineInsertionPointRect.equalTo(.zero)
     }
 
     open override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        if acceptsImageDrop(sender.draggingPasteboard) {
+            setSelectedRange(NSRange(location: characterIndexForInsertion(at: convert(sender.draggingLocation, from: nil)), length: 0))
+            return readPasteboard(sender.draggingPasteboard)
+        }
         if super.performDragOperation(sender) { return true }
         if lineInsertionPointRect.equalTo(.zero) { return false }
         _ = readSelection(from: sender.draggingPasteboard, type: MDTextView.attributedStringPboardType)

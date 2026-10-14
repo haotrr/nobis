@@ -192,12 +192,16 @@ import PolarMark
             var current = Set<String>()
             if attrs[.pmkStrong] != nil { current.insert("bold") }
             if attrs[.pmkEmphasis] != nil { current.insert("italic") }
+            if attrs[.pmkStrikethrough] != nil { current.insert("strike") }
+            if attrs[.pmkCode] != nil { current.insert("inline-code") }
+            if !inlineOnly, attrs[.pmkBlockquote] != nil { current.insert("quote") }
             if !inlineOnly {
-                if (attrs[.pmkHeading] as? NSNumber)?.intValue == 2 { current.insert("heading") }
+                if let level = attrs[.pmkHeading] as? NSNumber { current.insert("heading:\(level.intValue)") }
                 if attrs[.pmkHeading] == nil { current.insert("body") }
                 if let list = attrs[.pmkListItem] as? PMKListInfo {
                     if list.taskType > 0 { current.insert("checklist") }
                     else if list.listType == 1 { current.insert("list") }
+                    else { current.insert("ordered") }
                 }
             }
             any.formUnion(current)
@@ -215,15 +219,19 @@ import PolarMark
         switch action {
         case "bold": result = ast.toggleInlineStyle(.strong, selection: selection)
         case "italic": result = ast.toggleInlineStyle(.emphasis, selection: selection)
+        case "strike": result = ast.toggleInlineStyle(.strikethrough, selection: selection)
+        case "inline-code": result = ast.toggleInlineStyle(.code, selection: selection)
+        case "clear": result = ast.clearFormatting(selection: selection, inlineOnly: inlineOnly)
+        case "heading:1" where !inlineOnly, "heading:2" where !inlineOnly, "heading:3" where !inlineOnly:
+            result = ast.toggleBlockStyle(.heading(Int(action.suffix(1)) ?? 2), selection: selection)
+        case "ordered" where !inlineOnly: result = ast.toggleBlockStyle(.orderedList, selection: selection)
+        case "quote" where !inlineOnly: result = ast.toggleBlockStyle(.blockquote, selection: selection)
         case "heading" where !inlineOnly: result = ast.toggleBlockStyle(.heading(2), selection: selection)
         case "list" where !inlineOnly: result = ast.toggleBlockStyle(.unorderedList, selection: selection)
         case "checklist" where !inlineOnly: result = ast.toggleBlockStyle(.taskList, selection: selection)
         case "toggle" where !inlineOnly: result = ast.toggleTask(at: selection.location)
         case "body" where !inlineOnly:
-            let range = (markdown as NSString).paragraphRange(for: selection)
-            let old = (markdown as NSString).substring(with: range)
-            let replacement = old.replacingOccurrences(of: "(?m)^ {0,3}(#{1,6} |[-+*] (?:\\[[ xX]\\] )?|[0-9]+[.)] |>[ ]?)", with: "", options: .regularExpression)
-            result = PMKASTOperationResult(replacementRange: range, replacementString: replacement, proposedSelection: NSRange(location: range.location, length: 0))
+            result = ast.clearFormatting(selection: selection, headingsOnly: true)
         default:
             if action.hasPrefix("link:") {
                 let address = String(action.dropFirst(5))
@@ -271,8 +279,11 @@ import PolarMark
         delegate?.textViewDidChange?(self)
     }
 
+    public var onFind: (() -> Void)?
+    @objc private func findDocument() { guard markedTextRange == nil else { return }; onFind?() }
+
     public override var keyCommands: [UIKeyCommand]? {
-        let commands = [UIKeyCommand(input: "z", modifierFlags: .command, action: #selector(undoEdit)), UIKeyCommand(input: "z", modifierFlags: [.command, .shift], action: #selector(redoEdit)), UIKeyCommand(input: "b", modifierFlags: .command, action: #selector(bold)), UIKeyCommand(input: "i", modifierFlags: .command, action: #selector(italic))]
+        let commands = [UIKeyCommand(input: "f", modifierFlags: .command, action: #selector(findDocument)), UIKeyCommand(input: "z", modifierFlags: .command, action: #selector(undoEdit)), UIKeyCommand(input: "z", modifierFlags: [.command, .shift], action: #selector(redoEdit)), UIKeyCommand(input: "b", modifierFlags: .command, action: #selector(bold)), UIKeyCommand(input: "i", modifierFlags: .command, action: #selector(italic))]
         commands.forEach { $0.wantsPriorityOverSystemBehavior = true }
         return (super.keyCommands ?? []) + commands
     }

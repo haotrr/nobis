@@ -22,6 +22,85 @@ struct MDTextKitIntegrationTests {
         return (buffer, coordinator)
     }
 
+    @Test func imageInspectorEditsAndDeletesThroughNativeUndo() throws {
+        let source = "前😀\n![旧图](https://example.com/a.png)\n后文"
+        let (buffer, coordinator) = make(source)
+        defer { coordinator.stop() }
+        coordinator.view.editorUndoManager.groupsByEvent = false
+        let edit = try #require(NoteImageEdit(source: source, at: 4))
+        try coordinator.applyImageEdit(edit, replacement: NoteImageContent(alt: "新图", address: "https://example.com/b.png", title: "标题"))
+        #expect(buffer.value.contains("新图"))
+        coordinator.view.editorUndoManager.undo()
+        #expect(buffer.value == source)
+        try coordinator.applyImageEdit(edit, replacement: nil)
+        #expect(buffer.value == "前😀\n后文")
+        coordinator.view.editorUndoManager.undo()
+        #expect(buffer.value == source)
+    }
+
+    @Test func extendedFormatsAndClearUndo() {
+        let (buffer, coordinator) = make("中文😀")
+        defer { coordinator.stop() }
+        let view = coordinator.view
+        view.editorUndoManager.groupsByEvent = false
+        view.setSelectedRange(NSRange(location: 0, length: view.string.utf16.count))
+        view.editorUndoManager.beginUndoGrouping()
+        NobisMDTextView.apply("strike", to: view)
+        view.editorUndoManager.endUndoGrouping()
+        #expect(buffer.value == "~~中文😀~~")
+        view.editorUndoManager.beginUndoGrouping()
+        NobisMDTextView.apply("clear", to: view)
+        view.editorUndoManager.endUndoGrouping()
+        #expect(buffer.value == "中文😀")
+        view.editorUndoManager.undo()
+        #expect(buffer.value == "~~中文😀~~")
+    }
+
+    @Test func documentSearchLocatesCodeAndTable() throws {
+        let source = "正文目标\n\n| 名称 |\n| --- |\n| 表格\\|目标 |\n\n```swift\n代码目标\n```\n"
+        let (_, coordinator) = make(source)
+        defer { coordinator.stop() }
+        let matches = NoteDocumentSearch.matches(in: DocumentBlocks.parse(source), query: "目标")
+        #expect(matches.count == 3)
+        coordinator.selectMatch(matches[2])
+        #expect((coordinator.view.string as NSString).substring(with: coordinator.view.selectedRange()) == "目标")
+        #expect(coordinator.view.markdown == source)
+        coordinator.selectMatch(matches[1])
+        var table: MDTableAttachmentViewController?
+        coordinator.view.mdTextStorage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: coordinator.view.mdTextStorage.length)) { value, _, _ in
+            if let attachment = value as? MDTableTextAttachment { table = attachment.attachmentViewController as? MDTableAttachmentViewController }
+        }
+        let cell = try #require(table?.activeCellEditor)
+        #expect((cell.string as NSString).substring(with: cell.selectedRange()) == "目标")
+        #expect(coordinator.view.addFilesBlock != nil)
+    }
+
+    @Test func screenshotPasteImportsImageAndUndoesAsOneOperation() async throws {
+        let (buffer, coordinator) = make("前😀后文")
+        defer { coordinator.stop() }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 400), styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = coordinator.view
+        defer { window.contentView = nil }
+        let view = coordinator.view
+        view.setSelectedRange(NSRange(location: 1, length: 2))
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        let image = NSImage(size: NSSize(width: 20, height: 20), flipped: false) { rect in NSColor.red.setFill(); rect.fill(); return true }
+        pasteboard.writeObjects([image])
+        #expect(view.readSelection(from: pasteboard, type: .tiff))
+        for _ in 0..<100 {
+            if buffer.value.contains(NoteEmbeddedImage.prefix) { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(buffer.value.contains(NoteEmbeddedImage.prefix))
+        #expect(buffer.value.hasPrefix("前😀\n!["))
+        let inserted = buffer.value
+        view.editorUndoManager.undo()
+        #expect(buffer.value == "前😀后文")
+        view.editorUndoManager.redo()
+        #expect(buffer.value == inserted)
+    }
+
     @Test func fileImageInsertionPreservesSelectionAndUndo() {
         let (buffer, coordinator) = make("前😀后文")
         defer { coordinator.stop() }
