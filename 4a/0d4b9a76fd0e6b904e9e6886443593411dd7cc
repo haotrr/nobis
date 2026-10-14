@@ -1,0 +1,36 @@
+Sources/NobisUI/Features/Notes/Editor/NoteOutline.swift
+  s_d6e2f8ed764d2e::t_53eec0a4a57389 44
+DESIGN.md
+  s_d6e2f8ed764d2e::t_59f9c8edffae57 33
+  s_d6e2f8ed764d2e::t_7a4d33cfc811a3 34
+Sources/NobisUI/Features/Notes/Editor/NoteDocumentSearch.swift
+  s_d6e2f8ed764d2e::t_679cb4b2f1065b 247-248,250-262,274-279,291-293
+  s_d6e2f8ed764d2e::t_59f9c8edffae57 280-290
+docs/verification.md
+  s_d6e2f8ed764d2e::t_7a4d33cfc811a3 6,12
+  s_d6e2f8ed764d2e::t_59f9c8edffae57 5,7-11
+Sources/NobisUI/Features/Notes/Editor/NoteImageInspector.swift
+  s_d6e2f8ed764d2e::t_9b5d7e9e877ada 61-62,76,153,160-161
+Sources/NobisUI/Features/Notes/DocumentsView.swift
+  s_d6e2f8ed764d2e::t_13a86e7b5b13b5 772,785,799,806-807,815-816,825-826,828-830,832-833,848-850
+Sources/NobisUI/Features/Notes/Editor/NoteToolbarStyle.swift
+  s_d6e2f8ed764d2e::t_1a6617faea9f8d 1-67
+Sources/NobisUI/Features/Notes/Editor/NoteZoomImage.swift
+  s_d6e2f8ed764d2e::t_9443bc11af601c 17-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a0d4b9a76fd0e6b904e9e6886443593411dd7cc",
+  "prompts": {},
+  "sessions": {
+    "s_d6e2f8ed764d2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13a40-c85a-70e0-98a4-49c27a69da6f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
