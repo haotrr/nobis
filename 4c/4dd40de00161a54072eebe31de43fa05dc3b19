@@ -1,0 +1,66 @@
+Vendor/MDTextKit/Package.swift
+  s_acc4a8c629dad0::t_3aada5267129e8 12,14,24
+project.yml
+  s_acc4a8c629dad0::t_5c25001ef03385 29,60
+  s_acc4a8c629dad0::t_825a33cb08db46 91-101,121-127
+Sources/NobisUI/Features/Notes/Editor/VisualDocumentEditor.swift
+  s_acc4a8c629dad0::t_5c25001ef03385 27-28,36-37,46,56,71,80,127,138,193,215
+docs/roadmap.md
+  s_acc4a8c629dad0::t_0d64d34cf8408a 18
+Vendor/MDTextKit/NOBIS.md
+  s_acc4a8c629dad0::t_0d64d34cf8408a 7,13-14,31-32
+DESIGN.md
+  s_acc4a8c629dad0::t_0d64d34cf8408a 50
+docs/verification.md
+  s_acc4a8c629dad0::t_0f9a95dfa87080 11
+  s_acc4a8c629dad0::t_174150eed2bc99 5-10,12-13,21
+docs/components/mdtextkit.md
+  s_acc4a8c629dad0::t_0d64d34cf8408a 3,16-22,29
+Package.swift
+  s_acc4a8c629dad0::t_3aada5267129e8 12
+Vendor/MDTextKit/Sources/MDTextKitUIKit/MDMarkdownTextView.swift
+  s_acc4a8c629dad0::t_3aada5267129e8 1-12,19-28,31-75,78-79,109,111-124,142,145,147,149-167,187-205,208-213,215-217,220-223
+  s_acc4a8c629dad0::t_392da0e3074f71 141,168-186
+  s_acc4a8c629dad0::t_0bcec82d1407a7 13-18,29-30,76-77,80-108,110,206-207,214,218-219
+  s_acc4a8c629dad0::t_85e15bd5642530 125-140,143-144,146,148
+Tests/NobisIOSTests/MDTextKitUIKitTests.swift
+  s_acc4a8c629dad0::t_392da0e3074f71 16,20,28,48,81,104,129,146,148-163,181
+  s_acc4a8c629dad0::t_f290ae26feda8f 1-15,17-19,21-27,29-47,49-80,82-103,105-128,130-145,147,164-180,182-183
+docs/features/documents.md
+  s_acc4a8c629dad0::t_0d64d34cf8408a 29
+Sources/NobisUI/Features/Notes/Editor/MarkdownTextEditor.swift
+  s_acc4a8c629dad0::t_0bcec82d1407a7 228,268-269
+  s_acc4a8c629dad0::t_5c25001ef03385 13-14,154,160-164,169,177-178,200-202,205-206,230,258-259,266
+  s_acc4a8c629dad0::t_3aada5267129e8 145,153,157,166,170,182-183,193,270-271
+  s_acc4a8c629dad0::t_288a9057bd2a0d 203-204
+Nobis.xcodeproj/project.pbxproj
+  s_acc4a8c629dad0::t_cf6befc56354a4 10,19,26-27,31,35,65-72,100,119-121,137-145,184,223,226-244,263-265,287,339-346,721-736,781-812,874-889,968-978,1012-1015
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisEditorTests.xcscheme
+  s_acc4a8c629dad0::t_dab613060460d0 1-100
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisIOS-Cloud.xcscheme
+  s_acc4a8c629dad0::t_a833db3a52516f 4,7-8,30-31,43-44,66-67,85-86
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisIOS.xcscheme
+  s_acc4a8c629dad0::t_40f99d5ca32c34 4,7-8,30-31,64-65
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisMac-Cloud.xcscheme
+  s_acc4a8c629dad0::t_9c84a8413df77c 4,7-8,30-31,43-44,66-67,85-86
+Nobis.xcodeproj/xcshareddata/xcschemes/NobisMac.xcscheme
+  s_acc4a8c629dad0::t_3e9dbe1376620c 4,7-8,30-31,64-65
+docs/feature-inventory.md
+  s_acc4a8c629dad0::t_06514d0fe12593 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c4dd40de00161a54072eebe31de43fa05dc3b19",
+  "prompts": {},
+  "sessions": {
+    "s_acc4a8c629dad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1380c-f431-7b43-8a04-ec8c8d335b4d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
