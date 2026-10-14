@@ -1,0 +1,41 @@
+DESIGN.md
+  s_cad6dd87496815::t_c30d3eceae98bb 13,74
+project.yml
+  s_cad6dd87496815::t_c30d3eceae98bb 20
+Apps/Nobis/Shared/Assets.xcassets/AccentColor.colorset/Contents.json
+  s_cad6dd87496815::t_c30d3eceae98bb 1-38
+Sources/NobisUI/Features/Notes/Editor/NoteEditorWindows.swift
+  s_cad6dd87496815::t_c30d3eceae98bb 207
+Sources/NobisUI/Shared/Styles/NobisTheme.swift
+  s_cad6dd87496815::t_c30d3eceae98bb 1-8
+docs/verification.md
+  s_cad6dd87496815::t_d0c2b7eadc3b2a 5-11
+Nobis.xcodeproj/project.pbxproj
+  s_cad6dd87496815::t_c30d3eceae98bb 354,444,517,583
+Sources/NobisUI/Features/Records/RecordEditor.swift
+  s_cad6dd87496815::t_c30d3eceae98bb 69
+Sources/NobisUI/App/RootView.swift
+  s_cad6dd87496815::t_c30d3eceae98bb 26
+Sources/NobisUI/Features/Workspace/OrganizationViews.swift
+  s_cad6dd87496815::t_c30d3eceae98bb 115
+Sources/NobisUI/Features/Finance/FinancialDashboard.swift
+  s_cad6dd87496815::t_c30d3eceae98bb 85
+Sources/NobisUI/Shared/Styles/WorkspaceStyle.swift
+  s_cad6dd87496815::t_c30d3eceae98bb 13,272,344,569-570
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3550989f27ec04a8b20b2e35a5b362213dc54b3d",
+  "prompts": {},
+  "sessions": {
+    "s_cad6dd87496815": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13a18-b93d-7a40-9cd9-ed5740f622cf",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
