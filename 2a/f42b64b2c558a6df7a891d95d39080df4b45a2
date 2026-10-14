@@ -1,0 +1,90 @@
+Tests/NobisIOSTests/MDTextKitUIKitTests.swift
+  s_525142cbb7f3b1::t_276b6b8950f7ae 30-58,66-67,71,78,81-84,89-93,108,512,515
+  s_525142cbb7f3b1::t_872658206a8812 59-65,68-70,72-77,79-80,85-88,94-107,109,505-511,513-514,516
+Sources/NobisUI/Features/Notes/Editor/NoteOutline.swift
+  s_525142cbb7f3b1::t_62e64b66e91978 1-18,24-47
+  s_525142cbb7f3b1::t_43c6939fa68fb2 19-23
+Vendor/MDTextKit/Sources/MDTextKitUI/MDTableAttachmentViewController.swift
+  s_525142cbb7f3b1::t_57e3efd6a09345 363-382,394
+  s_525142cbb7f3b1::t_3fffd197aa5405 201,571-572,574-575,579,583
+Vendor/MDTextKit/Sources/PolarMark/PMKAST+ClearFormatting.swift
+  s_525142cbb7f3b1::t_5e8d9ec41119ab 6,17,20
+  s_525142cbb7f3b1::t_51e18b1f793734 1-5,7-16,18-19,21-44
+Sources/NobisUI/Features/Notes/Editor/MDTextKitEditor.swift
+  s_525142cbb7f3b1::t_57e3efd6a09345 36,158,185-187,194-201,203-214
+  s_525142cbb7f3b1::t_9a9d5db68bf847 87,90,96-97,215,598-603,605,607-610
+  s_525142cbb7f3b1::t_51e18b1f793734 129-132,216,233,242,257-269,274-289,474,485
+  s_525142cbb7f3b1::t_5e8d9ec41119ab 89,604,606
+  s_525142cbb7f3b1::t_10eee1a9a08b52 70,127,202,217-232,234-241,243,420,457-458,461-473,475-484,486-489
+Tests/FamilyCoreTests/NoteEditorNavigationTests.swift
+  s_525142cbb7f3b1::t_1d9a7236b86638 47
+  s_525142cbb7f3b1::t_5fb879ad310ddb 1-46,48-51
+Vendor/MDTextKit/Sources/MDTextKitUIKit/MDMarkdownTextView.swift
+  s_525142cbb7f3b1::t_9a9d5db68bf847 195-197,199,204,222-224,226-228
+  s_525142cbb7f3b1::t_57e3efd6a09345 282-284,286
+  s_525142cbb7f3b1::t_5e8d9ec41119ab 234
+  s_525142cbb7f3b1::t_d385215731fc08 225
+Vendor/MDTextKit/Sources/MDTextKitUI/MDTextView.swift
+  s_525142cbb7f3b1::t_57e3efd6a09345 526-532,644
+  s_525142cbb7f3b1::t_b004cfb202a426 534,641-643,645,664,669,692,696-699
+docs/tech/T-261014-NB2Q3-mdtextkit/TODO.md
+  s_525142cbb7f3b1::t_58227063afbda4 42-44,46-60,63
+  s_525142cbb7f3b1::t_95e390c6f2a2ec 45,61-62
+docs/verification.md
+  s_525142cbb7f3b1::t_d12ab11bea5b75 5-18
+  s_525142cbb7f3b1::t_252fb57b02ced2 19-21
+docs/features/documents.md
+  s_525142cbb7f3b1::t_58227063afbda4 52-53,66,71,78-88
+Sources/NobisUI/Features/Notes/DocumentsView.swift
+  s_525142cbb7f3b1::t_9a9d5db68bf847 781,787,791-793,795-798
+  s_525142cbb7f3b1::t_57e3efd6a09345 830
+  s_525142cbb7f3b1::t_72a650ea37cfa5 700-704
+  s_525142cbb7f3b1::t_62e64b66e91978 829
+  s_525142cbb7f3b1::t_c97a68719c41d5 506,687,699
+docs/feature-inventory.md
+  s_525142cbb7f3b1::t_58227063afbda4 10
+DESIGN.md
+  s_525142cbb7f3b1::t_58227063afbda4 87-90
+Sources/NobisUI/Features/Notes/Editor/NoteImageInspector.swift
+  s_525142cbb7f3b1::t_e253fb66f27650 1-18,20-33,35-37,39-52,57-62,64-72,74-98,100-101,110-121,123-168,190,193,199-200,220-221
+  s_525142cbb7f3b1::t_17ab8a0422efda 54-56,103-109
+  s_525142cbb7f3b1::t_1d9a7236b86638 38,53,73,188,210-218
+  s_525142cbb7f3b1::t_5ad63371f41261 19,34,63,99,102,122,169-187,189,191-192,194-198,201-209,219
+Sources/NobisUI/Features/Notes/Editor/MarkdownTextEditor.swift
+  s_525142cbb7f3b1::t_57e3efd6a09345 12,155,166
+Sources/NobisUI/Features/Notes/Editor/NoteDocumentSearch.swift
+  s_525142cbb7f3b1::t_62e64b66e91978 54,58-75,90
+  s_525142cbb7f3b1::t_57e3efd6a09345 1-36,55,85,91
+  s_525142cbb7f3b1::t_f82342898d3059 37-53,56-57,76-84,86-89
+docs/components/mdtextkit.md
+  s_525142cbb7f3b1::t_58227063afbda4 38-46
+Sources/NobisUI/Features/Notes/Editor/VisualDocumentEditor.swift
+  s_525142cbb7f3b1::t_57e3efd6a09345 74-75,91-92,101,112,123-135,145,158-163,192-198,242-251,346,355,357,359-361,364,366-367,369
+  s_525142cbb7f3b1::t_b19c7300fe1c2c 352,354,356,358,362-363,365,368
+Sources/NobisUI/Features/Notes/Editor/RichMarkdown.swift
+  s_525142cbb7f3b1::t_57e3efd6a09345 32
+Sources/NobisUI/Features/Notes/Editor/NoteTableEditing.swift
+  s_525142cbb7f3b1::t_49de16b37009c7 1-48
+Tests/FamilyCoreTests/MDTextKitIntegrationTests.swift
+  s_525142cbb7f3b1::t_7ca7c8d82c5923 25-103
+Tests/FamilyCoreTests/NoteEditorBasicsTests.swift
+  s_525142cbb7f3b1::t_fc8aa32372f1da 1-70
+Vendor/MDTextKit/NOBIS.md
+  s_525142cbb7f3b1::t_69701a881c6054 19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2af42b64b2c558a6df7a891d95d39080df4b45a2",
+  "prompts": {},
+  "sessions": {
+    "s_525142cbb7f3b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a139c3-4494-7c32-85c0-a13170a05e01",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
