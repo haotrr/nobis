@@ -11,3 +11,5 @@
 | 记录行 | [RecordRows.swift](../../Sources/NobisUI/Shared/Components/RecordRows.swift) | 按上下文省略常态状态与继承归属；保留异常、混合范围身份和金额，小屏和大字号可重排 |
 
 笔记专用编辑器位于 `Sources/NobisUI/Features/Notes/Editor`，业务行为见[笔记文档](../features/documents.md)。新增组件文档应说明适用场景、状态与交互约束，不重复抄写 API 或全局样式规则。
+
+- [MDTextKit 笔记编辑组件](mdtextkit.md)：本地源码、双端边界与修改入口。

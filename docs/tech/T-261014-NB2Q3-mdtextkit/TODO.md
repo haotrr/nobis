@@ -1,0 +1,37 @@
+# T-261014-NB2Q3 MDTextKit 源码集成与笔记编辑器接入
+
+## 任务边界
+
+- 目标：源码内置并接入笔记编辑与展示，便于持续优化。
+- 授权：实现、验证、Git 提交及安装 Mac 正式包；未授权推送。
+- 范围：Mac 编辑器／普通只读展示、本地 Swift Package、平台适配、许可和维护说明。
+- 保持：iOS 17 原编辑器、macOS 14 部署声明、Markdown 存储、草稿／修订／权限／评注／清单业务。
+- 不做：UIKit 引擎移植、数据库迁移、真实云账号配置、正式数据修改。
+
+## 决策与实现
+
+见 [PLAN](PLAN.md)；组件基线及本地补丁见 [NOBIS.md](../../../Vendor/MDTextKit/NOBIS.md)。
+
+- [x] 引入 MIT 源码、测试与 Demo，记录上游 commit。
+- [x] 本地包条件链接；Mac 正文／普通只读展示接入，清单行定位阅读保留。
+- [x] 工具栏、Markdown 回传、HTTPS 异步图片、只读保护、中文组词与撤销适配。
+- [x] 表格即时回写、中文提交回传、正文撤销和管线转义。
+- [x] 许可打包并提供设置查看入口。
+- [x] 测试、双平台构建及隔离 Mac 主流程验证。
+- [x] 同步设计、功能、结构、组件和验证文档。
+
+## 验证
+
+| 检查 | 结果 |
+| --- | --- |
+| Nobis swift test | 139 项 / 27 套件通过，含新增 8 项集成回归 |
+| Vendor/MDTextKit swift test | 49 项 XCTest 通过 |
+| XcodeGen / Mac / iOS Simulator Debug / Mac Release | 生成完成，构建与 Release 本机签名校验通过 |
+| Mac 隔离示例 UI | Markdown 排版、保存、列表和今天清单联动通过 |
+| 尚未验收 | 最低系统、真实中文候选窗口、外部网络图片端到端、iOS 全矩阵、真机及双账号 |
+
+完整边界见 [验证状态](../../verification.md)。构建缓存与业务数据未纳入源码。
+
+## 交接与交付
+
+实现、验证与本地提交已完成；Mac Release 已安装到 `/Applications/Nobis.app` 并启动，原有家庭和清单数据正常显示。旧应用包已备份；未推送。后续优化可直接修改 `Vendor/MDTextKit` 并维护补丁清单，iOS 若切换同一引擎需单独做 UIKit 适配。

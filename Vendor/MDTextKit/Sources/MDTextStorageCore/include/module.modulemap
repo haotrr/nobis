@@ -1,0 +1,4 @@
+module MDTextStorageCore {
+    header "MDAttributedStorage.h"
+    export *
+}

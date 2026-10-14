@@ -2,7 +2,7 @@ import SwiftUI
 import FamilyCore
 
 /// A small native Markdown subset. Unsupported syntax remains readable source text.
-struct MarkdownPreview: View {
+private struct BasicMarkdownPreview: View {
     let source: String
     var highlightedLine: Int? = nil
     var onToggle: ((Int) -> Void)? = nil
@@ -66,5 +66,28 @@ private struct MarkdownRemoteImage: View {
                     .help("从 \(url.host!) 加载外部图片").touchTarget()
             }
         } else { Label(alt.isEmpty ? "图片需要 HTTPS 地址" : "\(alt) · 图片需要 HTTPS 地址", systemImage: "photo") }
+    }
+}
+
+struct MarkdownPreview: View {
+    let source: String
+    var highlightedLine: Int? = nil
+    var onToggle: ((Int) -> Void)? = nil
+    @State private var loadImages = false
+    var body: some View {
+        #if os(macOS)
+        if highlightedLine == nil && onToggle == nil {
+            VStack(alignment: .leading) {
+                MDTextKitEditor(text: .constant(source), editable: false, loadImages: loadImages)
+                if !loadImages && source.contains("![") {
+                    Button("加载外部图片") { loadImages = true }.buttonStyle(.borderless)
+                }
+            }
+        } else {
+            BasicMarkdownPreview(source: source, highlightedLine: highlightedLine, onToggle: onToggle)
+        }
+        #else
+        BasicMarkdownPreview(source: source, highlightedLine: highlightedLine, onToggle: onToggle)
+        #endif
     }
 }

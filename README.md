@@ -8,7 +8,7 @@
 
 ## 运行
 
-最低系统为 iOS 17 / macOS 14。当前使用 Xcode 27、Swift 6.4 验证，源码语言模式 Swift 6，无第三方运行时依赖。
+最低系统为 iOS 17 / macOS 14。当前使用 Xcode 27、Swift 6.4 验证，源码语言模式 Swift 6；本地 MDTextKit 包要求 Swift 6.2+。Mac 笔记编辑器的 MIT 源码已内置到 `Vendor/MDTextKit`，构建无需拉取远程依赖。
 
 ```sh
 open Nobis.xcodeproj

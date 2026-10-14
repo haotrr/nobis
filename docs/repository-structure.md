@@ -14,6 +14,8 @@
 | `Sources/NobisCLI` | 显式导出文件上的离线只读查询 |
 | `Tests/FamilyCoreTests` | Swift Testing；含模型与路由测试，不是点击式 XCUITest |
 | `Config` | Cloud 配置及本机配置示例 |
+| `Vendor/MDTextKit` | MIT Markdown 组件完整源码、本地包、上游测试和补丁说明；仅 Mac 链接编辑器 |
+| `Sources/NobisUI/Resources` | 随应用打包的第三方许可 |
 | `Package.swift` | Swift 模块依赖 |
 | `project.yml` → `Nobis.xcodeproj` | XcodeGen 定义及生成工程 |
 

@@ -95,6 +95,13 @@ struct SettingsView: View {
             LifeSection(title: "关于 Nobis", icon: "leaf") {
                 Text("Nobis 0.1 · A Family Studio").font(.system(.title3, design: .serif))
                 Text("Pro nobis · 为了我们").foregroundStyle(.secondary)
+                DisclosureGroup("开源许可") {
+                    Text("MDTextKit · Markdown 编辑组件").font(.headline)
+                    if let url = Bundle.module.url(forResource: "MDTextKit-LICENSE", withExtension: "txt"),
+                       let license = try? String(contentsOf: url, encoding: .utf8) {
+                        Text(license).font(.caption).textSelection(.enabled)
+                    }
+                }
                 DisclosureGroup("AI 入口与数据边界") {
                 Text("v0.1 提供导出文件上的结构化只读 CLI 样例。它不能打开应用数据库，也不能修改记录。导出给外部客户端后，文件权限由接收方控制。").font(.callout)
             }

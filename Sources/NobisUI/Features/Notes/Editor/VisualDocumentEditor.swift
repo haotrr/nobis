@@ -21,7 +21,7 @@ final class DocumentBlockBuffer {
 }
 
 /// Text, tables, images and code share one document and the same draft/save pipeline.
-struct VisualDocumentEditor: View {
+struct BlockDocumentEditor: View {
     @Binding var text: String
     var request: RichEditRequest?
     @ScaledMetric(relativeTo: .body) private var bodyLineHeight = 22.0
@@ -187,5 +187,18 @@ struct VisualDocumentEditor: View {
                 buffer.replace(next, undo: buffer.undo)
             }
         } label: { Image(systemName: "ellipsis") }.accessibilityLabel("内容操作")
+    }
+}
+
+/// Both platforms keep the same Markdown draft and save boundary.
+struct VisualDocumentEditor: View {
+    @Binding var text: String
+    var request: RichEditRequest?
+    var body: some View {
+        #if os(macOS)
+        MDTextKitEditor(text: $text, request: request)
+        #else
+        BlockDocumentEditor(text: $text, request: request)
+        #endif
     }
 }
