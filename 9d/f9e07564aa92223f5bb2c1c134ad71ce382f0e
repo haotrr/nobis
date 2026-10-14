@@ -1,0 +1,19 @@
+docs/verification.md
+  s_acc4a8c629dad0::t_8d2af66320eaa5 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9df9e07564aa92223f5bb2c1c134ad71ce382f0e",
+  "prompts": {},
+  "sessions": {
+    "s_acc4a8c629dad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1380c-f431-7b43-8a04-ec8c8d335b4d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
