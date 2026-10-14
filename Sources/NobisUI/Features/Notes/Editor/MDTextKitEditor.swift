@@ -67,6 +67,7 @@ struct MDTextKitEditor: NSViewRepresentable {
         private weak var activeView: MDTextView?
         private var images: [String: Data] = [:]
         private var imageTasks: [String: Task<Void, Never>] = [:]
+        private var failedImages: Set<String> = []
         private var imagesEnabled = false
         private var needsImageRefresh = false
         private var stopped = false
@@ -115,6 +116,7 @@ struct MDTextKitEditor: NSViewRepresentable {
             view.mdTextContainer.maxColumSize = 0
             view.setAccessibilityLabel("笔记正文")
             view.installTableEditing(themeManager: theme)
+            view.retryImage = { [weak self] path in self?.retryImage(path) }
             view.openURL = { url in
                 guard ["https", "http", "mailto"].contains(url.scheme?.lowercased() ?? "") else { return }
                 NSWorkspace.shared.open(url)
@@ -155,6 +157,7 @@ struct MDTextKitEditor: NSViewRepresentable {
                 view.invalidateMeasurement()
                 emitted = host.text
                 installing = false
+                needsImageRefresh = true
             } else if enabledImages { needsImageRefresh = true }
             refreshImagesIfPossible()
             if let request = host.request, request.id != lastRequest {
@@ -208,29 +211,60 @@ struct MDTextKitEditor: NSViewRepresentable {
             let source = view.markdown
             emitted = source
             if binding.wrappedValue != source { binding.wrappedValue = source }
+            needsImageRefresh = true
             refreshImagesIfPossible()
             reportSelection()
         }
 
-        private func imageData(_ path: String) -> Data? {
+        private func imageData(_ path: String, retry: Bool = false) -> Data? {
             if let data = images[path] { return data }
-            guard imagesEnabled, imageTasks[path] == nil,
+            guard imagesEnabled, !failedImages.contains(path), imageTasks[path] == nil,
                   let url = URL(string: path), url.scheme?.lowercased() == "https", url.host != nil else { return nil }
             imageTasks[path] = Task { @MainActor [weak self] in
+                guard let self, !self.stopped, !Task.isCancelled else { return }
+                self.needsImageRefresh = true
+                self.refreshImagesIfPossible()
                 do {
-                    let (data, response) = try await URLSession.shared.data(from: url)
-                    guard !Task.isCancelled, let self, !self.stopped,
-                          let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                    let request = URLRequest(url: url, cachePolicy: retry ? .reloadIgnoringLocalCacheData : .useProtocolCachePolicy)
+                    let (data, response) = try await URLSession.shared.data(for: request)
+                    guard !Task.isCancelled, !self.stopped else { return }
+                    guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
                           response.url?.scheme?.lowercased() == "https",
-                          data.count <= 20 * 1_024 * 1_024, NSImage(data: data) != nil else { return }
+                          data.count <= 20 * 1_024 * 1_024, NSImage(data: data) != nil else {
+                        self.receiveImageFailure(path: path)
+                        return
+                    }
                     self.receiveImage(data, path: path)
-                } catch { /* The component keeps a readable image placeholder. */ }
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    self.receiveImageFailure(path: path)
+                }
             }
             return nil
         }
 
+        func receiveImageFailure(path: String) {
+            guard !stopped else { return }
+            imageTasks[path]?.cancel()
+            imageTasks[path] = nil
+            failedImages.insert(path)
+            needsImageRefresh = true
+            refreshImagesIfPossible()
+        }
+
+        func retryImage(_ path: String) {
+            guard !stopped, imagesEnabled, failedImages.contains(path), !view.hasMarkedText() else { return }
+            failedImages.remove(path)
+            _ = imageData(path, retry: true)
+            needsImageRefresh = true
+            refreshImagesIfPossible()
+        }
+
         func receiveImage(_ data: Data, path: String) {
             guard !stopped else { return }
+            imageTasks[path]?.cancel()
+            imageTasks[path] = nil
+            failedImages.remove(path)
             images[path] = data
             needsImageRefresh = true
             refreshImagesIfPossible()
@@ -250,6 +284,9 @@ struct MDTextKitEditor: NSViewRepresentable {
                 attachment.updateAttachmentImage()
                 view.layoutManager?.invalidateDisplay(forCharacterRange: range)
             }
+            view.imageStates = Dictionary(uniqueKeysWithValues: imageTasks.keys.map { ($0, false) })
+            for path in failedImages { view.imageStates[path] = true }
+            view.layoutImageStatus()
             view.needsDisplay = true
             installing = false
         }
@@ -294,6 +331,42 @@ struct MDTextKitEditor: NSViewRepresentable {
 @MainActor final class NobisMDTextView: MDTextView {
     private var measurement: CGSize?
     private var revealScheduled = false
+    var imageStates: [String: Bool] = [:] // true means failed; false means loading.
+    var retryImage: ((String) -> Void)?
+    private var imageStatusViews: [Int: NoteImageStatusView] = [:]
+
+    override func accessibilityChildren() -> [Any]? {
+        let controls: [NSView] = imageStatusViews.values.flatMap { $0.subviews.filter { !$0.isHidden } }
+        return (super.accessibilityChildren() ?? []) + controls
+    }
+
+    override func layout() {
+        super.layout()
+        layoutImageStatus()
+    }
+
+    func layoutImageStatus() {
+        guard let storage = textStorage, let manager = layoutManager, let container = textContainer else { return }
+        var retained: Set<Int> = []
+        storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
+            guard let image = value as? MDImageTextAttachment, image.temporaryImage == nil,
+                  let path = image.filePath, let failed = imageStates[path] else { return }
+            let glyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            let rect = manager.boundingRect(forGlyphRange: glyphs, in: container)
+                .offsetBy(dx: textContainerOrigin.x, dy: textContainerOrigin.y)
+            guard rect.width > 0, rect.height > 0 else { return }
+            let status = imageStatusViews[range.location] ?? NoteImageStatusView()
+            if status.superview == nil { addSubview(status) }
+            imageStatusViews[range.location] = status
+            retained.insert(range.location)
+            status.frame = rect
+            status.configure(failed: failed, retry: { [weak self] in self?.retryImage?(path) })
+        }
+        for key in Array(imageStatusViews.keys) where !retained.contains(key) {
+            imageStatusViews.removeValue(forKey: key)?.removeFromSuperview()
+        }
+    }
+
 
     func invalidateMeasurement() {
         measurement = nil
@@ -422,5 +495,41 @@ private struct NoteLinkForm: View {
             }
         }.padding(16).frame(width: 280).onAppear { focused = true }
     }
+}
+/// An overlay inside the attachment bounds; never participates in text layout.
+@MainActor final class NoteImageStatusView: NSView {
+    private let label = NSTextField(labelWithString: "")
+    let retryButton = NSButton(title: "重试", target: nil, action: nil)
+    private var retry: (() -> Void)?
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        label.textColor = .secondaryLabelColor
+        label.alignment = .center
+        retryButton.bezelStyle = .rounded
+        retryButton.target = self
+        retryButton.action = #selector(retryClicked)
+        retryButton.setAccessibilityLabel("重新加载图片")
+        addSubview(label)
+        addSubview(retryButton)
+    }
+    required init?(coder: NSCoder) { nil }
+    func configure(failed: Bool, retry: @escaping () -> Void) {
+        label.stringValue = failed ? "图片暂时无法加载" : "正在加载图片…"
+        retryButton.isHidden = !failed
+        self.retry = retry
+        needsLayout = true
+    }
+    override func layout() {
+        super.layout()
+        label.frame = NSRect(x: 8, y: bounds.midY + 4, width: max(0, bounds.width - 16), height: 20)
+        retryButton.frame = NSRect(x: bounds.midX - 40, y: bounds.midY - 32, width: 80, height: 28)
+    }
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.textBackgroundColor.setFill()
+        bounds.fill()
+        NSColor.secondaryLabelColor.withAlphaComponent(0.15).setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 4, yRadius: 4).fill()
+    }
+    @objc private func retryClicked() { retry?() }
 }
 #endif

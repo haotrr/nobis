@@ -363,6 +363,43 @@ struct MDTextKitIntegrationTests {
         #expect(buffer.value == source)
     }
 
+    @Test func imageFailureRetryKeepsTextAndScrollStable() throws {
+        let path = "https://nobis-retry-test.invalid/image.png"
+        let source = "![图片](\(path))\n\n" + String(repeating: "正文锚点\n", count: 80)
+        let (buffer, coordinator) = make(source)
+        defer { coordinator.stop() }
+        let view = coordinator.view
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 360, height: 300))
+        scroll.documentView = view
+        view.setFrameSize(view.measuredSize(width: 340))
+        view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0))
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 120))
+        let size = view.measuredSize(width: 340), offset = scroll.contentView.bounds.origin
+        let selection = view.selectedRange(), undo = view.editorUndoManager.canUndo
+        coordinator.receiveImageFailure(path: path)
+        coordinator.update(MDTextKitEditor(text: buffer.binding, loadImages: true))
+        let status = try #require(view.subviews.compactMap { $0 as? NoteImageStatusView }.first)
+        #expect(!status.retryButton.isHidden)
+        #expect(view.accessibilityChildren()?.contains { ($0 as? NSButton) === status.retryButton } == true)
+        #expect(view.imageStates[path] == true)
+        status.retryButton.performClick(nil)
+        #expect(view.imageStates[path] == false)
+        #expect(status.retryButton.isHidden)
+        coordinator.receiveImageFailure(path: path)
+        #expect(!status.retryButton.isHidden)
+        let image = NSImage(size: NSSize(width: 300, height: 20), flipped: false) { rect in
+            NSColor.green.setFill(); rect.fill(); return true
+        }
+        coordinator.receiveImage(try #require(image.tiffRepresentation), path: path)
+        #expect(view.subviews.compactMap { $0 as? NoteImageStatusView }.isEmpty)
+        view.invalidateMeasurement()
+        #expect(view.measuredSize(width: 340) == size)
+        #expect(scroll.contentView.bounds.origin == offset)
+        #expect(view.selectedRange() == selection)
+        #expect(view.editorUndoManager.canUndo == undo)
+        #expect(buffer.value == source)
+    }
+
     @Test func imageArrivalPreservesGeometrySelectionAndScroll() throws {
         let path = "https://example.com/image.png"
         let source = "![图片](\(path))\n\n" + String(repeating: "后续中文正文\n", count: 80)
