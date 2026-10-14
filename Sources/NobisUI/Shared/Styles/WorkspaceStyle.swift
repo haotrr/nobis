@@ -37,7 +37,7 @@ struct DirectSelection<Value: Hashable>: View {
             } else {
                 Picker(title, selection: $selection) {
                     ForEach(options, id: \.self) { option in Text(label(option)).tag(option) }
-                }.pickerStyle(.segmented).labelsHidden()
+                }.pickerStyle(.segmented).tint(NobisTheme.controlFill).labelsHidden()
                 #if os(iOS)
                 .frame(minHeight: 44)
                 #endif

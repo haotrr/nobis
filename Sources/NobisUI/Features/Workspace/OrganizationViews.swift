@@ -42,7 +42,7 @@ struct ScheduleWorkspace: View {
         LifePage {
             LifeScopeControls(scope: $model.scheduleScope)
             Picker("查看方式", selection: $mode) { Text("待办").tag("待办"); Text("日历").tag("日历"); Text("订阅").tag("订阅") }
-                .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 320, alignment: .leading)
+                .pickerStyle(.segmented).tint(NobisTheme.controlFill).labelsHidden().frame(maxWidth: 320, alignment: .leading)
             if mode == "待办" {
                 Toggle("显示已完成", isOn: $completed).font(.callout)
                 ForEach(TaskDateGroup.allCases) { group in
@@ -198,8 +198,8 @@ struct TodayWorkspace: View {
                     }
                 }
                 LifeAdaptiveRow {
-                    Button { note = true } label: { Label("记下这一刻", systemImage: "square.and.pencil") }
-                    Button { create = .event } label: { Label("添个安排", systemImage: "calendar.badge.plus") }
+                    Button { note = true } label: { Label("记下这一刻", systemImage: "square.and.pencil").foregroundStyle(Color.primary) }
+                    Button { create = .event } label: { Label("添个安排", systemImage: "calendar.badge.plus").foregroundStyle(Color.primary) }
                 }.buttonStyle(.bordered).controlSize(.large).tint(accent)
             }.frame(maxWidth: 980).padding(.horizontal, 24).padding(.vertical, 24)
                 .frame(maxWidth: .infinity)

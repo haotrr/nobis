@@ -15,8 +15,10 @@ struct AppNavigationView: View {
             NavigationSplitView {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 10) {
-                        Image(systemName: "leaf.fill").font(.title2).foregroundStyle(.tint)
-                            .frame(width: 38, height: 38).nobisGlass(radius: 12)
+                        Image("BrandLogo", bundle: .main).resizable().scaledToFit()
+                            .frame(width: 38, height: 38)
+                            .clipShape(RoundedRectangle(cornerRadius: 9))
+                            .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Nobis").font(.system(.title2, design: .serif)).fontWeight(.semibold)
                             Text("我们的共同生活").font(.caption).foregroundStyle(.secondary)

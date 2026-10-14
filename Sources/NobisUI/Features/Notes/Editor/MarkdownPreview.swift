@@ -23,7 +23,7 @@ private struct BasicMarkdownPreview: View {
                         } else { Image(systemName: checked ? "checkmark.circle.fill" : "circle").foregroundStyle(.secondary) }
                         inline(text).strikethrough(checked).padding(.top, onToggle == nil ? 0 : 10)
                     }.id("checklist-\(line)")
-                        .padding(4).background(highlightedLine == line ? Color.accentColor.opacity(0.10) : .clear, in: RoundedRectangle(cornerRadius: 8))
+                        .padding(4).background(highlightedLine == line ? NobisTheme.accent.opacity(0.10) : .clear, in: RoundedRectangle(cornerRadius: 8))
                 case .table(let rows):
                     ScrollView(.horizontal) {
                         Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {

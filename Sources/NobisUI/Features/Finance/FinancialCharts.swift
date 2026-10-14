@@ -44,7 +44,7 @@ struct AmountBars: View {
         VStack(alignment: .leading, spacing: 12) {
             Chart(rows) { row in
                 BarMark(x: .value("金额", Double(row.amount) / Double(currency.factor)), y: .value("项目", row.id))
-                    .foregroundStyle(row.amount < 0 ? Color.orange : Color.accentColor)
+                    .foregroundStyle(row.amount < 0 ? Color.orange : NobisTheme.accent)
                     .accessibilityLabel(row.label)
                     .accessibilityValue(Money(minor: row.amount, currency: currency).formatted)
             }

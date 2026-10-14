@@ -812,7 +812,7 @@ struct DocumentEditorContent: View {
                                     Button("应用") { formatRequest = RichEditRequest(action: "link:" + linkURL); showLink = false }
                                 }.padding(20).frame(width: 300).background { LifeBackground() }
                             }
-                        Button { formatRequest = RichEditRequest(action: "checklist") } label: { Image(systemName: "checklist").touchTarget() }.disabled(blockFormattingDisabled).tint(editorSelection.selected.contains("checklist") ? Color.accentColor : nil).help("转为清单").accessibilityLabel("转为清单")
+                        Button { formatRequest = RichEditRequest(action: "checklist") } label: { Image(systemName: "checklist").touchTarget() }.disabled(blockFormattingDisabled).tint(editorSelection.selected.contains("checklist") ? NobisTheme.accent : nil).help("转为清单").accessibilityLabel("转为清单")
                         Button { formatRequest = RichEditRequest(action: "toggle") } label: { Image(systemName: "checkmark.circle").touchTarget() }.disabled(blockFormattingDisabled).help("切换当前清单完成状态").accessibilityLabel("切换清单完成状态")
                         Menu {
                             Button("表格", systemImage: "tablecells") { formatRequest = RichEditRequest(action: "insert-table") }

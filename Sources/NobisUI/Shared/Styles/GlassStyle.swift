@@ -26,10 +26,10 @@ private struct NobisGlassButton: ViewModifier {
 
     @ViewBuilder func body(content: Content) -> some View {
         if #available(macOS 26.0, iOS 26.0, *), !reduceTransparency, contrast != .increased {
-            if prominent { content.buttonStyle(.glassProminent) }
+            if prominent { content.buttonStyle(.glassProminent).tint(NobisTheme.controlFill) }
             else { content.buttonStyle(.glass) }
         } else {
-            if prominent { content.buttonStyle(.borderedProminent) }
+            if prominent { content.buttonStyle(.borderedProminent).tint(NobisTheme.controlFill) }
             else { content.buttonStyle(.bordered) }
         }
     }

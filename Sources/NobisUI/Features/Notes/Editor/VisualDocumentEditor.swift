@@ -147,7 +147,7 @@ struct BlockDocumentEditor: View {
                                             let key = "\(block.id)-\(row)-\(column)"
                                             MarkdownTextEditor(text: cellBinding(block.id, row, column), request: requestTarget == key ? pendingRequest : nil, onFocus: { activeText = key }, sharedUndoManager: buffer.undo, onFind: onFind, inlineOnly: true, onSelection: { selectionChanged($0, target: key) }, focusRequest: focusRequest(key), searchRanges: highlightRanges(block, row: row, column: column))
                                                 .frame(width: 180, height: max(44, CGFloat(rows[row][column].components(separatedBy: "\n").count) * compactLineHeight + 16))
-                                                .background(row == 0 ? Color.accentColor.opacity(0.08) : Color.clear)
+                                                .background(row == 0 ? NobisTheme.accent.opacity(0.08) : Color.clear)
                                                 .accessibilityLabel("第 \(row + 1) 行，第 \(column + 1) 列")
                                                 .overlay(Rectangle().stroke(.quaternary, lineWidth: 1))
                                         }

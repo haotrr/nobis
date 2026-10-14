@@ -71,7 +71,7 @@ Mac 同一笔记在应用内仅保留一个编辑实例；默认内嵌，弹出�
 
 ## 名称与图标
 
-应用与产物名称统一 Nobis；Target、Scheme 和 bundle identifier 保留平台区分，不改变数据身份。图标使用珊瑚红底、白色 Nobis 字标，保留提供的原图构图。品牌红为 sRGB `#FD5E53`；浅色界面文字与控件强调色使用同色系深红 `#C4372D`，深色界面使用品牌红。实心主按钮使用品牌红和深色文字；状态色保留各自语义。主题由 `NobisTheme` 与共享 `AccentColor` 资源统一管理。母版为 `docs/design/nobis-icon-master.png`，资源位于 `Apps/Nobis/Shared/Assets.xcassets/AppIcon.appiconset`，包含 macOS 各尺寸与 iOS 1024 像素资源。
+应用与产物名称统一 Nobis；Target、Scheme 和 bundle identifier 保留平台区分，不改变数据身份。图标使用珊瑚红底、白色 Nobis 字标，保留提供的原图构图。品牌红为 sRGB `#FD5E53`；浅色界面文字与控件强调色使用同色系深红 `#C4372D`，深色界面使用品牌红。实心主按钮使用品牌红和深色文字；状态色保留各自语义。主题由 `NobisTheme` 显式读取共享 `AccentColor` 资源，不随 macOS 系统强调色偏好改变。白字的分段选择器与突出按钮使用深红底；今天页普通按钮使用语义主文字色，避免红字叠红底。Mac 侧栏使用同一 logo 资源，不再使用叶子标记。母版为 `docs/design/nobis-icon-master.png`，资源位于 `Apps/Nobis/Shared/Assets.xcassets/AppIcon.appiconset`，包含 macOS 各尺寸与 iOS 1024 像素资源。
 
 设计规则不等于所有设备验收通过，具体证据与未覆盖项见[验证状态](docs/verification.md)。
 
