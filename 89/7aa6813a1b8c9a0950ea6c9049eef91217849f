@@ -1,0 +1,49 @@
+docs/verification.md
+  s_acc4a8c629dad0::t_22e74b3f0610ac 7,10
+docs/feature-inventory.md
+  s_acc4a8c629dad0::t_22e74b3f0610ac 10
+docs/roadmap.md
+  s_acc4a8c629dad0::t_22e74b3f0610ac 18,44
+DESIGN.md
+  s_acc4a8c629dad0::t_22e74b3f0610ac 75-76
+Sources/NobisUI/Features/Notes/Editor/VisualDocumentEditor.swift
+  s_acc4a8c629dad0::t_cdfb3c9a61fb19 205-206,209
+  s_acc4a8c629dad0::t_4af0d4df888472 193-200
+Sources/NobisUI/Features/Notes/DocumentsView.swift
+  s_acc4a8c629dad0::t_cdfb3c9a61fb19 463
+  s_acc4a8c629dad0::t_4a2ee06626dacc 374,550-555,560-564,567,575-576,581
+Sources/NobisUI/Features/Notes/Editor/MDTextKitEditor.swift
+  s_acc4a8c629dad0::t_cdfb3c9a61fb19 14-15,19,21,24,26-27,30,46-47,69-74,84-85,99-101,115
+  s_acc4a8c629dad0::t_6adc6d3d0becc9 68,104-106
+  s_acc4a8c629dad0::t_2eee9157ef7703 48-67,103,107,114,116,126,146,151,179,217-255,264-265
+docs/components/mdtextkit.md
+  s_acc4a8c629dad0::t_22e74b3f0610ac 10-11
+docs/tech/T-261014-NB2Q3-mdtextkit/TODO.md
+  s_acc4a8c629dad0::t_22e74b3f0610ac 21,28,31
+Vendor/MDTextKit/NOBIS.md
+  s_acc4a8c629dad0::t_22e74b3f0610ac 14,16-17
+Tests/FamilyCoreTests/MDTextKitIntegrationTests.swift
+  s_acc4a8c629dad0::t_511cb4ef7d51b1 157-255
+Vendor/MDTextKit/Sources/MDTextKit/MDFormatting.swift
+  s_acc4a8c629dad0::t_a8233381341ffc 12,40-54,63,69,73,80-81
+Vendor/MDTextKit/Sources/MDTextKitUI/MDTableAttachmentViewController.swift
+  s_acc4a8c629dad0::t_8383ba25fc32fb 115-124,155-167,172-176,246,260-274,368,370,376-377,411,416,423,445,450,478-509,511-514,516-537,539-542,567-574
+Vendor/MDTextKit/Sources/MDTextKitUI/MDTextView.swift
+  s_acc4a8c629dad0::t_4378c48ee77d2b 193,291,297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "897aa6813a1b8c9a0950ea6c9049eef91217849f",
+  "prompts": {},
+  "sessions": {
+    "s_acc4a8c629dad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1380c-f431-7b43-8a04-ec8c8d335b4d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
