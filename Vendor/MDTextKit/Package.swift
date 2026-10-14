@@ -9,8 +9,9 @@ import PackageDescription
 //   TextBundle  -> .textbundle / .textpack packages per textbundle.org
 let package = Package(
     name: "MDTextKit",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v14), .iOS(.v17)],
     products: [
+        .library(name: "MDTextKitUIKit", targets: ["MDTextKitUIKit"]),
         .library(name: "PolarMark", targets: ["PolarMark"]),
         .library(name: "MDTextKit", targets: ["MDTextKit"]),
         .library(name: "MDTextKitUI", targets: ["MDTextKitUI"]),
@@ -20,6 +21,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "PolarMark"),
+        .target(name: "MDTextKitUIKit", dependencies: ["PolarMark"]),
         .target(name: "SFThemeKit"),
         .target(name: "TextBundle"),
         .target(name: "MDTextStorageCore"),

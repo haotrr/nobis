@@ -10,6 +10,8 @@ struct MarkdownTextEditor: NSViewRepresentable {
     var onFocus: (() -> Void)?
     var sharedUndoManager: UndoManager?
     var plainText = false
+    var inlineOnly = false
+    var onSelection: (NoteEditorSelection) -> Void = { _ in }
     func makeCoordinator() -> Coordinator { Coordinator(text: $text, onFocus: onFocus, plainText: plainText) }
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
@@ -140,6 +142,7 @@ private final class MarkdownNSTextView: NSTextView {
 }
 #else
 import UIKit
+import MDTextKitUIKit
 struct MarkdownTextEditor: UIViewRepresentable {
     @Binding var text: String
     var isActive = true
@@ -147,29 +150,37 @@ struct MarkdownTextEditor: UIViewRepresentable {
     var onFocus: (() -> Void)?
     var sharedUndoManager: UndoManager?
     var plainText = false
+    var inlineOnly = false
+    var onSelection: (NoteEditorSelection) -> Void = { _ in }
     func makeCoordinator() -> Coordinator { Coordinator(text: $text, onFocus: onFocus, plainText: plainText) }
     func makeUIView(context: Context) -> UITextView {
-        let view = MarkdownUITextView()
+        let view = MDMarkdownTextView()
         view.onViewportChange = { [weak coordinator = context.coordinator] view in coordinator?.revealCaret(view) }
         view.documentUndoManager = sharedUndoManager
+        view.onCompositionChange = { [weak coordinator = context.coordinator, weak view] in
+            guard let view else { return }; coordinator?.reportSelection(view)
+        }
+        context.coordinator.onSelection = onSelection
+        context.coordinator.inlineOnly = inlineOnly
         view.plainText = plainText
+        view.inlineOnly = inlineOnly
         view.font = RichMarkdown.font(); view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .clear; view.smartQuotesType = .no; view.smartDashesType = .no
-        view.attributedText = plainText ? NSAttributedString(string: text, attributes: [.font: NoteTypography.codeFont, .foregroundColor: UIColor.label]) : RichMarkdown.decode(text); view.delegate = context.coordinator; view.isFindInteractionEnabled = true
-        view.typingAttributes = plainText ? [.font: NoteTypography.codeFont] : RichMarkdown.base
+        view.load(markdown: text); view.delegate = context.coordinator; view.isFindInteractionEnabled = true
+        view.renderMarkdown()
         view.accessibilityLabel = "笔记正文"
         return view
     }
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.text = $text
         context.coordinator.onFocus = onFocus
+        context.coordinator.onSelection = onSelection
+        context.coordinator.inlineOnly = inlineOnly
         if let request, context.coordinator.lastRequest != request.id {
             context.coordinator.lastRequest = request.id
             DispatchQueue.main.async {
-            view.unmarkText()
-            let selection = view.selectedRange
-            let previous = view.attributedText!
-            (view as? MarkdownUITextView)?.restore(RichMarkdown.applying(request.action, to: previous, selection: selection), selection: selection)
+            guard view.markedTextRange == nil else { return }
+            (view as? MDMarkdownTextView)?.performMarkdownAction(request.action)
             view.becomeFirstResponder()
             }
             return
@@ -179,13 +190,20 @@ struct MarkdownTextEditor: UIViewRepresentable {
             context.coordinator.active = isActive
             if isActive { view.becomeFirstResponder() } else { view.resignFirstResponder() }
         }
-        if context.coordinator.lastSource != text, view.markedTextRange == nil { context.coordinator.lastSource = text; view.attributedText = plainText ? NSAttributedString(string: text, attributes: [.font: NoteTypography.codeFont, .foregroundColor: UIColor.label]) : RichMarkdown.decode(text); if sharedUndoManager == nil { view.undoManager?.removeAllActions() } }
+        if context.coordinator.lastSource != text, view.markedTextRange == nil { context.coordinator.lastSource = text; (view as? MDMarkdownTextView)?.load(markdown: text); if sharedUndoManager == nil { view.undoManager?.removeAllActions() } }
     }
     final class Coordinator: NSObject, UITextViewDelegate {
         let plainText: Bool
         var onFocus: (() -> Void)?
         var text: Binding<String>
         var lastSource: String
+        var onSelection: (NoteEditorSelection) -> Void = { _ in }
+        var inlineOnly = false
+        func reportSelection(_ view: UITextView) {
+            let format = (view as? MDMarkdownTextView)?.formattingState()
+            let state = NoteEditorSelection(enabled: view.isEditable && !plainText, composing: view.markedTextRange != nil, inTable: inlineOnly, selected: format?.selected ?? [], mixed: format?.mixed ?? [])
+            DispatchQueue.main.async { [weak self] in self?.onSelection(state) }
+        }
         var active = true
         var lastRequest: UUID?
         private var keyboardFrame: CGRect = .null
@@ -207,9 +225,9 @@ struct MarkdownTextEditor: UIViewRepresentable {
             }
         }
         func textViewDidChangeSelection(_ textView: UITextView) {
-            if textView.isFirstResponder { onFocus?(); revealCaret(textView) }
+            if textView.isFirstResponder { (textView as? MDMarkdownTextView)?.rememberSelection(); onFocus?(); reportSelection(textView); revealCaret(textView) }
         }
-        func textViewDidBeginEditing(_ textView: UITextView) { onFocus?(); revealCaret(textView) }
+        func textViewDidBeginEditing(_ textView: UITextView) { onFocus?(); reportSelection(textView); revealCaret(textView) }
         func revealCaret(_ view: UITextView) {
             activeView = view
             let keyboardFrame = keyboardFrame
@@ -237,82 +255,24 @@ struct MarkdownTextEditor: UIViewRepresentable {
                             let maximum = max(minimum, scroll.contentSize.height - scroll.bounds.height + scroll.adjustedContentInset.bottom)
                             scroll.setContentOffset(CGPoint(x: scroll.contentOffset.x, y: min(maximum, max(minimum, offset))), animated: false)
                         }
-                        break
+                        // A table adds a horizontal scroll view. Continue outward so
+                        // the page also reveals the active cell above the keyboard.
                     }
                     ancestor = current.superview
                 }
             }
         }
         func textViewDidChange(_ view: UITextView) {
+            reportSelection(view)
             // A marked range belongs to the input method, not the saved document.
-            guard view.markedTextRange == nil else { return }
-            lastSource = plainText ? view.text : RichMarkdown.encode(view.attributedText)
+            guard view.markedTextRange == nil, (view as? MDMarkdownTextView)?.isProcessingInput != true else { return }
+            (view as? MDMarkdownTextView)?.commitChanges()
+            (view as? MDMarkdownTextView)?.renderMarkdown()
+            lastSource = view.text
             if text.wrappedValue != lastSource { text.wrappedValue = lastSource }
             revealCaret(view)
         }
         func textViewDidEndEditing(_ view: UITextView) { textViewDidChange(view) }
-    }
-}
-private final class MarkdownUITextView: UITextView {
-    override func unmarkText() {
-        super.unmarkText()
-        // Some input methods confirm composition without another change callback.
-        delegate?.textViewDidChange?(self)
-    }
-    var onViewportChange: ((UITextView) -> Void)?
-    private var previousViewportSize = CGSize.zero
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        if bounds.size != previousViewportSize {
-            previousViewportSize = bounds.size
-            onViewportChange?(self)
-            if isFirstResponder, let transition = window?.rootViewController?.transitionCoordinator {
-                transition.animate(alongsideTransition: nil) { [weak self] _ in
-                    guard let self else { return }
-                    self.onViewportChange?(self)
-                }
-            }
-        }
-    }
-    var documentUndoManager: UndoManager?
-    var plainText = false
-    override var undoManager: UndoManager? { documentUndoManager ?? super.undoManager }
-
-    func restore(_ value: NSAttributedString, selection: NSRange) {
-        let previous = attributedText!, previousSelection = selectedRange
-        undoManager?.registerUndo(withTarget: self) { target in target.restore(previous, selection: previousSelection) }
-        attributedText = value
-        selectedRange = NSRange(location: min(selection.location, value.length), length: min(selection.length, max(0, value.length - selection.location)))
-        delegate?.textViewDidChange?(self)
-    }
-
-    override var keyCommands: [UIKeyCommand]? {
-        let history = [UIKeyCommand(input: "z", modifierFlags: .command, action: #selector(undoDocument)), UIKeyCommand(input: "z", modifierFlags: [.command, .shift], action: #selector(redoDocument))]
-        for command in history { command.wantsPriorityOverSystemBehavior = true }
-        return (super.keyCommands ?? []) + history + MarkdownFormat.allCases.filter { $0 != .link }.map { format in
-            let command = UIKeyCommand(input: format.key, modifierFlags: .command, action: #selector(formatText(_:)))
-            command.discoverabilityTitle = format.title
-            command.wantsPriorityOverSystemBehavior = true
-            return command
-        }
-    }
-    @objc private func undoDocument() { if let manager = undoManager, manager.canUndo { manager.undo() } }
-    @objc private func redoDocument() { if let manager = undoManager, manager.canRedo { manager.redo() } }
-    @objc private func formatText(_ command: UIKeyCommand) {
-        guard !plainText, isEditable, markedTextRange == nil, let format = MarkdownFormat.allCases.first(where: { $0.key == command.input }) else { return }
-        let range = selectedRange
-        guard range.length > 0 else { return }
-        let value = NSMutableAttributedString(attributedString: attributedText)
-        let key = format == .bold ? RichMarkdown.bold : RichMarkdown.italic
-        if format == .link { return }
-        else {
-            if value.attribute(key, at: range.location, effectiveRange: nil) == nil { value.addAttribute(key, value: true, range: range) }
-            else { value.removeAttribute(key, range: range) }
-            value.enumerateAttributes(in: range) { attrs, part, _ in
-                value.addAttribute(.font, value: RichMarkdown.font(bold: attrs[RichMarkdown.bold] != nil, italic: attrs[RichMarkdown.italic] != nil), range: part)
-            }
-        }
-        restore(value, selection: range)
     }
 }
 #endif

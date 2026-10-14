@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		167ECFAE37A09A137373E335 /* MDTextKitUIKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6D02184C340897EA9CFFE25 /* MDTextKitUIKitTests.swift */; };
 		1A92232050DBE3D03C1F1ABC /* CloudInvitationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA7D61CAC07321D375952AB /* CloudInvitationDelegate.swift */; };
 		67DDFD8C3968D4A8814BFBC5 /* NobisUI in Frameworks */ = {isa = PBXBuildFile; productRef = A64AB197DDDE5621A91E7ED9 /* NobisUI */; };
 		74A288C45BAD9BFD86E8D2F2 /* SharingSpikeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC82D29EB73A518455E89E59 /* SharingSpikeApp.swift */; };
@@ -15,20 +16,23 @@
 		B92E0F8C06979FA632D67CC8 /* NobisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C95CB57F706914D3436A62 /* NobisApp.swift */; };
 		C868172186229A925EDE545D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8CDA72F1600ADBE5F8FF63A8 /* Assets.xcassets */; };
 		DAE561BBB63A514D07307320 /* NobisUI in Frameworks */ = {isa = PBXBuildFile; productRef = 8CE90BEDB4AD3A47DFE070A9 /* NobisUI */; };
+		E7CBE82B88D27D45C535C501 /* NobisUI in Frameworks */ = {isa = PBXBuildFile; productRef = AC1B05BB5C76E3308FA32650 /* NobisUI */; };
 		F86658BCBDCFCCA581ECCB0B /* CloudInvitationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B86515977E098DD98B1B19E9 /* CloudInvitationDelegate.swift */; };
 		FBCD556EC5F13887399B3B3A /* NobisUI in Frameworks */ = {isa = PBXBuildFile; productRef = 0850F10A5184519C60F16EBB /* NobisUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		1E9FDD28C8E03FE6376590CA /* NobisSharingSpike.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NobisSharingSpike.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		6B18B6A70943C4B77864FF8F /* NobisIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NobisIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		45EBA4990CD40B8E9782D1F4 /* NobisEditorTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = NobisEditorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		758A87E74FB9A7094396FEBF /* Nobis.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Nobis.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B1000E71D3C600C16309FF5 /* Cloud.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Cloud.xcconfig; sourceTree = "<group>"; };
 		8CDA72F1600ADBE5F8FF63A8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		95A760F82A8E474F6EAFC27B /* SharingSpike.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SharingSpike.entitlements; sourceTree = "<group>"; };
+		B6D02184C340897EA9CFFE25 /* MDTextKitUIKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MDTextKitUIKitTests.swift; sourceTree = "<group>"; };
 		B7C95CB57F706914D3436A62 /* NobisApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NobisApp.swift; sourceTree = "<group>"; };
 		B86515977E098DD98B1B19E9 /* CloudInvitationDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudInvitationDelegate.swift; sourceTree = "<group>"; };
 		BC82D29EB73A518455E89E59 /* SharingSpikeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharingSpikeApp.swift; sourceTree = "<group>"; };
-		DBE7176BB46FA70BD0EBEBE8 /* NobisMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NobisMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DBC5CF7841608AAA1C9A2E58 /* Nobis.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nobis.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F369B541950600A4C0D55716 /* nobis */ = {isa = PBXFileReference; lastKnownFileType = folder; name = nobis; path = .; sourceTree = SOURCE_ROOT; };
 		FDA7D61CAC07321D375952AB /* CloudInvitationDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudInvitationDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -55,6 +59,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				DAE561BBB63A514D07307320 /* NobisUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4891D30007EDB50E7CAC6BD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E7CBE82B88D27D45C535C501 /* NobisUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,6 +97,7 @@
 				AE37C888AC677A13311809DB /* Config */,
 				3B165329FD537435CE85530A /* iOS */,
 				4762C0E08B0C2E9CBAD36130 /* macOS */,
+				A5B1483FB7C6FB45E209F3C7 /* NobisIOSTests */,
 				816F4F6053F254E4BA861487 /* Packages */,
 				EF1E09D61A0B1674A1F98A2A /* Shared */,
 				947A82229DBAA1C05154EF5D /* SharingSpike */,
@@ -103,8 +116,9 @@
 		8B9B8AAB7051CD2562B3C3C3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				6B18B6A70943C4B77864FF8F /* NobisIOS.app */,
-				DBE7176BB46FA70BD0EBEBE8 /* NobisMac.app */,
+				758A87E74FB9A7094396FEBF /* Nobis.app */,
+				DBC5CF7841608AAA1C9A2E58 /* Nobis.app */,
+				45EBA4990CD40B8E9782D1F4 /* NobisEditorTests.xctest */,
 				1E9FDD28C8E03FE6376590CA /* NobisSharingSpike.app */,
 			);
 			name = Products;
@@ -118,6 +132,15 @@
 			);
 			name = SharingSpike;
 			path = Apps/SharingSpike;
+			sourceTree = "<group>";
+		};
+		A5B1483FB7C6FB45E209F3C7 /* NobisIOSTests */ = {
+			isa = PBXGroup;
+			children = (
+				B6D02184C340897EA9CFFE25 /* MDTextKitUIKitTests.swift */,
+			);
+			name = NobisIOSTests;
+			path = Tests/NobisIOSTests;
 			sourceTree = "<group>";
 		};
 		AE37C888AC677A13311809DB /* Config */ = {
@@ -158,7 +181,7 @@
 				8CE90BEDB4AD3A47DFE070A9 /* NobisUI */,
 			);
 			productName = NobisMac;
-			productReference = DBE7176BB46FA70BD0EBEBE8 /* NobisMac.app */;
+			productReference = DBC5CF7841608AAA1C9A2E58 /* Nobis.app */;
 			productType = "com.apple.product-type.application";
 		};
 		43E4D52F915890FAF4B2D847 /* NobisSharingSpike */ = {
@@ -197,8 +220,27 @@
 				0850F10A5184519C60F16EBB /* NobisUI */,
 			);
 			productName = NobisIOS;
-			productReference = 6B18B6A70943C4B77864FF8F /* NobisIOS.app */;
+			productReference = 758A87E74FB9A7094396FEBF /* Nobis.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E59496F5DC0B77AD4DF4F03E /* NobisEditorTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7A97DB1FCCCFA0DA045A790C /* Build configuration list for PBXNativeTarget "NobisEditorTests" */;
+			buildPhases = (
+				8D69F876F93A86B0FE91013A /* Sources */,
+				C4891D30007EDB50E7CAC6BD /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NobisEditorTests;
+			packageProductDependencies = (
+				AC1B05BB5C76E3308FA32650 /* NobisUI */,
+			);
+			productName = NobisEditorTests;
+			productReference = 45EBA4990CD40B8E9782D1F4 /* NobisEditorTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -216,6 +258,9 @@
 						ProvisioningStyle = Automatic;
 					};
 					E03467A1C11505CBE7512E93 = {
+						ProvisioningStyle = Automatic;
+					};
+					E59496F5DC0B77AD4DF4F03E = {
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -239,6 +284,7 @@
 			targets = (
 				0FEB69B4B9769846745FC9CD /* NobisMac */,
 				E03467A1C11505CBE7512E93 /* NobisIOS */,
+				E59496F5DC0B77AD4DF4F03E /* NobisEditorTests */,
 				43E4D52F915890FAF4B2D847 /* NobisSharingSpike */,
 			);
 		};
@@ -287,6 +333,14 @@
 			files = (
 				1A92232050DBE3D03C1F1ABC /* CloudInvitationDelegate.swift in Sources */,
 				917D83954D8AF0C6AFE034D2 /* NobisApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8D69F876F93A86B0FE91013A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				167ECFAE37A09A137373E335 /* MDTextKitUIKitTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -664,6 +718,22 @@
 			};
 			name = Release;
 		};
+		7CCB17381BE4B9404798DB62 /* CloudRelease */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.editor-tests";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = CloudRelease;
+		};
 		81DD7D611F1CC9750371E945 /* CloudRelease */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8B1000E71D3C600C16309FF5 /* Cloud.xcconfig */;
@@ -707,6 +777,38 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = CloudDebug;
+		};
+		968578F2D8004A4683AF032D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.editor-tests";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		9D477F4A4B70494B45C8AD8F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.editor-tests";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
 		};
 		B449FCC7FB9BF937EC524D4E /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -768,6 +870,22 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		DD84DAF1D460D8BFA1C14C23 /* CloudDebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.editor-tests";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = CloudDebug;
 		};
 		E906EE248339C7EF643412B0 /* CloudDebug */ = {
 			isa = XCBuildConfiguration;
@@ -847,6 +965,17 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = CloudDebug;
 		};
+		7A97DB1FCCCFA0DA045A790C /* Build configuration list for PBXNativeTarget "NobisEditorTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DD84DAF1D460D8BFA1C14C23 /* CloudDebug */,
+				7CCB17381BE4B9404798DB62 /* CloudRelease */,
+				9D477F4A4B70494B45C8AD8F /* Debug */,
+				968578F2D8004A4683AF032D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = CloudDebug;
+		};
 		B659857C84C10447B7212707 /* Build configuration list for PBXNativeTarget "NobisSharingSpike" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -877,6 +1006,10 @@
 			productName = NobisUI;
 		};
 		A64AB197DDDE5621A91E7ED9 /* NobisUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NobisUI;
+		};
+		AC1B05BB5C76E3308FA32650 /* NobisUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = NobisUI;
 		};

@@ -9,6 +9,7 @@ let package = Package(
         .target(name: "FamilyCore", dependencies: ["FamilyDomain"]),
         .target(name: "FamilyPersistence", dependencies: ["FamilyDomain", "FamilyCore"]),
         .target(name: "NobisUI", dependencies: ["FamilyDomain", "FamilyCore", "FamilyPersistence",
+            .product(name: "MDTextKitUIKit", package: "MDTextKit", condition: .when(platforms: [.iOS])),
             .product(name: "MDTextKitUI", package: "MDTextKit", condition: .when(platforms: [.macOS]))], resources: [.copy("Resources/MDTextKit-LICENSE.txt")]),
         .executableTarget(name: "NobisCLI", dependencies: ["FamilyDomain", "FamilyCore"]),
         .testTarget(name: "FamilyCoreTests", dependencies: ["FamilyCore", "FamilyPersistence", "NobisUI"])

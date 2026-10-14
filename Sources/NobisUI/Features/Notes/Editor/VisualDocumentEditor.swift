@@ -24,6 +24,8 @@ final class DocumentBlockBuffer {
 struct BlockDocumentEditor: View {
     @Binding var text: String
     var request: RichEditRequest?
+    var onSelection: (NoteEditorSelection) -> Void = { _ in }
+    @State private var composing = false
     @ScaledMetric(relativeTo: .body) private var bodyLineHeight = 22.0
     @ScaledMetric(relativeTo: .body) private var compactLineHeight = 21.0
     @State private var buffer: DocumentBlockBuffer
@@ -31,8 +33,8 @@ struct BlockDocumentEditor: View {
     @State private var requestTarget: String?
     @State private var pendingRequest: RichEditRequest?
 
-    init(text: Binding<String>, request: RichEditRequest? = nil) {
-        _text = text; self.request = request
+    init(text: Binding<String>, request: RichEditRequest? = nil, onSelection: @escaping (NoteEditorSelection) -> Void = { _ in }) {
+        _text = text; self.request = request; self.onSelection = onSelection
         _buffer = State(initialValue: DocumentBlockBuffer(text.wrappedValue))
     }
     var body: some View {
@@ -41,7 +43,7 @@ struct BlockDocumentEditor: View {
                 switch block.content {
                 case .text(let source):
                     MarkdownTextEditor(text: textBinding(block.id), request: requestTarget == block.id.uuidString ? pendingRequest : nil,
-                                       onFocus: { activeText = block.id.uuidString }, sharedUndoManager: buffer.undo)
+                                       onFocus: { activeText = block.id.uuidString }, sharedUndoManager: buffer.undo, onSelection: selectionChanged)
                         .frame(height: textHeight(source)).frame(maxWidth: .infinity)
                 case .code(let language, let body):
                     VStack(alignment: .leading, spacing: 8) {
@@ -51,7 +53,7 @@ struct BlockDocumentEditor: View {
                                 .textFieldStyle(.plain).font(.caption).accessibilityLabel("代码语言")
                             blockMenu(block)
                         }
-                        MarkdownTextEditor(text: Binding(get: { code(block.id).1 }, set: { value in edit(block.id) { $0.content = .code(language: code(block.id).0, body: value) } }), onFocus: { activeText = "code:\(block.id)" }, sharedUndoManager: buffer.undo, plainText: true)
+                        MarkdownTextEditor(text: Binding(get: { code(block.id).1 }, set: { value in edit(block.id) { $0.content = .code(language: code(block.id).0, body: value) } }), onFocus: { activeText = "code:\(block.id)" }, sharedUndoManager: buffer.undo, plainText: true, onSelection: selectionChanged)
                             .frame(height: max(92, min(480, CGFloat(body.components(separatedBy: "\n").count) * compactLineHeight + 24)))
                             .accessibilityLabel(language.isEmpty ? "代码内容" : "\(language) 代码内容")
 
@@ -66,7 +68,7 @@ struct BlockDocumentEditor: View {
                                 Button("添加列") { transformTable(block.id) { rows, alignment in for index in rows.indices { rows[index].append("") }; alignment.append("---") } }
                                 if rows.count > 1 { Button("删除末行", role: .destructive) { transformTable(block.id) { rows, _ in rows.removeLast() } } }
                                 if (rows.first?.count ?? 0) > 1 { Button("删除末列", role: .destructive) { transformTable(block.id) { rows, alignment in for index in rows.indices { rows[index].removeLast() }; if !alignment.isEmpty { alignment.removeLast() } } } }
-                            } label: { Image(systemName: "tablecells.badge.ellipsis") }.accessibilityLabel("调整表格")
+                            } label: { Image(systemName: "tablecells.badge.ellipsis") }.accessibilityLabel("调整表格").disabled(composing)
                             blockMenu(block)
                         }
                         ScrollView(.horizontal) {
@@ -75,7 +77,7 @@ struct BlockDocumentEditor: View {
                                     HStack(spacing: 1) {
                                         ForEach(rows[row].indices, id: \.self) { column in
                                             let key = "\(block.id)-\(row)-\(column)"
-                                            MarkdownTextEditor(text: cellBinding(block.id, row, column), request: requestTarget == key ? pendingRequest : nil, onFocus: { activeText = key }, sharedUndoManager: buffer.undo)
+                                            MarkdownTextEditor(text: cellBinding(block.id, row, column), request: requestTarget == key ? pendingRequest : nil, onFocus: { activeText = key }, sharedUndoManager: buffer.undo, inlineOnly: true, onSelection: selectionChanged)
                                                 .frame(width: 180, height: max(44, CGFloat(rows[row][column].components(separatedBy: "\n").count) * compactLineHeight + 16))
                                                 .background(row == 0 ? Color.accentColor.opacity(0.08) : Color.clear)
                                                 .accessibilityLabel("第 \(row + 1) 行，第 \(column + 1) 列")
@@ -122,6 +124,7 @@ struct BlockDocumentEditor: View {
             if source != buffer.emitted { buffer.undo.removeAllActions(); buffer.emitted = source; buffer.blocks = DocumentBlocks.parse(source); activeText = nil; pendingRequest = nil; requestTarget = nil }
         }
         .onChange(of: request) { _, request in
+            guard !composing else { return }
             switch request?.action {
             case "insert-table": insert(.table(rows: [["列一", "列二"], ["", ""]], alignment: ["---", "---"]))
             case "insert-image": insert(.image(alt: "", address: "", title: ""))
@@ -132,6 +135,7 @@ struct BlockDocumentEditor: View {
             }
         }
     }
+    private func selectionChanged(_ state: NoteEditorSelection) { composing = state.composing; onSelection(state) }
     private func textHeight(_ text: String) -> CGFloat { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 24 : max(58, min(620, CGFloat(text.components(separatedBy: "\n").count + text.count / 65) * bodyLineHeight + 20)) }
     private func edit(_ id: UUID, _ change: (inout DocumentBlock) -> Void) { buffer.edit(id, change) }
     private func textBinding(_ id: UUID) -> Binding<String> {
@@ -186,7 +190,7 @@ struct BlockDocumentEditor: View {
                 if next.isEmpty { next = [DocumentBlock(.text(""))] }
                 buffer.replace(next, undo: buffer.undo)
             }
-        } label: { Image(systemName: "ellipsis") }.accessibilityLabel("内容操作")
+        } label: { Image(systemName: "ellipsis") }.accessibilityLabel("内容操作").disabled(composing)
     }
 }
 
@@ -208,7 +212,7 @@ struct VisualDocumentEditor: View {
         #if os(macOS)
         MDTextKitEditor(text: $text, request: request, preserveSelection: preserveSelection, onSelection: onSelection)
         #else
-        BlockDocumentEditor(text: $text, request: request)
+        BlockDocumentEditor(text: $text, request: request, onSelection: onSelection)
         #endif
     }
 }

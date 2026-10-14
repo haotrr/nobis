@@ -1,6 +1,6 @@
 # Markdown 编辑组件
 
-Mac 笔记使用仓库内的 [MDTextKit](../../Vendor/MDTextKit/NOBIS.md)；iOS 保留 `BlockDocumentEditor`。本地包源码和上游测试均可直接修改，入口为 `Vendor/MDTextKit/Package.swift`，不要求下载 GitHub 依赖。工具链至少 Swift 6.2。
+Mac 与 iOS 笔记均接入仓库内的 [MDTextKit](../../Vendor/MDTextKit/NOBIS.md)。Mac 使用 AppKit 前端，iOS 使用新增的 UIKit 前端，并保留 `BlockDocumentEditor` 的触屏内容块布局。本地包源码和上游测试均可直接修改，入口为 `Vendor/MDTextKit/Package.swift`，不要求下载 GitHub 依赖。工具链至少 Swift 6.2。
 
 ## 接入边界
 
@@ -13,12 +13,20 @@ Mac 笔记使用仓库内的 [MDTextKit](../../Vendor/MDTextKit/NOBIS.md)；iOS 
 - 不支持的语法保留为 Markdown；Mac 扩展语法在 iOS 上不保证相同排版。折叠标记会进入 Markdown，属于正文修改。
 - 许可随应用资源打包，可在「设置 → 关于 Nobis → 开源许可」查看。
 
+## iOS 接入
+
+- `MDTextKitUIKit.MDMarkdownTextView` 使用共享 PolarMark 解析与格式操作，正文、表格单元格和代码输入通过 `MarkdownTextEditor` 绑定到原草稿链路。
+- 正文原位排版，保留可编辑的 Markdown 标记并以次要颜色显示；不复制 Mac 的附件控件和隐藏标记布局。表格保留触屏单元格与行列菜单，图片沿用 HTTPS 加载。
+- UIKit 输入原语抑制重复撤销登记，按已提交内容保存撤销快照；中文组词只在提交时回传，格式命令不强制结束组词。相同正文回显不重设缓冲区或撤销历史。
+- 草稿、管理属性合并、修订检查及项目权限仍由原业务模块负责。
+
 ## 改动分工
 
 | 要改什么 | 位置 |
 | --- | --- |
 | 主题、正文布局、工具栏与绑定 | `Sources/NobisUI/Features/Notes/Editor/MDTextKitEditor.swift` |
 | SwiftUI 双端路由 | 同目录 `VisualDocumentEditor.swift`、`MarkdownPreview.swift` |
+| iOS 原生输入与排版 | `Vendor/MDTextKit/Sources/MDTextKitUIKit` |
 | 输入、撤销、表格交互 | `Vendor/MDTextKit/Sources/MDTextKitUI` |
 | 排版、附件、正文操作 | `Vendor/MDTextKit/Sources/MDTextKit` |
 | Markdown 解析与结构操作 | `Vendor/MDTextKit/Sources/PolarMark` |

@@ -26,6 +26,7 @@ settings:
     CODE_SIGN_STYLE: Automatic
 targets:
   NobisMac:
+    productName: Nobis
     type: application
     platform: macOS
     sources:
@@ -56,6 +57,7 @@ targets:
           NOBIS_CLOUD_ENVIRONMENT: Production
           NOBIS_PUSH_ENVIRONMENT: production
   NobisIOS:
+    productName: Nobis
     type: application
     platform: iOS
     sources:
@@ -86,6 +88,17 @@ targets:
           CODE_SIGN_ENTITLEMENTS: Apps/Nobis/iOS/NobisIOS.entitlements
           NOBIS_CLOUD_ENVIRONMENT: Production
           NOBIS_PUSH_ENVIRONMENT: production
+  NobisEditorTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests/NobisIOSTests]
+    dependencies:
+      - package: Nobis
+        product: NobisUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.haotrr.nobis.editor-tests
+        GENERATE_INFOPLIST_FILE: YES
   NobisSharingSpike:
     type: application
     platform: iOS
@@ -105,6 +118,13 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
 
 schemes:
+  NobisEditorTests:
+    build:
+      targets:
+        NobisEditorTests: all
+    test:
+      config: Debug
+      targets: [NobisEditorTests]
   NobisMac:
     build:
       targets:
