@@ -477,48 +477,133 @@ private struct DocumentCommentEditor: View {
     }
 }
 
+@MainActor @Observable final class DocumentEditorState {
+    var existing: Record?
+    var value: RecordBody
+    var spaceID: UUID?
+    var showInfo = false
+    var showHelp = false
+    var formatRequest: RichEditRequest?
+    var editorSelection = NoteEditorSelection()
+    var showLink = false
+    var linkURL = ""
+    var issue: String?
+    var discard = false
+    var initial: RecordBody
+    var initialSpaceID: UUID?
+    var expected: Set<UUID> = []
+    var savedRecordID = UUID()
+    var draftStatus = "尚未修改"
+    var draftLoaded = false
+    var draftWritable = false
+    var importing = false
+
+    init(model: AppModel, existing: Record?, project: Record?, group: String?) {
+        self.existing = existing
+        draftStatus = existing == nil ? "尚未保存" : "所有修改已保存"
+        var body = existing?.body ?? RecordBody(kind: .document, title: "")
+        if existing == nil { body.noteGroup = group }
+        if let project, existing == nil { body.projectIDs = [project.id] }
+        initial = body; value = body
+        let space = existing?.latest.spaceID ?? project?.latest.spaceID ?? model.selectedSpaceID
+        initialSpaceID = space; spaceID = space
+    }
+}
+
 struct DocumentEditorContent: View {
     let model: AppModel
-    @State private var existing: Record?
+    @State private var state: DocumentEditorState
+    private var existing: Record? {
+        get { state.existing }
+        nonmutating set { state.existing = newValue }
+    }
+    private var value: RecordBody {
+        get { state.value }
+        nonmutating set { state.value = newValue }
+    }
+    private var spaceID: UUID? {
+        get { state.spaceID }
+        nonmutating set { state.spaceID = newValue }
+    }
+    private var showInfo: Bool {
+        get { state.showInfo }
+        nonmutating set { state.showInfo = newValue }
+    }
+    private var showHelp: Bool {
+        get { state.showHelp }
+        nonmutating set { state.showHelp = newValue }
+    }
+    private var formatRequest: RichEditRequest? {
+        get { state.formatRequest }
+        nonmutating set { state.formatRequest = newValue }
+    }
+    private var editorSelection: NoteEditorSelection {
+        get { state.editorSelection }
+        nonmutating set { state.editorSelection = newValue }
+    }
+    private var showLink: Bool {
+        get { state.showLink }
+        nonmutating set { state.showLink = newValue }
+    }
+    private var linkURL: String {
+        get { state.linkURL }
+        nonmutating set { state.linkURL = newValue }
+    }
+    private var issue: String? {
+        get { state.issue }
+        nonmutating set { state.issue = newValue }
+    }
+    private var discard: Bool {
+        get { state.discard }
+        nonmutating set { state.discard = newValue }
+    }
+    private var initial: RecordBody {
+        get { state.initial }
+        nonmutating set { state.initial = newValue }
+    }
+    private var initialSpaceID: UUID? {
+        get { state.initialSpaceID }
+        nonmutating set { state.initialSpaceID = newValue }
+    }
+    private var expected: Set<UUID> {
+        get { state.expected }
+        nonmutating set { state.expected = newValue }
+    }
+    private var savedRecordID: UUID {
+        get { state.savedRecordID }
+        nonmutating set { state.savedRecordID = newValue }
+    }
+    private var draftStatus: String {
+        get { state.draftStatus }
+        nonmutating set { state.draftStatus = newValue }
+    }
+    private var draftLoaded: Bool {
+        get { state.draftLoaded }
+        nonmutating set { state.draftLoaded = newValue }
+    }
+    private var draftWritable: Bool {
+        get { state.draftWritable }
+        nonmutating set { state.draftWritable = newValue }
+    }
+    private var importing: Bool {
+        get { state.importing }
+        nonmutating set { state.importing = newValue }
+    }
     @Environment(\.dismiss) private var dismiss
-    @State private var value: RecordBody
-    @State private var spaceID: UUID?
-    @State private var showInfo = false
-    @State private var showHelp = false
-    @State private var formatRequest: RichEditRequest?
-    @State private var editorSelection = NoteEditorSelection()
-    @State private var showLink = false
-    @State private var linkURL = ""
-    @State private var issue: String?
-    @State private var discard = false
-    @State private var initial: RecordBody
-    @State private var initialSpaceID: UUID?
-    @State private var expected: Set<UUID> = []
-    @State private var savedRecordID = UUID()
-    @State private var draftStatus = "尚未修改"
-    @State private var draftLoaded = false
-    @State private var draftWritable = false
-    @State private var importing = false
     @Environment(\.scenePhase) private var scenePhase
     private let embedded: Bool
     private let onFinish: (() -> Void)?
     private let creationProject: Record?
     private let onReady: ((@escaping () -> Void, @escaping () -> Void) -> Void)?
     private let onSaved: ((UUID) -> Void)?
-    private let onWindowState: ((String, Bool) -> Void)?
+    private let onWindowState: ((String, Bool, Bool) -> Void)?
     private var draftKey: UUID? { existing?.id ?? creationProject?.id ?? initialSpaceID }
-    init(model: AppModel, existing: Record? = nil, project: Record? = nil, group: String? = nil, embedded: Bool = false, onFinish: (() -> Void)? = nil, onReady: ((@escaping () -> Void, @escaping () -> Void) -> Void)? = nil, onSaved: ((UUID) -> Void)? = nil, onWindowState: ((String, Bool) -> Void)? = nil) {
+    init(model: AppModel, retainedState: DocumentEditorState? = nil, existing: Record? = nil, project: Record? = nil, group: String? = nil, embedded: Bool = false, onFinish: (() -> Void)? = nil, onReady: ((@escaping () -> Void, @escaping () -> Void) -> Void)? = nil, onSaved: ((UUID) -> Void)? = nil, onWindowState: ((String, Bool, Bool) -> Void)? = nil) {
         self.onReady = onReady; self.onSaved = onSaved; self.onWindowState = onWindowState
         self.embedded = embedded; self.onFinish = onFinish
         self.creationProject = project
-        self.model = model; _existing = State(initialValue: existing)
-        _draftStatus = State(initialValue: existing == nil ? "尚未保存" : "所有修改已保存")
-        var body = existing?.body ?? RecordBody(kind: .document, title: "")
-        if existing == nil { body.noteGroup = group }
-        if let project, existing == nil { body.projectIDs = [project.id] }
-        _initial = State(initialValue: body); _value = State(initialValue: body)
-        let space = existing?.latest.spaceID ?? project?.latest.spaceID ?? model.selectedSpaceID
-        _initialSpaceID = State(initialValue: space); _spaceID = State(initialValue: space)
+        self.model = model
+        _state = State(initialValue: retainedState ?? DocumentEditorState(model: model, existing: existing, project: project, group: group))
     }
     #if os(iOS)
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -540,10 +625,10 @@ struct DocumentEditorContent: View {
             ScrollViewReader { scroll in
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    TextField("标题", text: $value.title, prompt: Text("标题").foregroundColor(.gray), axis: .vertical).focused($titleFocused).font(.title2.weight(.semibold)).textFieldStyle(.plain).lineLimit(1...3)
+                    TextField("标题", text: $state.value.title, prompt: Text("标题").foregroundColor(.gray), axis: .vertical).focused($titleFocused).font(.title2.weight(.semibold)).textFieldStyle(.plain).lineLimit(1...3)
                     #if os(iOS)
                     if !compactHeight || showInfo {
-                    DisclosureGroup("归属与项目", isExpanded: $showInfo) {
+                    DisclosureGroup("归属与项目", isExpanded: $state.showInfo) {
                         VStack(alignment: .leading, spacing: 12) {
                             if existing == nil && creationProject == nil {
                                 RecordVisibilityField(model: model, spaceID: Binding(get: { spaceID }, set: { spaceID = $0; value.projectIDs = []; value.referenceIDs = nil }), editable: true)
@@ -557,7 +642,7 @@ struct DocumentEditorContent: View {
                             LifeTextField("笔记分组（可选）", text: Binding(get: { value.noteGroup ?? "" }, set: { value.noteGroup = $0.isEmpty ? nil : $0 }))
                                 .textFieldStyle(.roundedBorder)
                             Toggle("置顶笔记", isOn: Binding(get: { value.isPinned ?? false }, set: { value.isPinned = $0 }))
-                            ReferenceFields(model: model, spaceID: spaceID, recordID: existing?.id, ids: $value.referenceIDs)
+                            ReferenceFields(model: model, spaceID: spaceID, recordID: existing?.id, ids: $state.value.referenceIDs)
                         }.padding(.top, 8)
                     }.font(.callout).multilineTextAlignment(.leading)
                     }
@@ -568,18 +653,18 @@ struct DocumentEditorContent: View {
                         } else if let spaceID {
                             ResourceOwnership(model: model, spaceID: spaceID)
                         }
-                        DisclosureGroup(isExpanded: $showInfo) {
+                        DisclosureGroup(isExpanded: $state.showInfo) {
                             LifePicker("所属项目", selection: Binding(get: { value.projectIDs.first }, set: { value.projectIDs = $0.map { [$0] } ?? [] })) {
                                 Text("无").tag(Optional<UUID>.none)
                                 ForEach(model.activeRecords.filter { $0.body.kind == .project && $0.latest.spaceID == spaceID }) { Text($0.body.title).tag(Optional($0.id)) }
                             }.padding(.top, 8)
                             TextField("笔记分组（可选）", text: Binding(get: { value.noteGroup ?? "" }, set: { value.noteGroup = $0.isEmpty ? nil : $0 }))
                             Toggle("置顶笔记", isOn: Binding(get: { value.isPinned ?? false }, set: { value.isPinned = $0 }))
-                            ReferenceFields(model: model, spaceID: spaceID, recordID: existing?.id, ids: $value.referenceIDs)
+                            ReferenceFields(model: model, spaceID: spaceID, recordID: existing?.id, ids: $state.value.referenceIDs)
                         } label: { Text("所属项目 · \(projectName)").font(.callout).foregroundStyle(.secondary) }
                     }
                     #endif
-                    VisualDocumentEditor(text: $value.notes, request: formatRequest, preserveSelection: showLink, onSelection: { editorSelection = $0 })
+                    VisualDocumentEditor(text: $state.value.notes, request: formatRequest, preserveSelection: showLink, onSelection: { editorSelection = $0 })
                         .frame(minHeight: max(220, geometry.size.height - 240), alignment: .top)
                         .id("note-body")
 
@@ -632,16 +717,17 @@ struct DocumentEditorContent: View {
         } }
         #endif
         .interactiveDismissDisabled(dirty)
-        .confirmationDialog("关闭笔记？", isPresented: $discard) {
+        .confirmationDialog("关闭笔记？", isPresented: $state.discard) {
             Button("保留草稿并关闭") { persistDraft(); if draftStatus == "草稿已保存在此设备" { finish() } }
             Button("放弃修改", role: .destructive) { do { if let draftKey { try model.draftStore.remove(draftKey) }; draftWritable = false; finish() } catch { issue = error.localizedDescription } }
             Button("继续编辑", role: .cancel) { }
         }
-        .onAppear { restoreDraft(); onReady?(cancel, save); onWindowState?(value.title, dirty) }
-        .onChange(of: value) { _, _ in persistDraft(); onWindowState?(value.title, dirty) }
-        .onChange(of: dirty) { _, _ in onWindowState?(value.title, dirty) }
+        .onAppear { restoreDraft(); onReady?(cancel, save); onWindowState?(value.title, dirty, editorSelection.composing) }
+        .onChange(of: value) { _, _ in persistDraft(); onWindowState?(value.title, dirty, editorSelection.composing) }
+        .onChange(of: editorSelection.composing) { _, _ in onWindowState?(value.title, dirty, editorSelection.composing) }
+        .onChange(of: dirty) { _, _ in onWindowState?(value.title, dirty, editorSelection.composing) }
         .onChange(of: scenePhase) { _, phase in if phase != .active { persistDraft() } }
-        .fileImporter(isPresented: $importing, allowedContentTypes: MarkdownDocument.readableContentTypes) { result in
+        .fileImporter(isPresented: $state.importing, allowedContentTypes: MarkdownDocument.readableContentTypes) { result in
             do {
                 let url = try result.get(); let scoped = url.startAccessingSecurityScopedResource(); defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
@@ -691,10 +777,10 @@ struct DocumentEditorContent: View {
 #endif
                         } label: { Image(systemName: "link").touchTarget() }
                             .disabled(!editorSelection.enabled || editorSelection.composing).help("选中文字后添加链接").keyboardShortcut("k")
-                            .popover(isPresented: $showLink) {
+                            .popover(isPresented: $state.showLink) {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("选中文字的链接").font(.headline)
-                                    TextField("https://", text: $linkURL).textFieldStyle(.roundedBorder)
+                                    TextField("https://", text: $state.linkURL).textFieldStyle(.roundedBorder)
                                     Button("应用") { formatRequest = RichEditRequest(action: "link:" + linkURL); showLink = false }
                                 }.padding(20).frame(width: 300).background { LifeBackground() }
                             }
@@ -711,7 +797,7 @@ struct DocumentEditorContent: View {
                             .accessibilityLabel("导入 Markdown 文件").help("导入 Markdown（⌘O）")
                         Button { showHelp = true } label: { Image(systemName: "questionmark.circle").touchTarget() }
                             .buttonStyle(.borderless).accessibilityLabel("Markdown 与快捷键").help("写作帮助")
-                            .popover(isPresented: $showHelp) {
+                            .popover(isPresented: $state.showHelp) {
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 14) {
                                         Text("写作帮助").font(.headline)

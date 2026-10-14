@@ -6,8 +6,25 @@ import MDTextKitUI
 import SFThemeKit
 import PolarMark
 
+/// Outlives SwiftUI graph replacement when an editor moves between windows.
+@MainActor final class NoteEditorRuntime {
+    var coordinator: MDTextKitEditor.Coordinator?
+    func stop() { coordinator?.stop(); coordinator = nil }
+}
+
+private struct NoteEditorRuntimeKey: EnvironmentKey {
+    static let defaultValue: NoteEditorRuntime? = nil
+}
+extension EnvironmentValues {
+    var noteEditorRuntime: NoteEditorRuntime? {
+        get { self[NoteEditorRuntimeKey.self] }
+        set { self[NoteEditorRuntimeKey.self] = newValue }
+    }
+}
+
 /// The host owns drafts and saves; the component owns only the live Markdown buffer.
 struct MDTextKitEditor: NSViewRepresentable {
+    @Environment(\.noteEditorRuntime) private var runtime
     @Binding var text: String
     var request: RichEditRequest?
     var editable = true
@@ -15,7 +32,13 @@ struct MDTextKitEditor: NSViewRepresentable {
     var preserveSelection = false
     var onSelection: (NoteEditorSelection) -> Void = { _ in }
 
-    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+    func makeCoordinator() -> Coordinator {
+        if let coordinator = runtime?.coordinator { return coordinator }
+        let coordinator = Coordinator(text: $text)
+        coordinator.sessionOwned = runtime != nil
+        runtime?.coordinator = coordinator
+        return coordinator
+    }
 
     func makeNSView(context: Context) -> NobisMDTextView {
         context.coordinator.update(self)
@@ -28,9 +51,10 @@ struct MDTextKitEditor: NSViewRepresentable {
         nsView.measuredSize(width: max(100, proposal.width ?? 600))
     }
 
-    static func dismantleNSView(_ nsView: NobisMDTextView, coordinator: Coordinator) { coordinator.stop() }
+    static func dismantleNSView(_ nsView: NobisMDTextView, coordinator: Coordinator) { if !coordinator.sessionOwned { coordinator.stop() } }
 
     @MainActor final class Coordinator {
+        var sessionOwned = false
         var binding: Binding<String>
         let view: NobisMDTextView
         let theme: SFThemeManager
