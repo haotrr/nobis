@@ -25,12 +25,12 @@ private struct NobisGlassButton: ViewModifier {
     @Environment(\.colorSchemeContrast) private var contrast
 
     @ViewBuilder func body(content: Content) -> some View {
-        if #available(macOS 26.0, iOS 26.0, *), !reduceTransparency, contrast != .increased {
-            if prominent { content.buttonStyle(.glassProminent).tint(NobisTheme.controlFill) }
-            else { content.buttonStyle(.glass) }
+        if prominent {
+            content.lifePrimaryAction()
+        } else if #available(macOS 26.0, iOS 26.0, *), !reduceTransparency, contrast != .increased {
+            content.buttonStyle(.glass).tint(.gray)
         } else {
-            if prominent { content.buttonStyle(.borderedProminent).tint(NobisTheme.controlFill) }
-            else { content.buttonStyle(.bordered) }
+            content.lifeSecondaryAction()
         }
     }
 }

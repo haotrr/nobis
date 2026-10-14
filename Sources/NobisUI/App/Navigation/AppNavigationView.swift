@@ -33,7 +33,7 @@ struct AppNavigationView: View {
                         Section {
                             Label("设置", systemImage: SectionPage.settings.icon).tag(SectionPage.settings).padding(.vertical, 4)
                         }
-                    }.listStyle(.sidebar).scrollContentBackground(.hidden)
+                    }.listStyle(.sidebar).listItemTint(.monochrome).scrollContentBackground(.hidden)
                     VStack(alignment: .leading, spacing: 8) {
                         spacePicker
                         Label("已保存在此设备", systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
@@ -76,7 +76,7 @@ struct AppNavigationView: View {
                         .toolbar {
                             if item == .overview {
                                 ToolbarItem(placement: .topBarLeading) {
-                                    Button { showingSettings = true } label: { Label("设置", systemImage: "gearshape") }
+                                    Button { showingSettings = true } label: { Label("设置", systemImage: "gearshape") }.tint(Color.primary)
                                 }
                             }
                         }

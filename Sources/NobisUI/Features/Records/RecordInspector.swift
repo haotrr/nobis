@@ -132,7 +132,7 @@ struct InspectorEditorActions: View {
                     .fixedSize(horizontal: false, vertical: true).accessibilityLabel("保存状态：\(status)")
             }
             HStack {
-            Button(cancelTitle, action: cancel).keyboardShortcut(.cancelAction)
+            Button(cancelTitle, action: cancel).lifeSecondaryAction().keyboardShortcut(.cancelAction)
             Spacer()
             Button(saveTitle, action: save)
                 .lifePrimaryAction()

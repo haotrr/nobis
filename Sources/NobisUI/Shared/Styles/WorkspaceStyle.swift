@@ -234,8 +234,8 @@ struct LifeBackground: View {
     @Environment(\.colorScheme) private var scheme
     var body: some View {
         LinearGradient(colors: scheme == .dark
-            ? [Color(red: 0.12, green: 0.18, blue: 0.21), Color(red: 0.16, green: 0.18, blue: 0.17), Color(red: 0.23, green: 0.19, blue: 0.16)]
-            : [Color(red: 0.80, green: 0.88, blue: 0.92), Color(red: 0.91, green: 0.93, blue: 0.91), Color(red: 0.98, green: 0.89, blue: 0.79)],
+            ? [Color(red: 0.10, green: 0.10, blue: 0.105), Color(red: 0.12, green: 0.115, blue: 0.11)]
+            : [Color(red: 0.98, green: 0.975, blue: 0.965), Color(red: 0.955, green: 0.945, blue: 0.93)],
             startPoint: .top, endPoint: .bottom).ignoresSafeArea()
     }
 }
@@ -243,10 +243,9 @@ struct LifeBackground: View {
 private struct LifeCardSurface: ViewModifier {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     func body(content: Content) -> some View {
         content
-            .background(NobisSurface.card.opacity(reduceTransparency || contrast == .increased ? 1 : scheme == .dark ? 0.94 : 0.83), in: RoundedRectangle(cornerRadius: 26))
+            .background(NobisSurface.card, in: RoundedRectangle(cornerRadius: 26))
             .overlay { RoundedRectangle(cornerRadius: 26).strokeBorder(contrast == .increased ? Color.primary.opacity(0.45) : Color.white.opacity(scheme == .dark ? 0.10 : 0.65), lineWidth: 1) }
             .shadow(color: .black.opacity(scheme == .dark ? 0.08 : 0.025), radius: 16, y: 6)
     }
@@ -280,7 +279,7 @@ struct LifeSection<Content: View>: View {
     @Environment(\.lifeCompact) private var compact
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label(title, systemImage: icon).font(.headline).foregroundStyle(.tint).accessibilityAddTraits(.isHeader)
+            Label(title, systemImage: icon).font(.headline).foregroundStyle(Color.primary).accessibilityAddTraits(.isHeader)
             content
         }.padding(compact ? 16 : 24).frame(maxWidth: .infinity, alignment: .leading).lifeCard()
             .labeledContentStyle(LifeDetailLabelStyle())
@@ -363,7 +362,7 @@ struct LifeSheetHeading: View {
     @Environment(\.dynamicTypeSize) private var textSize
     var body: some View {
         HStack(spacing: textSize.isAccessibilitySize ? 0 : 12) {
-            if !textSize.isAccessibilitySize { Image(systemName: icon).font(.title2).foregroundStyle(.tint).accessibilityHidden(true) }
+            if !textSize.isAccessibilitySize { Image(systemName: icon).font(.title2).foregroundStyle(Color.secondary).accessibilityHidden(true) }
             Text(title).font(.title2.weight(.semibold)).fixedSize(horizontal: false, vertical: true).layoutPriority(1)
             Spacer(minLength: 0)
         }.padding(.horizontal, 24).padding(.vertical, 18).background(.regularMaterial)
@@ -558,6 +557,23 @@ extension View {
     func lifePrimaryAction() -> some View {
         buttonStyle(LifePrimaryActionStyle())
     }
+
+    func lifeSecondaryAction() -> some View {
+        buttonStyle(LifeSecondaryActionStyle())
+    }
+}
+
+private struct LifeSecondaryActionStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.colorSchemeContrast) private var contrast
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 16).padding(.vertical, 8)
+            .frame(minHeight: 44)
+            .foregroundStyle(isEnabled ? Color.primary : Color.secondary)
+            .background(Color.primary.opacity(configuration.isPressed ? 0.14 : 0.06), in: Capsule())
+            .overlay { Capsule().strokeBorder(Color.primary.opacity(contrast == .increased ? 0.45 : 0.10), lineWidth: 1) }
+    }
 }
 
 private struct LifePrimaryActionStyle: ButtonStyle {
@@ -602,7 +618,7 @@ struct LifeEditorChrome: ViewModifier {
             .safeAreaInset(edge: .top, spacing: 0) {
                 if compact && !embedded {
                     HStack(spacing: 12) {
-                        Button("取消", action: cancel).frame(minHeight: 44).keyboardShortcut(.cancelAction)
+                        Button("取消", action: cancel).lifeSecondaryAction().keyboardShortcut(.cancelAction)
                         Spacer(minLength: 0)
                         Text(title).font(.headline).lineLimit(1).accessibilityAddTraits(.isHeader)
                         Spacer(minLength: 0)

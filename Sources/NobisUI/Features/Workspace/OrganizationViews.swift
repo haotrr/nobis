@@ -143,16 +143,16 @@ struct TodayWorkspace: View {
                     Label("今天没有日程和到期待办，按自己的节奏来。", systemImage: "leaf")
                         .font(.callout).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(18).background(.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 20))
+                        .padding(18).background(NobisSurface.card, in: RoundedRectangle(cornerRadius: 20))
                 }
 
                 if !dueTasks.isEmpty {
-                    TodaySectionCard(title: "到期与逾期待办 · \(dueTasks.count)", icon: "checkmark.circle", tint: accent) {
+                    TodaySectionCard(title: "到期与逾期待办 · \(dueTasks.count)", icon: "checkmark.circle") {
                         ForEach(dueTasks) { TaskRow(model: model, record: $0) }
                     }
                 }
                 if !events.isEmpty {
-                    TodaySectionCard(title: "今天的安排 · \(events.count)", icon: "calendar", tint: accent) {
+                    TodaySectionCard(title: "今天的安排 · \(events.count)", icon: "calendar") {
                         ForEach(events) { record in
                             RecordLink(model: model, record: record) { RecordRow(model: model, record: record) }.buttonStyle(.plain)
                         }
@@ -160,7 +160,7 @@ struct TodayWorkspace: View {
                 }
                 LazyVGrid(columns: cardColumns, alignment: .leading, spacing: 20) {
                     if !subscriptions.isEmpty {
-                        TodaySectionCard(title: "即将续费", subtitle: "未来七天与尚待确认的续费", icon: "arrow.triangle.2.circlepath", tint: colorScheme == .dark ? Color(red: 0.88, green: 0.73, blue: 0.54) : Color(red: 0.57, green: 0.38, blue: 0.20)) {
+                        TodaySectionCard(title: "即将续费", subtitle: "未来七天与尚待确认的续费", icon: "arrow.triangle.2.circlepath") {
                             ForEach(subscriptions) { record in
                                 RecordLink(model: model, record: record) {
                                     VStack(alignment: .leading, spacing: 12) {
@@ -178,7 +178,7 @@ struct TodayWorkspace: View {
                             }
                         }
                     }
-                    TodaySectionCard(title: "笔记清单", icon: "checklist", tint: accent) {
+                    TodaySectionCard(title: "笔记清单", icon: "checklist") {
                         if checklist.isEmpty {
                             Text("暂时没有未完成的清单。想到什么，先记下来。")
                                 .foregroundStyle(.secondary).padding(.vertical, 8)
@@ -191,7 +191,7 @@ struct TodayWorkspace: View {
                     }
                 }
                 if !pinned.isEmpty {
-                    TodaySectionCard(title: "置顶", icon: "pin", tint: accent) {
+                    TodaySectionCard(title: "置顶", icon: "pin") {
                         ForEach(pinned) { record in
                             RecordLink(model: model, record: record) { RecordRow(model: model, record: record) }.buttonStyle(.plain)
                         }
@@ -200,7 +200,7 @@ struct TodayWorkspace: View {
                 LifeAdaptiveRow {
                     Button { note = true } label: { Label("记下这一刻", systemImage: "square.and.pencil").foregroundStyle(Color.primary) }
                     Button { create = .event } label: { Label("添个安排", systemImage: "calendar.badge.plus").foregroundStyle(Color.primary) }
-                }.buttonStyle(.bordered).controlSize(.large).tint(accent)
+                }.lifeSecondaryAction()
             }.frame(maxWidth: 980).padding(.horizontal, 24).padding(.vertical, 24)
                 .frame(maxWidth: .infinity)
         }.background { LifeBackground() }
@@ -208,7 +208,7 @@ struct TodayWorkspace: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     HStack {
-                        Button { searching = true } label: { Label("搜索全部", systemImage: "magnifyingglass") }.keyboardShortcut("f", modifiers: [.command, .shift])
+                        Button { searching = true } label: { Label("搜索全部", systemImage: "magnifyingglass").foregroundStyle(Color.primary) }.keyboardShortcut("f", modifiers: [.command, .shift])
                         Menu { Button("新建笔记") { note = true }; Button("新建待办") { create = .task }; Button("新建日程") { create = .event }; Button("记一笔") { create = .transaction }; Button("新建项目") { create = .project } } label: { Label("新建", systemImage: "plus") }
                     }
                 }
@@ -224,11 +224,10 @@ private struct TodaySectionCard<Content: View>: View {
     let title: String
     var subtitle: String? = nil
     let icon: String
-    let tint: Color
     @ViewBuilder let content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label(title, systemImage: icon).font(.headline).foregroundStyle(tint)
+            Label(title, systemImage: icon).font(.headline).foregroundStyle(Color.primary)
                 .accessibilityAddTraits(.isHeader)
             if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(.secondary) }
             VStack(alignment: .leading, spacing: 12) { content }
