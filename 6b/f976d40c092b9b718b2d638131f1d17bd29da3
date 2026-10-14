@@ -1,0 +1,23 @@
+docs/roadmap.md
+  s_acc4a8c629dad0::t_8184b9464bbab8 18
+docs/verification.md
+  s_acc4a8c629dad0::t_8184b9464bbab8 11,13
+docs/tech/T-261014-NB2Q3-mdtextkit/TODO.md
+  s_acc4a8c629dad0::t_8184b9464bbab8 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bf976d40c092b9b718b2d638131f1d17bd29da3",
+  "prompts": {},
+  "sessions": {
+    "s_acc4a8c629dad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1380c-f431-7b43-8a04-ec8c8d335b4d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
