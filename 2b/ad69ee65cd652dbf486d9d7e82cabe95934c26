@@ -1,0 +1,33 @@
+docs/verification.md
+  s_cad6dd87496815::t_25745217526e9c 5-11
+Sources/NobisUI/App/Navigation/AppNavigationView.swift
+  s_cad6dd87496815::t_02b6096b339992 36
+  s_cad6dd87496815::t_1c2dde323f6e02 79
+Sources/NobisUI/Features/Records/RecordInspector.swift
+  s_cad6dd87496815::t_8f7a4ad9c8c7bd 135
+Sources/NobisUI/Shared/Styles/WorkspaceStyle.swift
+  s_cad6dd87496815::t_8f7a4ad9c8c7bd 621
+  s_cad6dd87496815::t_fc6c965c0754f2 237-238,248,282,365,560-576
+DESIGN.md
+  s_cad6dd87496815::t_7bdd6854d98f2f 13,74
+Sources/NobisUI/Features/Workspace/OrganizationViews.swift
+  s_cad6dd87496815::t_90f5543931404e 146,150,155,163,181,194,203,211,230
+Sources/NobisUI/Shared/Styles/GlassStyle.swift
+  s_cad6dd87496815::t_fde68499967515 28-31,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2bad69ee65cd652dbf486d9d7e82cabe95934c26",
+  "prompts": {},
+  "sessions": {
+    "s_cad6dd87496815": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13a18-b93d-7a40-9cd9-ed5740f622cf",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
