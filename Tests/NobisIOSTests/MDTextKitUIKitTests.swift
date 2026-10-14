@@ -27,6 +27,58 @@ import SwiftUI
         return view
     }
 
+    func testChecklistReturnExitAndToggleUndoAfterChineseComposition() {
+        let view = editor("- [ ] ")
+        view.undoManager?.groupsByEvent = false
+        view.undoManager?.removeAllActions()
+        view.selectedRange = NSRange(location: 6, length: 0)
+        view.rememberSelection()
+        view.undoManager?.beginUndoGrouping()
+        view.setMarkedText("nihao", selectedRange: NSRange(location: 5, length: 0))
+        view.performMarkdownAction("toggle")
+        XCTAssertTrue(view.markdown.hasPrefix("- [ ] "))
+        XCTAssertNotNil(view.markedTextRange)
+        view.insertText("你好")
+        view.unmarkText()
+        view.undoManager?.endUndoGrouping()
+        XCTAssertEqual(view.markdown, "- [ ] 你好")
+        view.undoManager?.beginUndoGrouping()
+        view.performMarkdownAction("toggle")
+        view.undoManager?.endUndoGrouping()
+        XCTAssertEqual(view.markdown, "- [x] 你好")
+        view.undoManager?.undo()
+        XCTAssertEqual(view.markdown, "- [ ] 你好")
+        view.undoManager?.redo()
+        XCTAssertEqual(view.markdown, "- [x] 你好")
+        view.undoManager?.beginUndoGrouping()
+        view.insertText("\n")
+        view.undoManager?.endUndoGrouping()
+        XCTAssertEqual(view.markdown, "- [x] 你好\n- [ ] ")
+        view.undoManager?.beginUndoGrouping()
+        view.insertText("\n")
+        view.undoManager?.endUndoGrouping()
+        XCTAssertEqual(view.markdown, "- [x] 你好\n")
+        view.undoManager?.undo()
+        XCTAssertEqual(view.markdown, "- [x] 你好\n- [ ] ")
+        view.undoManager?.redo()
+        XCTAssertEqual(view.markdown, "- [x] 你好\n")
+        view.undoManager?.beginUndoGrouping()
+        view.insertText("普通正文")
+        view.undoManager?.endUndoGrouping()
+        XCTAssertEqual(view.markdown, "- [x] 你好\n普通正文")
+        XCTAssertFalse(view.formattingState().selected.contains("checklist"))
+    }
+
+    func testNewlineDoesNotCreateListsInCellsOrCode() {
+        for plain in [false, true] {
+            let view = editor("- [ ] 中文", inline: !plain)
+            view.plainText = plain
+            view.selectedRange = NSRange(location: view.textStorage.length, length: 0)
+            view.insertText("\n")
+            XCTAssertEqual(view.markdown, "- [ ] 中文\n")
+        }
+    }
+
     func testMarkdownRoundtripStylingAndEmojiFormattingUndo() {
         let source = "## 中文\n\n**粗体** 与 👨‍👩‍👧，保留 `code` 和 [链接](https://example.com)"
         let view = editor(source)

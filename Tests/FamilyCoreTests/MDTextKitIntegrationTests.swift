@@ -50,6 +50,19 @@ struct MDTextKitIntegrationTests {
         #expect(buffer.value == "- [x] 采购\n")
     }
 
+    @Test func checklistReturnContinuesAndEmptyReturnExits() {
+        let (buffer, coordinator) = make("- [x] 中文你好")
+        defer { coordinator.stop() }
+        let view = coordinator.view
+        view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0))
+        view.insertNewline(nil)
+        #expect(buffer.value == "- [x] 中文你好\n- [ ] ")
+        view.insertNewline(nil)
+        #expect(buffer.value == "- [x] 中文你好\n")
+        view.insertText("普通正文", replacementRange: view.selectedRange())
+        #expect(buffer.value == "- [x] 中文你好\n普通正文")
+    }
+
     @Test func completedTaskDoesNotStyleFollowingPlainLines() {
         let source = "- [x] 哈哈\n我是谁？你是谁？\n迭代的是什么呢？\n\n正常正文"
         let (buffer, coordinator) = make(source)

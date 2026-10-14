@@ -101,7 +101,16 @@ import PolarMark
         }
     }
 
-    public override func insertText(_ text: String) { input { super.insertText(text) } }
+    public override func insertText(_ text: String) {
+        // The IME owns Return while composing. Cells and code keep literal newlines.
+        if text == "\n", markedTextRange == nil, !plainText, !inlineOnly, isEditable {
+            let result = PMKAST(markdown: markdown).insertNewline(selection: selectedRange)
+            let value = (markdown as NSString).replacingCharacters(in: result.replacementRange, with: result.replacementString)
+            restore(value, selection: result.proposedSelection)
+        } else {
+            input { super.insertText(text) }
+        }
+    }
     public override func deleteBackward() { input { super.deleteBackward() } }
     public override func replace(_ range: UITextRange, withText text: String) { input { super.replace(range, withText: text) } }
     public override func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
