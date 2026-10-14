@@ -11,7 +11,7 @@
 | 位置 | 变化 |
 | --- | --- |
 | Package.swift | 部署声明降为 macOS 14，Swift 工具链仍要求 6.2+；最低系统运行验收另行记录 |
-| MDTextView | 中文组词期间不重排／回传，提交统一注册撤销；只读表格不创建输入控件，禁用只读标题／折叠写入；单元格共用 Markdown 格式快捷键；焦点及组合文本状态通知工具栏 |
+| MDTextView | 中文组词期间不重排／回传，提交统一注册撤销；只读表格不创建输入控件，禁用只读标题／折叠写入；单元格共用 Markdown 格式快捷键；焦点及组合文本状态通知工具栏；组词开始时保留当前段落布局，每次 marked-text 更新后恢复缩进／对齐，避免临时输入样式重置导致横向跳动 |
 | MDImageTextStyler / MDImageTextAttachment | 增加宿主图片数据回调，由 Nobis 异步加载 HTTPS 图片；组件渲染期间不做网络读取 |
 | MDTableAttachmentViewController | 单元格监听已提交的 Markdown 变化，立即回写正文，共享正文撤销栈，局部恢复表格、单元格及选区；完整表格标记保留末行；序列化转义管线字符 |
 | MDFormatting | 全选区格式与混合格式区分，修正正文与列表混选判断 |

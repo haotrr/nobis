@@ -179,15 +179,32 @@ import SFThemeKit
     // Nobis: keep IME edits intact until the input method commits. Styling can replace
     // attachments and must never run inside a marked-text transaction.
     private var compositionDepth = 0
+    private var compositionParagraphStyle: NSParagraphStyle?
     private var compositionBefore: (text: NSAttributedString, selection: NSRange)?
 
     open override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
         if compositionBefore == nil {
             breakUndoCoalescing()
             compositionBefore = (NSAttributedString(attributedString: mdTextStorage), self.selectedRange())
+            // Resolve geometry from the document, not transient input-method typing attributes.
+            editorController.fixTypingAttributes(in: self)
+            let location = self.selectedRange().location
+            let length = mdTextStorage.length
+            let endsInNewline = length > 0 && [UInt16(10), UInt16(13)].contains((mdTextStorage.string as NSString).character(at: length - 1))
+            let index = location < length ? location : (length > 0 && !endsInNewline ? length - 1 : NSNotFound)
+            compositionParagraphStyle = (index != NSNotFound ? mdTextStorage.attribute(.paragraphStyle, at: index, effectiveRange: nil) as? NSParagraphStyle : nil)
+                ?? typingAttributes[.paragraphStyle] as? NSParagraphStyle
         }
+        if let style = compositionParagraphStyle { typingAttributes[.paragraphStyle] = style }
         compositionDepth += 1
         super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+        // AppKit may reset the paragraph on each marked-text replacement. Restore only
+        // layout attributes; do not parse Markdown, replace characters, or end composition.
+        let marked = markedRange()
+        if let style = compositionParagraphStyle, marked.location != NSNotFound, NSMaxRange(marked) <= mdTextStorage.length {
+            mdTextStorage.addAttribute(.paragraphStyle, value: style, range: marked)
+            typingAttributes[.paragraphStyle] = style
+        }
         compositionDepth -= 1
         finishComposition()
         editorController.notifyTextSelectionChanges(in: self)
@@ -210,6 +227,7 @@ import SFThemeKit
     private func finishComposition() {
         guard compositionDepth == 0, !hasMarkedText(), let before = compositionBefore else { return }
         compositionBefore = nil
+        compositionParagraphStyle = nil
         editorUndoManager.disableUndoRegistration()
         editorController.performStyling(in: self)
         editorController.fixTypingAttributes(in: self)

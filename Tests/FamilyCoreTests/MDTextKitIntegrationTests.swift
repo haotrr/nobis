@@ -253,5 +253,65 @@ struct MDTextKitIntegrationTests {
         #expect(buffer.value == added)
     }
 
+    @Test func compositionRepairsResetTypingParagraphGeometry() async throws {
+        let (_, coordinator) = make("正文")
+        defer { coordinator.stop() }
+        let view = coordinator.view
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 400), styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = view
+        window.makeFirstResponder(view)
+        defer { window.contentView = nil }
+        view.setSelectedRange(NSRange(location: view.mdTextStorage.length, length: 0))
+        view.insertNewline(nil)
+        await Task.yield()
+        let before = try #require(view.typingAttributes[.paragraphStyle] as? NSParagraphStyle)
+        #expect(before.firstLineHeadIndent > 0)
+        // Input contexts can supply a default typing paragraph before marked-text updates.
+        var resetAttributes = view.typingAttributes
+        resetAttributes[.paragraphStyle] = NSParagraphStyle.default
+        view.typingAttributes = resetAttributes
+        let marked = NSAttributedString(string: "dd", attributes: [.paragraphStyle: NSParagraphStyle.default, .underlineStyle: 1])
+        view.setMarkedText(marked, selectedRange: NSRange(location: 2, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        await Task.yield()
+        view.setMarkedText("ddd", selectedRange: NSRange(location: 3, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        let during = try #require(view.mdTextStorage.attribute(.paragraphStyle, at: view.markedRange().location, effectiveRange: nil) as? NSParagraphStyle)
+        #expect(during.firstLineHeadIndent == before.firstLineHeadIndent)
+        #expect(during.headIndent == before.headIndent)
+        #expect(view.hasMarkedText())
+        let layout = view.mdLayoutManager
+        layout.ensureLayout(for: view.mdTextContainer)
+        let markedX = layout.boundingRect(forGlyphRange: layout.glyphRange(forCharacterRange: view.markedRange(), actualCharacterRange: nil), in: view.mdTextContainer).minX
+        view.insertText("迭代", replacementRange: NSRange(location: NSNotFound, length: 0))
+        let after = try #require(view.mdTextStorage.attribute(.paragraphStyle, at: 3, effectiveRange: nil) as? NSParagraphStyle)
+        #expect(after.firstLineHeadIndent == during.firstLineHeadIndent)
+        layout.ensureLayout(for: view.mdTextContainer)
+        let committedX = layout.boundingRect(forGlyphRange: layout.glyphRange(forCharacterRange: NSRange(location: 3, length: 2), actualCharacterRange: nil), in: view.mdTextContainer).minX
+        #expect(abs(markedX - committedX) < 1)
+    }
+
+    @Test func compositionPreservesTableAlignmentAcrossUpdates() throws {
+        let (buffer, coordinator) = make("| 项目 |\n| :---: |\n| 内容 |\n")
+        defer { coordinator.stop() }
+        let table = try #require((coordinator.view.mdTextStorage.textAttachment(at: 0) as? MDTableTextAttachment)?.attachmentViewController as? MDTableAttachmentViewController)
+        table.beginEditing(at: (1, 0))
+        let cell = try #require(table.activeCellEditor)
+        cell.setSelectedRange(NSRange(location: 0, length: 2))
+        let source = buffer.value
+        let original = try #require(cell.mdTextStorage.attribute(.paragraphStyle, at: 0, effectiveRange: nil) as? NSParagraphStyle)
+        for text in ["n", "ni", "nihao"] {
+            cell.typingAttributes[.paragraphStyle] = NSParagraphStyle.default
+            cell.setMarkedText(text, selectedRange: NSRange(location: text.utf16.count, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+            let style = try #require(cell.mdTextStorage.attribute(.paragraphStyle, at: cell.markedRange().location, effectiveRange: nil) as? NSParagraphStyle)
+            #expect(style.alignment == original.alignment)
+            #expect(style.firstLineHeadIndent == original.firstLineHeadIndent)
+            #expect(cell.hasMarkedText())
+            #expect(buffer.value == source)
+        }
+        cell.insertText("你好", replacementRange: NSRange(location: NSNotFound, length: 0))
+        #expect(buffer.value.contains("你好"))
+        coordinator.view.editorUndoManager.undo()
+        #expect(buffer.value == source)
+    }
+
 }
 #endif
