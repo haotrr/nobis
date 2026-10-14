@@ -1,0 +1,31 @@
+Tests/FamilyCoreTests/MDTextKitIntegrationTests.swift
+  s_acc4a8c629dad0::t_f81f6341d7dc60 256-315
+Vendor/MDTextKit/NOBIS.md
+  s_acc4a8c629dad0::t_93b0c22003727d 14
+Vendor/MDTextKit/Sources/MDTextKitUI/MDTextView.swift
+  s_acc4a8c629dad0::t_91d89b32e31e14 182,189-196,198,201-207,230
+docs/components/mdtextkit.md
+  s_acc4a8c629dad0::t_82ce125695ec55 9
+docs/roadmap.md
+  s_acc4a8c629dad0::t_261518b4b22377 18
+docs/tech/T-261014-NB2Q3-mdtextkit/TODO.md
+  s_acc4a8c629dad0::t_865cb91b63505a 22,29
+docs/verification.md
+  s_acc4a8c629dad0::t_7db3acaaf7df4a 7,11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1bc824ace5fa2b869e799fcd39157af248817bec",
+  "prompts": {},
+  "sessions": {
+    "s_acc4a8c629dad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1380c-f431-7b43-8a04-ec8c8d335b4d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
