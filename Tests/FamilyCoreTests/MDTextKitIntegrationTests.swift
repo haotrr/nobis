@@ -50,6 +50,25 @@ struct MDTextKitIntegrationTests {
         #expect(buffer.value == "- [x] 采购\n")
     }
 
+    @Test func linkEditingFindsExistingLabelAndReplacesInsteadOfNesting() {
+        let source = "前文 [中文链接](https://example.com/old) 后文"
+        let (buffer, coordinator) = make(source)
+        defer { coordinator.stop() }
+        let view = coordinator.view
+        let label = (view.string as NSString).range(of: "中文链接")
+        view.setSelectedRange(NSRange(location: label.location + 1, length: 0))
+        let context = NobisMDTextView.linkContext(in: view)
+        #expect(context.label == "中文链接")
+        #expect(context.address == "https://example.com/old")
+        NobisMDTextView.apply("link:https://example.com/new", to: view)
+        #expect(buffer.value == "前文 [中文链接](https://example.com/new) 后文")
+        view.editorUndoManager.undo()
+        #expect(buffer.value == source)
+        view.setSelectedRange(NSRange(location: label.location + 1, length: 0))
+        NobisMDTextView.apply("link:", to: view)
+        #expect(buffer.value == "前文 中文链接 后文")
+    }
+
     @Test func checklistReturnContinuesAndEmptyReturnExits() {
         let (buffer, coordinator) = make("- [x] 中文你好")
         defer { coordinator.stop() }

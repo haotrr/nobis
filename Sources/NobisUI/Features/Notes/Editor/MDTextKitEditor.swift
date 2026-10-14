@@ -4,6 +4,7 @@ import SwiftUI
 import MDTextKit
 import MDTextKitUI
 import SFThemeKit
+import PolarMark
 
 /// The host owns drafts and saves; the component owns only the live Markdown buffer.
 struct MDTextKitEditor: NSViewRepresentable {
@@ -37,6 +38,8 @@ struct MDTextKitEditor: NSViewRepresentable {
         private var emitted: String?
         private var installing = false
         private var lastRequest: UUID?
+        private var linkPopover: NSPopover?
+        private var linkKeyMonitor: Any?
         private weak var activeView: MDTextView?
         private var images: [String: Data] = [:]
         private var imageTasks: [String: Task<Void, Never>] = [:]
@@ -136,9 +139,41 @@ struct MDTextKitEditor: NSViewRepresentable {
                 Task { @MainActor [weak self, weak target] in
                     guard let self, !self.stopped, let target, target.isEditable, !target.hasMarkedText() else { return }
                     target.window?.makeFirstResponder(target)
-                    NobisMDTextView.apply(request.action, to: target)
+                    if request.action == "show-link" { self.showLinkEditor(in: target) }
+                    else { NobisMDTextView.apply(request.action, to: target) }
                 }
             }
+        }
+
+        private func showLinkEditor(in target: MDTextView) {
+            let context = NobisMDTextView.linkContext(in: target)
+            target.scrollRangeToVisible(context.range)
+            let screen = target.firstRect(forCharacterRange: context.range, actualRange: nil)
+            guard let window = target.window else { return }
+            let anchor = target.convert(window.convertFromScreen(screen), from: nil)
+            linkPopover?.close()
+            let popover = NSPopover()
+            popover.behavior = .transient
+            popover.contentViewController = NSHostingController(rootView: NoteLinkForm(address: context.address, cancel: { [weak popover] in popover?.close() }) { [weak target, weak popover] address in
+                guard let target, !target.hasMarkedText() else { return }
+                popover?.close()
+                target.window?.makeFirstResponder(target)
+                target.setSelectedRange(context.range)
+                NobisMDTextView.apply("link:" + address, to: target)
+            })
+            linkPopover = popover
+            if linkKeyMonitor == nil {
+                linkKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                    let handled = MainActor.assumeIsolated {
+                        guard event.keyCode == 53, let popover = self?.linkPopover, popover.isShown else { return false }
+                        if let field = popover.contentViewController?.view.window?.firstResponder as? NSTextView, field.hasMarkedText() { return false }
+                        popover.close()
+                        return true
+                    }
+                    return handled ? nil : event
+                }
+            }
+            popover.show(relativeTo: anchor, of: target, preferredEdge: .maxY)
         }
 
         private func publish() {
@@ -181,6 +216,10 @@ struct MDTextKitEditor: NSViewRepresentable {
         }
 
         func stop() {
+            if let linkKeyMonitor { NSEvent.removeMonitor(linkKeyMonitor) }
+            linkKeyMonitor = nil
+            linkPopover?.close()
+            linkPopover = nil
             stopped = true
             observers.forEach { NotificationCenter.default.removeObserver($0) }
             observers.removeAll()
@@ -268,6 +307,23 @@ struct MDTextKitEditor: NSViewRepresentable {
         return super.performKeyEquivalent(with: event)
     }
 
+    static func linkContext(in view: MDTextView) -> (range: NSRange, label: String, address: String) {
+        let storage = view.mdTextStorage
+        let range = view.selectedRange()
+        let sourceRange = storage.markdownRange(fromAttributedRange: range)
+        let ast = PMKAST(markdown: view.markdown)
+        var link: PMKASTNode?
+        ast.rootNode.walk { node in
+            if node.type == .link, node.range.location <= sourceRange.location,
+               NSMaxRange(node.range) > sourceRange.location,
+               NSMaxRange(node.range) >= NSMaxRange(sourceRange) { link = node }
+        }
+        if let link {
+            return (storage.attributedStringRange(fromStringRange: link.range), ast.substring(link.contentRange), link.url)
+        }
+        return (range, storage.stringByExpandingTextAttachments(in: range), "")
+    }
+
     static func apply(_ action: String, to view: MDTextView) {
         guard view.isEditable, !view.hasMarkedText() else { return }
         let controller = view.editorController
@@ -288,10 +344,10 @@ struct MDTextKitEditor: NSViewRepresentable {
             if action.hasPrefix("link:") {
                 let address = String(action.dropFirst(5))
                 guard address.isEmpty || URL(string: address).map({ ["https", "http", "mailto"].contains($0.scheme?.lowercased() ?? "") }) == true else { return }
-                let range = view.selectedRange()
-                let label = view.mdTextStorage.stringByExpandingTextAttachments(in: range)
-                let markdown = MDEditorController.markdownLink(label: label.isEmpty ? "链接文字" : label, url: address)
-                controller.replaceCharacters(in: range, with: NSAttributedString(string: markdown), in: view)
+                let context = linkContext(in: view)
+                let label = context.label.isEmpty ? "链接文字" : context.label
+                let markdown = address.isEmpty ? label : MDEditorController.markdownLink(label: label, url: address)
+                controller.replaceCharacters(in: context.range, with: NSAttributedString(string: markdown), in: view)
             }
         }
         controller.notifyTextChanges(in: view)
@@ -304,6 +360,28 @@ struct MDTextKitEditor: NSViewRepresentable {
         let prefix = end > 0 && !(view.string as NSString).substring(to: end).hasSuffix("\n") ? "\n\n" : "\n"
         view.editorController.replaceCharacters(in: NSRange(location: end, length: 0),
             with: NSAttributedString(string: prefix + markdown + "\n\n"), in: view)
+    }
+}
+private struct NoteLinkForm: View {
+    @State var address: String
+    var cancel: () -> Void
+    var apply: (String) -> Void
+    @FocusState private var focused: Bool
+    private var valid: Bool {
+        address.isEmpty || URL(string: address).map { ["https", "http", "mailto"].contains($0.scheme?.lowercased() ?? "") } == true
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("文字链接").font(.headline)
+            TextField("https://", text: $address).textFieldStyle(.roundedBorder).focused($focused)
+                .onSubmit { if valid { apply(address) } }
+            HStack {
+                Button("移除链接") { apply("") }.disabled(address.isEmpty)
+                Spacer()
+                Button("取消", action: cancel).keyboardShortcut(.cancelAction)
+                Button("应用") { apply(address) }.disabled(!valid).keyboardShortcut(.defaultAction)
+            }
+        }.padding(16).frame(width: 280).onAppear { focused = true }
     }
 }
 #endif

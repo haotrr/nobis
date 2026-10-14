@@ -672,7 +672,13 @@ struct DocumentEditor: View {
                             formatButton("斜体", action: "italic")
                             formatButton("项目列表", action: "list")
                         } label: { Image(systemName: "textformat").touchTarget() }.help("文字格式").accessibilityLabel("文字格式")
-                        Button { showLink = true } label: { Image(systemName: "link").touchTarget() }
+                        Button {
+#if os(macOS)
+                            formatRequest = RichEditRequest(action: "show-link")
+#else
+                            showLink = true
+#endif
+                        } label: { Image(systemName: "link").touchTarget() }
                             .disabled(!editorSelection.enabled || editorSelection.composing).help("选中文字后添加链接").keyboardShortcut("k")
                             .popover(isPresented: $showLink) {
                                 VStack(alignment: .leading, spacing: 12) {
