@@ -1,0 +1,28 @@
+docs/verification.md
+  s_acc4a8c629dad0::t_a9c662993bbcad 8-9
+  s_acc4a8c629dad0::t_a548f8854be9ae 5-7,10
+  s_acc4a8c629dad0::t_598ce33419f9ec 11-12
+docs/features/documents.md
+  s_acc4a8c629dad0::t_a548f8854be9ae 5,21-25
+  s_acc4a8c629dad0::t_f96d77e3fab781 26
+docs/feature-inventory.md
+  s_acc4a8c629dad0::t_a548f8854be9ae 10
+Sources/NobisUI/Features/Notes/DocumentsView.swift
+  s_acc4a8c629dad0::t_e91940dd1700a9 14-15,22-27,41,76-77,79-83,85-87,95-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36ca2f521c6b5b0095c0fa7ecf571cd77a0af3f6",
+  "prompts": {},
+  "sessions": {
+    "s_acc4a8c629dad0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1380c-f431-7b43-8a04-ec8c8d335b4d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
