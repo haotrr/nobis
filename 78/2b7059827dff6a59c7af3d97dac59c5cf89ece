@@ -1,0 +1,81 @@
+Sources/NobisUI/Features/Finance/LedgerWorkspace.swift
+  s_da0010d1add54d::t_48099d7dbc391d 167
+  s_da0010d1add54d::t_47a32774c2e20b 19-20,153-166,183,192,200
+DESIGN.md
+  s_dfad87bbe7165d::t_4a64d8b9d6851c 11-12
+  s_da0010d1add54d::t_40e6915cde240c 105-106
+docs/verification.md
+  s_da0010d1add54d::t_aca54f6f5e7315 497-498
+  s_dfad87bbe7165d::t_c7e58e3328d5ee 477-482
+  s_da0010d1add54d::t_dfd60fde8c93ae 483-488
+  s_da0010d1add54d::t_522ae6b6f8328b 512
+  s_da0010d1add54d::t_3b5684a4a591ab 499-511
+  s_da0010d1add54d::t_4502e931a9a5e9 489-496
+Sources/NobisUI/Features/Settings/ProfileEditor.swift
+  s_dfad87bbe7165d::t_b7d428a41753d4 86
+  s_da0010d1add54d::t_1becd8e7963b44 101,103
+docs/feature-inventory.md
+  s_da0010d1add54d::t_40e6915cde240c 29-30
+Sources/FamilyCore/PrivateCloudSnapshot.swift
+  s_da0010d1add54d::t_0a94bcf255fdc5 1-44
+docs/roadmap.md
+  s_da0010d1add54d::t_522ae6b6f8328b 45
+  s_da0010d1add54d::t_40e6915cde240c 26
+Sources/FamilyPersistence/PrivateCloudController.swift
+  s_da0010d1add54d::t_37cef7b883e67a 91
+  s_da0010d1add54d::t_44be09903f9083 107,109,111
+  s_da0010d1add54d::t_0a94bcf255fdc5 1-87,96-98,100-106,108,110,113-124,127-138,140-145
+  s_da0010d1add54d::t_f3ffd4e057b32e 88-90,92-95,99,112,125-126,139
+docs/features/F-261015-YPFFN-private-icloud/TODO.md
+  s_da0010d1add54d::t_522ae6b6f8328b 25
+  s_da0010d1add54d::t_3b5684a4a591ab 1,3,5,7,9,11,13,15-19,21,23
+  s_da0010d1add54d::t_44108e1c8ee3e5 2,4,6,8,10,12,14,20,22,24
+docs/features/F-261015-5XEV0-cloudkit-自动同步与双人协作落地/TODO.md
+  s_da0010d1add54d::t_4502e931a9a5e9 82-86
+  s_da0010d1add54d::t_aca54f6f5e7315 87
+  s_da0010d1add54d::t_4f46cf4627003a 69-74,76-79
+  s_da0010d1add54d::t_dfd60fde8c93ae 75,80-81
+Sources/FamilyPersistence/PrivateCloudRepository.swift
+  s_da0010d1add54d::t_0a94bcf255fdc5 1-41
+docs/architecture.md
+  s_da0010d1add54d::t_40e6915cde240c 12,52-58
+  s_da0010d1add54d::t_d15eaedd5f4982 59
+docs/guides/minty-migration.md
+  s_da0010d1add54d::t_40e6915cde240c 63-64
+Sources/FamilyCore/LifeWorkspace.swift
+  s_da0010d1add54d::t_ca02ae00c9a44f 13-15,20
+Sources/FamilyDomain/FinancialStatements.swift
+  s_da0010d1add54d::t_a43aa0facbcba0 34-43
+Sources/NobisUI/App/AppModel.swift
+  s_da0010d1add54d::t_b3532f03c5c4ed 40,50,70-73,82,134,140-143,147,172,196,239-241
+Sources/NobisUI/App/RootView.swift
+  s_da0010d1add54d::t_1e50953ff50892 27-33
+Sources/NobisUI/Features/Settings/SettingsView.swift
+  s_da0010d1add54d::t_314f04cd93df68 35-44
+Tests/FamilyCoreTests/PrivateCloudTests.swift
+  s_da0010d1add54d::t_08bb9e620add7c 1-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "782b7059827dff6a59c7af3d97dac59c5cf89ece",
+  "prompts": {},
+  "sessions": {
+    "s_da0010d1add54d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13dbd-a440-7fd3-a50c-b8b44d3df125",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    },
+    "s_dfad87bbe7165d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13d8f-3d6f-7481-a7d6-6728e9fceb08",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
