@@ -1,0 +1,19 @@
+docs/verification.md
+  s_3726ecce92f1db::t_d7c6332be7de27 10-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6819e14d8efed01aae41606969f0173e00d5bcc0",
+  "prompts": {},
+  "sessions": {
+    "s_3726ecce92f1db": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13d5b-5d44-7af2-ba7f-e405aa6c237c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
