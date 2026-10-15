@@ -21,6 +21,14 @@ import FamilyPersistence
     public var summaries: [LedgerSummary] = []
     public var error: String?
     public var notice: String?
+    public var legacyMigrationStatus: String?
+    private var bootstrapMember: Member?
+    public var cloudOnly: Bool { cloud.configured }
+    public var accountProfile: Member? { privateCloud.repository?.profile ?? (cloudOnly ? nil : bootstrapMember) }
+    public var studioMemberships: [StudioMembership] {
+        guard let grant = cloud.grant else { return [] }
+        return [StudioMembership(studioID: grant.spaceID, accountID: grant.accountID, isOwner: grant.ownerID == grant.accountID, writable: grant.writable)]
+    }
     public var ready = false
     public var setupRequired = false
     public var showingCloudSetup = false
@@ -41,8 +49,8 @@ import FamilyPersistence
     public let cloud: CloudFamilyController
     public var accessEpoch = UUID()
     public let recordPanel = RecordPanelState()
-    private var localRepository: CoreDataRepository?
-    private var memberID: UUID?
+    var localRepository: CoreDataRepository?
+    var memberID: UUID?
     private let notificationsEnabled: Bool
     public init(directory: URL? = nil, cloudIdentifier: String? = Bundle.main.object(forInfoDictionaryKey: "NobisCloudContainer") as? String, notificationsEnabled: Bool = true) {
         self.notificationsEnabled = notificationsEnabled
@@ -77,17 +85,25 @@ import FamilyPersistence
         if let pending = NobisCloudInvitation.pending { NobisCloudInvitation.pending = nil; cloud.receive(pending) }
         if cloud.enabled { Task { await cloud.connect() } }
     }
-    public func updateDisplay(spaceID: UUID, name: String, member: Member, expected: Space) throws {
-        guard let core else { throw NobisError.forbidden }
-        if privateCloud.spaceID == spaceID { throw NobisError.validation("个人云空间使用启用时的称呼；暂不支持单独修改云端资料。") }
-        if cloud.grant?.spaceID == spaceID {
-            guard let repository = cloud.repository else { throw NobisError.forbidden }
-            try repository.updateDisplay(name: name, member: member, expected: expected)
-        } else {
-            guard let localRepository else { throw NobisError.forbidden }
-            try localRepository.updateDisplay(spaceID: spaceID, actorID: core.session.actorID(in: spaceID), name: name, member: member, expected: expected)
-        }
-        rebind(); notice = "资料已保存在此设备"
+    public func updateAccountProfile(_ member: Member, expected: Member?) throws {
+        guard let personal = privateCloud.repository else { throw NobisError.validation("请先连接个人 iCloud。") }
+        try personal.updateProfile(member, expected: expected)
+        rebind(); notice = "个人资料已保存，正在同步到你的设备与 Studio。"
+    }
+    public func updateStudioName(_ name: String, expected: Space) throws {
+        guard let repository = cloud.repository, let grant = cloud.grant,
+              let member = expected.members.first(where: { $0.id == grant.accountID }) else { throw NobisError.forbidden }
+        try repository.updateDisplay(name: name, member: member, expected: expected)
+        rebind()
+    }
+    private func publishAccountProfile() {
+        guard let profile = privateCloud.repository?.profile, let repository = cloud.repository,
+              let grant = cloud.grant, grant.accountID == profile.id, grant.writable else { return }
+        do {
+            guard let space = try repository.load().spaces.first,
+                  space.members.first(where: { $0.id == profile.id }) != profile else { return }
+            try repository.updateDisplay(name: space.name, member: profile, expected: space)
+        } catch { notice = "个人资料已保存，Studio 展示资料待同步：" + error.localizedDescription }
     }
     public func retryOpening() {
         error = nil
@@ -119,32 +135,34 @@ import FamilyPersistence
         }
     }
     private func open(member: Member) throws {
-        let repository = try CoreDataRepository(directory: directory.appendingPathComponent("Stores"))
-        let snapshot = try repository.load()
-        localRepository = repository; memberID = member.id
-        ready = true; setupRequired = false; rebind(initialSnapshot: snapshot)
+        let hasLegacy = FileManager.default.fileExists(atPath: directory.appendingPathComponent("Stores/spaces.json").path)
+        let repository = cloudOnly && !hasLegacy ? nil : try CoreDataRepository(directory: directory.appendingPathComponent("Stores"))
+        localRepository = repository; memberID = member.id; bootstrapMember = member
+        ready = true; setupRequired = false; rebind(initialSnapshot: try repository?.load())
     }
-    public var localMemberName: String { (try? localRepository?.loadSpaces().first { $0.kind == .personal }?.members.first?.name) ?? "我" }
+    public var localMemberName: String { accountProfile?.name ?? bootstrapMember?.name ?? "我" }
     public func rebind() { rebind(initialSnapshot: nil) }
     private func rebind(initialSnapshot: Snapshot?) {
-        guard let localRepository, let memberID else { return }
+        guard let memberID else { return }
         records = []; summaries = []
         perform {
-            let localSpaces = try localRepository.loadSpaces()
-            var repository: any Repository
+            let localSpaces = cloudOnly ? [] : try localRepository?.loadSpaces() ?? []
+            var routes: [any Repository] = cloudOnly ? [] : [localRepository].compactMap { $0 }
             var ids = Set(localSpaces.map(\.id)); var mapping: [UUID: UUID] = [:]
             if let shared = cloud.repository, let grant = cloud.grant {
-                repository = RoutedRepository(local: localRepository, shared: shared)
+                routes.append(shared)
                 ids.insert(grant.spaceID); mapping[grant.spaceID] = grant.accountID
-            } else { repository = localRepository }
+            }
             if let personal = privateCloud.repository {
-                repository = RoutedRepository(local: repository, shared: personal)
+                routes.append(personal)
                 ids.insert(personal.spaceID); mapping[personal.spaceID] = personal.ownerID
             }
+            let repository = SpaceRepositoryRouter(stores: routes)
             core = FamilyCore(repository: repository, session: AccessSession(memberID: memberID, allowedSpaceIDs: ids, memberIDsBySpace: mapping))
             spaces = try core!.spaces().sorted { a, b in a.kind == b.kind ? a.name < b.name : a.kind == .personal }
             selectedSpaceID = workspace.commonID
-            refresh(initialSnapshot: cloud.repository == nil && privateCloud.repository == nil ? initialSnapshot : nil)
+            refresh(initialSnapshot: !cloudOnly && cloud.repository == nil && privateCloud.repository == nil ? initialSnapshot : nil)
+            publishAccountProfile()
         }
     }
     private func invalidateCloudUI(spaceID: UUID?) {
@@ -177,23 +195,24 @@ import FamilyPersistence
     public var saveStatus: String { cloud.enabled ? cloud.syncStatus : "仅保存在此设备" }
     public func setupAndConnect(name: String, familyName: String) {
         setup(name: name, familyName: familyName, partnerName: "")
-        if ready { showingCloudSetup = true }
+        if ready { showingCloudSetup = true; Task { await privateCloud.enable(name: localMemberName) } }
     }
     public func setup(name: String, familyName: String, partnerName: String, demo: Bool = false) {
         perform {
-            guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw NobisError.validation("请填写你的称呼。") }
+            guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, name.count <= 80 else { throw NobisError.validation("请填写 1–80 字的称呼。") }
             let me = Member(name: name), partner = Member(name: partnerName.isEmpty ? "另一位成员（待连接）" : partnerName)
             let personal = Space(name: "我的空间", kind: .personal, ownerID: me.id, members: [me])
             let family = Space(name: familyName.isEmpty ? "我们的家" : familyName, kind: .family, ownerID: me.id, members: [me, partner])
-            _ = try CoreDataRepository(directory: directory.appendingPathComponent("Stores"), initialSpaces: [personal, family])
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            if !cloudOnly { _ = try CoreDataRepository(directory: directory.appendingPathComponent("Stores"), initialSpaces: [personal, family]) }
             try JSONEncoder().encode(me).write(to: directory.appendingPathComponent("identity.json"), options: LocalMetadataFile.writingOptions)
             try open(member: me)
-            if demo { try seed(space: family, me: me); selectedSpaceID = family.id; refresh() }
+            if demo && !cloudOnly { try seed(space: family, me: me); selectedSpaceID = family.id; refresh() }
         }
     }
     public var selectedSpace: Space? { spaces.first { $0.id == selectedSpaceID } }
     public var visibility: String { selectedSpaceID.map { visibility(for: $0) } ?? "未选择空间" }
-    public var workspace: LifeWorkspace { LifeWorkspace(spaces: spaces, cloudID: cloud.grant?.spaceID, personalCloudID: privateCloud.spaceID) }
+    public var workspace: LifeWorkspace { LifeWorkspace(spaces: spaces, cloudID: cloud.grant?.spaceID, personalCloudID: privateCloud.spaceID, cloudOnly: cloudOnly) }
     public var activeRecords: [Record] { records.filter { !$0.deleted && $0.body.sharedDestination == nil } }
     public func records(in scope: LifeScope) -> [Record] { activeRecords.filter { workspace.ids(scope).contains($0.latest.spaceID) } }
     public func space(for record: Record) -> Space? { spaces.first { $0.id == record.latest.spaceID } }

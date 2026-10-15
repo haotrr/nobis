@@ -226,6 +226,7 @@ public struct AuditEvent: Codable, Identifiable, Equatable, Sendable {
     public init(revision: Revision, action: String) { id = UUID(); spaceID = revision.spaceID; actorID = revision.actorID; targetID = revision.recordID; revisionID = revision.id; operationID = revision.operationID; self.action = action; date = revision.createdAt }
 }
 public struct Snapshot: Codable, Equatable, Sendable {
+    public var account: AccountState?
     public var schemaVersion: Int = 1
     public var spaces: [Space]
     public var revisions: [Revision]

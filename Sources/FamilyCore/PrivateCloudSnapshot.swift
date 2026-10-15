@@ -9,6 +9,17 @@ public enum PrivateCloudSnapshot {
               space.members.count == 1, space.members.first?.id == owner,
               snapshot.revisions.allSatisfy({ $0.spaceID == spaceID && $0.actorID == owner }),
               snapshot.audits.allSatisfy({ $0.spaceID == spaceID && $0.actorID == owner }) else { throw NobisError.forbidden }
+        if let account = snapshot.account {
+            guard account.ownerID == owner, Set(account.profiles.map(\.id)).count == account.profiles.count,
+                  account.profiles.allSatisfy({ $0.member.id == owner && !$0.member.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.member.name.count <= 80 && ($0.member.avatarData?.count ?? 0) <= 100_000 && $0.updatedAt.timeIntervalSinceReferenceDate.isFinite }) else { throw NobisError.forbidden }
+        }
+        if let drafts = snapshot.account?.drafts {
+            guard Set(drafts.map(\.id)).count == drafts.count else { throw NobisError.corruptBackup }
+            for draft in drafts {
+                guard ["DocumentDrafts", "CommentDrafts"].contains(draft.kind), draft.updatedAt.timeIntervalSinceReferenceDate.isFinite else { throw NobisError.corruptBackup }
+                if let payload = draft.payload { _ = try JSONDecoder().decode(DocumentDraft.self, from: payload) }
+            }
+        }
         let auditByRevision = Dictionary(grouping: snapshot.audits, by: \.revisionID)
         guard snapshot.revisions.allSatisfy({ revision in
             auditByRevision[revision.id]?.contains(where: {
@@ -30,12 +41,32 @@ public enum PrivateCloudSnapshot {
             if let previous = audits[value.id], previous != value { throw NobisError.conflict }
             audits[value.id] = value
         }
-        let merged = Snapshot(spaces: remote.spaces, revisions: Array(revisions.values), audits: Array(audits.values))
+        var merged = Snapshot(spaces: remote.spaces, revisions: Array(revisions.values), audits: Array(audits.values))
+        var profiles = Dictionary(uniqueKeysWithValues: (remote.account?.profiles ?? []).map { ($0.id, $0) })
+        for version in local.account?.profiles ?? [] {
+            if let old = profiles[version.id], old != version { throw NobisError.conflict }
+            profiles[version.id] = version
+        }
+        if local.account != nil || remote.account != nil {
+            merged.account = AccountState(ownerID: owner, profiles: Array(profiles.values))
+        }
+        var drafts = Dictionary(uniqueKeysWithValues: (remote.account?.drafts ?? []).map { ($0.id, $0) })
+        for draft in local.account?.drafts ?? [] {
+            if let old = drafts[draft.id] {
+                if old.updatedAt == draft.updatedAt && old != draft { throw NobisError.conflict }
+                if old.updatedAt > draft.updatedAt { continue }
+            }
+            drafts[draft.id] = draft
+        }
+        if !drafts.isEmpty { merged.account?.drafts = Array(drafts.values) }
+        if let profile = merged.account?.profile { merged.spaces[0].members = [profile] }
         try validate(merged, owner: owner, spaceID: spaceID)
         return merged
     }
     public static func data(_ snapshot: Snapshot) throws -> Data {
         var value = snapshot
+        value.account?.drafts?.sort { $0.id < $1.id }
+        value.account?.profiles.sort { $0.id.uuidString < $1.id.uuidString }
         value.revisions.sort { $0.id.uuidString < $1.id.uuidString }
         value.audits.sort { $0.id.uuidString < $1.id.uuidString }
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]

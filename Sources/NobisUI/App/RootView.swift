@@ -24,10 +24,12 @@ public struct NobisRootView: View {
         .id(model.accessEpoch)
         .sheet(isPresented: Binding(get: { model.cloud.invitation != nil && !model.showingCloudSetup }, set: { if !$0 { model.cloud.invitation = nil } })) { FamilyInvitationView(model: model) }
         .sheet(isPresented: $model.showingCloudSetup) { CloudSetupView(model: model) }
-        .task(id: scenePhase) {
-            guard scenePhase == .active else { return }
+        .task(id: scenePhase == .active && model.ready) {
+            guard scenePhase == .active, model.ready else { return }
             while !Task.isCancelled {
-                await model.privateCloud.sync(name: model.localMemberName)
+                model.syncDraftCopies()
+                if model.cloudOnly && !model.privateCloud.enabled { await model.privateCloud.enable(name: model.localMemberName) }
+                else { await model.privateCloud.sync(name: model.localMemberName) }
                 do { try await Task.sleep(for: .seconds(30)) } catch { return }
             }
         }
@@ -41,7 +43,7 @@ public struct NobisRootView: View {
         }
         .onChange(of: page) { _, _ in model.recordPanel.close() }
         .onChange(of: model.selectedSpaceID) { _, _ in model.refresh() }
-        .onChange(of: scenePhase) { _, phase in if phase == .active { model.refresh(); Task { if model.cloud.enabled { await model.cloud.connect() } } } }
+        .onChange(of: scenePhase) { _, phase in model.syncDraftCopies(); if phase == .active { model.refresh(); Task { if model.cloud.enabled { await model.cloud.connect() } } } }
     }
     private func refreshCalendar() {
         model.refresh()

@@ -13,6 +13,7 @@ struct BackupDocument: FileDocument {
 }
 struct SettingsView: View {
     let model: AppModel
+    @State private var editingStudio = false
     @State private var backupSpaceID: UUID?
     @State private var exporting = false
     @State private var importing = false
@@ -25,21 +26,35 @@ struct SettingsView: View {
     @State private var exportFilename = "Nobis-backup"
     var body: some View {
         LifePage {
-            LifeSection(title: "我们的生活", icon: "person.2") {
+            LifeSection(title: "家庭 Studio", icon: "person.2") {
                 if let id = model.selectedSpaceID { ResourceOwnership(model: model, spaceID: id, detailed: true) }
                 ForEach(model.selectedSpace?.members ?? []) { member in MemberIdentityBadge(member: member, showsAvatar: true) }
+                if let space = model.selectedSpace, model.cloud.grant?.accountID == space.ownerID {
+                    Button("编辑 Studio 名称") { editingStudio = true }
+                        .sheet(isPresented: $editingStudio) { StudioNameEditor(model: model, space: space) }
+                }
                 if model.selectedSpace?.kind == .family && model.selectedSpaceID != model.cloud.grant?.spaceID { Text("这些是本地成员标识，用于分工和账单分摊。尚未发出 iCloud 邀请，也没有对方已收到数据的回执。").font(.caption).foregroundStyle(.secondary) }
             }
             ProfileSettingsSection(model: model)
             FamilySharingSection(model: model)
             if model.privateCloud.configured {
-                LifeSection(title: "个人 iCloud", icon: "lock.icloud") {
+                LifeSection(title: "个人私密同步", icon: "lock.icloud") {
                     Text(model.privateCloud.status)
-                    Text("仅当前 Apple ID 可访问，家庭成员不可见。打开应用时自动同步；原有本地内容不会自动上传。").font(.caption).foregroundStyle(.secondary)
+                    Text("仅当前 Apple ID 可访问，家庭成员不可见。个人与家庭分别同步；离线修改保留在本机等待上传。").font(.caption).foregroundStyle(.secondary)
                     if let issue = model.privateCloud.issue { Text(issue).font(.caption).foregroundStyle(.orange) }
                     Button(model.privateCloud.enabled ? "检查个人同步" : "启用个人私密同步") {
                         Task { await model.privateCloud.enable(name: model.localMemberName) }
                     }.disabled(model.privateCloud.isBusy)
+                }
+            }
+            if !model.cloudDrafts.isEmpty {
+                LifeSection(title: "私密草稿", icon: "doc.badge.clock") {
+                    Text("各设备的未保存内容独立保留，不向家庭成员公开；恢复不会覆盖本机不同草稿。").font(.caption).foregroundStyle(.secondary)
+                    ForEach(model.cloudDrafts) { draft in
+                        if let payload = draft.payload, let value = try? JSONDecoder().decode(DocumentDraft.self, from: payload) {
+                            Button("恢复草稿：" + value.body.title) { model.perform { try model.restoreCloudDraft(draft) } }
+                        }
+                    }
                 }
             }
             LifeSection(title: "此设备与提醒", icon: "bell") {
@@ -58,6 +73,10 @@ struct SettingsView: View {
             }
             NavigationLink { FinancialReviewView(model: model) } label: { SettingsEntry(title: "成员与资产核对", detail: "确认财务归属，对照旧整体与分项资产", icon: "person.crop.circle.badge.checkmark") }.buttonStyle(.plain)
             LifeSection(title: "数据与恢复", icon: "externaldrive") {
+                if model.cloudOnly {
+                    Button("备份并核对旧本地数据") { model.perform { try model.migrateLegacyData() } }
+                    if let status = model.legacyMigrationStatus { Text(status).font(.caption).foregroundStyle(.secondary) }
+                }
                 DisclosureGroup("导出备份与隔离恢复") {
                 VStack(alignment: .leading, spacing: 16) {
                 LifePicker("备份范围", selection: $backupSpaceID) {

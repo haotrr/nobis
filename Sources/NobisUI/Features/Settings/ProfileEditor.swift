@@ -5,9 +5,8 @@ import UniformTypeIdentifiers
 
 struct ProfileEditor: View {
     let model: AppModel
-    let space: Space
+    let expected: Member
     @State var member: Member
-    @State private var familyName: String
     @State private var importing = false
     @State private var image: CGImage?
     @State private var zoom = 1.0
@@ -16,8 +15,8 @@ struct ProfileEditor: View {
     @State private var issue: String?
     @Environment(\.dynamicTypeSize) private var textSize
     @Environment(\.dismiss) private var dismiss
-    init(model: AppModel, space: Space, member: Member) {
-        self.model = model; self.space = space; _member = State(initialValue: member); _familyName = State(initialValue: space.name)
+    init(model: AppModel, member: Member) {
+        self.model = model; expected = member; _member = State(initialValue: member)
     }
     private var crop: CGImage? {
         guard let image else { return nil }
@@ -40,11 +39,8 @@ struct ProfileEditor: View {
                     Slider(value: $vertical, in: 0...1) { Text("垂直裁剪位置") }
                 }
             }
-            if space.kind == .family, model.core?.session.actorID(in: space.id) == space.ownerID {
-                LifeFormSection(title: "家庭", icon: "house") { LifeTextField("家庭名称", text: $familyName) }
-            }
-            Text(model.cloud.grant?.spaceID == space.id ? "此家庭中的称呼和头像随家庭数据同步；Apple 账号和共享权限不变。" : "保存到此本地空间；未连接 iCloud 的成员是本地标识。")
-                .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+            Text("名称和头像统一用于你的个人内容与已加入的 Studio；家庭成员只会看到这份展示资料。")
+                .font(.caption).foregroundStyle(.secondary)
             if let issue { InlineIssue(message: issue) }
         }
         .modifier(LifeEditorChrome(title: "编辑资料", icon: "person.crop.circle", cancel: { dismiss() }, save: save))
@@ -59,7 +55,7 @@ struct ProfileEditor: View {
                 guard let source = CGImageSourceCreateWithURL(url as CFURL, nil), let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true, kCGImageSourceThumbnailMaxPixelSize: 768] as CFDictionary) else { throw NobisError.validation("无法读取这张图片。") }
                 image = thumbnail; zoom = 1; horizontal = 0.5; vertical = 0.5
             } catch { issue = error.localizedDescription }
-        }.editorDimensions(width: 460, height: space.kind == .family ? 480 : 360)
+        }.editorDimensions(width: 460, height: 420)
     }
     private func save() {
         do {
@@ -72,7 +68,8 @@ struct ProfileEditor: View {
                 guard CGImageDestinationFinalize(destination) else { throw NobisError.validation("无法保存头像。") }
                 member.avatarData = data as Data
             }
-            try model.updateDisplay(spaceID: space.id, name: familyName.trimmingCharacters(in: .whitespacesAndNewlines), member: member, expected: space)
+            member.name = member.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            try model.updateAccountProfile(member, expected: expected)
             dismiss()
         } catch { issue = error.localizedDescription }
     }
@@ -80,28 +77,37 @@ struct ProfileEditor: View {
 
 struct ProfileSettingsSection: View {
     let model: AppModel
-    @State private var selection: ProfileSelection?
-    private struct ProfileSelection: Identifiable { let space: Space; let member: Member; var id: String { space.id.uuidString + member.id.uuidString } }
-    private var profiles: [ProfileSelection] {
-        model.spaces.filter { $0.kind == .personal || $0.id == model.workspace.commonID }.flatMap { space in
-            let actor = model.core?.session.actorID(in: space.id)
-            return space.members.filter { member in
-                model.cloud.grant?.spaceID == space.id ? member.id == actor : space.ownerID == actor
-            }.map { ProfileSelection(space: space, member: $0) }
+    @State private var editing = false
+    var body: some View {
+        LifeSection(title: "个人资料", icon: "person.crop.circle") {
+            if let member = model.accountProfile {
+                Button { editing = true } label: {
+                    HStack {
+                        MemberIdentityBadge(member: member, showsAvatar: true)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption)
+                    }
+                }.buttonStyle(.plain).padding(.vertical, 6)
+                .sheet(isPresented: $editing) { ProfileEditor(model: model, member: member) }
+            } else { Text("连接 iCloud 后设置统一名称与头像。").foregroundStyle(.secondary) }
         }
     }
+}
+
+struct StudioNameEditor: View {
+    let model: AppModel
+    let space: Space
+    @State private var name: String
+    @State private var issue: String?
+    @Environment(\.dismiss) private var dismiss
+    init(model: AppModel, space: Space) { self.model = model; self.space = space; _name = State(initialValue: space.name) }
     var body: some View {
-        LifeSection(title: "称呼与头像", icon: "person.crop.circle") {
-            ForEach(profiles) { profile in
-                Button { selection = profile } label: {
-                    HStack {
-                        MemberIdentityBadge(member: profile.member, showsAvatar: true)
-                        Spacer()
-                        Text(profile.space.name).font(.caption).foregroundStyle(.secondary)
-                        if profile.space.id != model.privateCloud.spaceID { Image(systemName: "chevron.right").font(.caption) }
-                    }
-                }.buttonStyle(.plain).padding(.vertical, 6).disabled(!model.canWrite(spaceID: profile.space.id) || profile.space.id == model.privateCloud.spaceID)
-            }
-        }.sheet(item: $selection) { item in ProfileEditor(model: model, space: item.space, member: item.member) }
+        LifeDetail {
+            LifeFormSection(title: "Studio", icon: "house") { LifeTextField("名称", text: $name) }
+            if let issue { InlineIssue(message: issue) }
+        }.modifier(LifeEditorChrome(title: "编辑 Studio", icon: "house", cancel: { dismiss() }, save: {
+            do { try model.updateStudioName(name.trimmingCharacters(in: .whitespacesAndNewlines), expected: space); dismiss() }
+            catch { issue = error.localizedDescription }
+        })).editorDimensions(width: 460, height: 280)
     }
 }

@@ -6,8 +6,8 @@
 NobisMac / NobisIOS (SwiftUI)
   → FamilyCore（会话、空间校验、用例、账务汇总）
   → Repository
-  → RoutedRepository
-    → CoreDataRepository（本地个人 / 家庭草稿）
+  → SpaceRepositoryRouter（按显式空间路由；一次写入一个存储）
+    → CoreDataRepository（仅旧库迁移 / 开发隔离模式）
     → CloudFamilyRepository（CloudKit private / shared，修订与审计同次 save）
     → PrivateCloudRepository（独立个人快照，按已核验 Apple ID 隔离）
 
@@ -51,11 +51,17 @@ Apple 的系统面板更新 share 后，主应用调用 persistUpdatedShare 更�
 
 ## 个人私密云存储
 
-用户在设置中显式启用后，`PrivateCloudController` 使用当前容器的 private database、独立 `NobisPersonalV1` zone 和单个 CKAsset 快照。个人记录不加入家庭关系图，不创建 CKShare；验证空间类型、唯一拥有者、修订作者和完整审计，拒绝带 share 或 parent 的远端记录。账号变化立即阻断旧 Repository，缓存按容器及核验身份隔离，原本地空间不自动上传。
+云版入门连接 iCloud 后，`PrivateCloudController` 使用当前容器的 private database、独立 `NobisPersonalV1` zone 和单个 CKAsset 快照。个人记录不加入家庭关系图，不创建 CKShare；验证空间类型、唯一拥有者、修订作者和完整审计，拒绝带 share 或 parent 的远端记录。账号变化立即阻断旧 Repository，缓存按容器及核验身份隔离，原本地空间不自动上传。
 
 保存使用服务器 change tag 并发检查，合并不可变修订与审计，冲突保留分支。快照按稳定顺序编码，资产枚举键字典保持兼容格式并排序，避免设备间编码顺序导致重复上传。单快照限制 40 MB；保存后、回到前台及前台每 30 秒同步，无变化只读取摘要。后台及时送达、大库增量传输尚未保证。
 
-浏览“仅自己”合并本地与个人云；启用后新个人内容默认进入个人云，空间标签区分本地与云。家庭成员身份和财务归属不由此改变。
+浏览“仅自己”只含个人私密云，“共同”只含当前 Studio，“全部”合并两者。新云版不创建独立本地空间；旧库保留为迁移来源，不参与日常路由。家庭成员身份和财务归属不由此改变。
+
+`AccountState` 是个人同步快照的可选兼容字段：账号资料以不可变版本保存，跨设备合并全部版本，按修改时间与版本 ID 确定当前展示。账号名称、头像向已授权且可写的 Studio 投影；权限来自成员关系，不从姓名推断。`StudioMembership` 与资料分离，空间路由支持多个存储；界面和 CloudKit 控制器仍只开放一个当前 Studio，不宣称多家庭同步已完成。
+
+笔记与评注的落盘草稿在个人私密区按设备和键分别保存，删除使用带时间的空载荷，不覆盖其他设备分支。恢复入口只显示当前有权访问空间的草稿；已有不同本机草稿时拒绝覆盖。前台轮询及切换场景时收集落盘草稿，不强制结束中文组词。设备提醒与系统权限仍是设备设置，不作为共同数据共享。
+
+旧库迁移先保存来源、目标和草稿备份，使用既有恢复预览核对来源键、关联、内容及成员；全部预览通过才逐空间保存新增记录。冲突、未知成员和旧空间草稿必须核对，不能自动保留目标或公开草稿。幂等重试不重复入账，原修订历史留在源备份，原库不删除。
 
 ## 笔记与兼容格式
 

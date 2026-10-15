@@ -110,6 +110,11 @@ import FamilyCore
                     lastDigest = Self.digest(try PrivateCloudSnapshot.data(remote))
                     if changed { onChange?() }
                 } else if remoteRecord == nil { lastDigest = nil }
+                if repository.profile == nil {
+                    let initial = try repository.load().spaces[0].members[0]
+                    try repository.updateProfile(initial, expected: nil)
+                    onChange?()
+                }
                 let bytes = try PrivateCloudSnapshot.data(repository.load())
                 let digest = Self.digest(bytes)
                 if digest == lastDigest { break }

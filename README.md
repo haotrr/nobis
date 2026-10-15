@@ -2,7 +2,7 @@
 
 为了我们。面向共同生活的 macOS / iOS 原生应用。
 
-**当前为 v0.1 开发试用版，主应用已接入 CloudKit 双人共享代码，尚未通过真实双 Apple ID 验收。** 默认 Scheme 使用原有本地模式；选择 Cloud Scheme 并配置开发者团队/容器后可创建或加入云端家庭。原有个人数据和家庭草稿保持本地。
+**当前为 v0.1 开发试用版，主应用已接入 CloudKit 双人共享代码，尚未通过真实双 Apple ID 验收。** 默认 Scheme 使用原有本地模式；选择 Cloud Scheme 并配置开发者团队/容器后可创建或加入云端家庭。云版只使用个人私密云与当前 Studio，旧本地库通过备份核对入口迁移；开发隔离模式继续保留。
 
 视觉与交互规范见 [Nobis Design](DESIGN.md)。
 
@@ -14,7 +14,7 @@
 open Nobis.xcodeproj
 ```
 
-选择 `NobisMac` / `NobisIOS` 运行本地版；选择 `NobisMac-Cloud` / `NobisIOS-Cloud` 运行共享版。共享版先按 [CloudKit 配置与验收](docs/guides/cloudkit-setup.md) 设置开发团队、同一容器和 development 签名。首次启动可建立空空间或体验示例内容。
+选择 `NobisMac` / `NobisIOS` 运行本地版；选择 `NobisMac-Cloud` / `NobisIOS-Cloud` 运行共享版。共享版先按 [CloudKit 配置与验收](docs/guides/cloudkit-setup.md) 设置开发团队、同一容器和 development 签名。云版首次设置统一名称并连接 iCloud，再创建或加入一个 Studio；无云配置的开发版可体验隔离示例。
 
 ```sh
 swift test

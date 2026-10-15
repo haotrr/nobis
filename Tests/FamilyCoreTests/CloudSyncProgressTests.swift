@@ -32,20 +32,17 @@ import FamilyDomain
         #expect(progress.hasPendingWrites)
         #expect(progress.lastDownload == date.addingTimeInterval(5))
     }
-    @Test @MainActor func firstRunConnectKeepsExistingRecordsLocal() throws {
+    @Test @MainActor func cloudFirstRunDoesNotCreateIndependentLocalSpaces() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let model = AppModel(directory: directory, cloudIdentifier: "iCloud.test", notificationsEnabled: false)
-        model.setupAndConnect(name: "本人", familyName: "本地共同空间")
+        model.setup(name: "本人", familyName: "Studio", partnerName: "")
         #expect(model.ready)
-        #expect(model.showingCloudSetup)
-        #expect(!model.cloud.enabled)
-        let id = try #require(model.selectedSpaceID)
-        try model.save(RecordBody(kind: .task, title: "未上传的本地记录"), spaceID: id)
-        #expect(model.cloud.repository == nil)
-        #expect(model.visibility(for: id) == "仅此设备 · 本地共同空间")
+        #expect(model.spaces.isEmpty)
+        #expect(model.selectedSpaceID == nil)
+        #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("Stores/spaces.json").path))
         let reloaded = AppModel(directory: directory, cloudIdentifier: "iCloud.test", notificationsEnabled: false)
-        #expect(reloaded.records.count == 1)
-        #expect(!reloaded.showingCloudSetup)
+        #expect(reloaded.ready && reloaded.spaces.isEmpty)
+        #expect(throws: NobisError.self) { try reloaded.core?.save(RecordBody(kind: .task, title: "不可写入未知空间"), spaceID: UUID()) }
     }
 }

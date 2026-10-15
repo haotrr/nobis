@@ -68,7 +68,7 @@ struct FamilySharingSection: View {
                     Text("上传完成是本机观察，不代表另一台设备已收到。系统会自动安排传输；连接检查不会强制立即上传。").font(.caption).foregroundStyle(.secondary)
                 }
                 DisclosureGroup("共享与隐私") {
-                    Text("仅云家庭内容同步。个人内容与原有本地空间不会自动上传。移除成员后，其设备联网核验时停止访问；已经导出的文件无法收回。").font(.caption).foregroundStyle(.secondary)
+                    Text("Studio 内容在成员间共享；个人内容通过独立私密区同步。旧本地数据需先备份核对迁移。移除成员后，其设备联网核验时停止访问；已经导出的文件无法收回。").font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
