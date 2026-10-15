@@ -8,6 +8,14 @@ public struct NoteChecklistItem: Identifiable, Sendable {
     public let completed: Bool
     public let title: String
     public var id: String { "\(document.id):\(line)" }
+    public static func search(_ query: String, in items: [Self]) -> [Self] {
+        let terms = query.split(whereSeparator: \.isWhitespace).map(String.init)
+        return items.filter { item in
+            terms.allSatisfy { term in
+                item.title.localizedCaseInsensitiveContains(term) || item.document.body.title.localizedCaseInsensitiveContains(term)
+            }
+        }
+    }
     public static func items(in records: [Record], includeCompleted: Bool = false) -> [Self] {
         records.filter { !$0.deleted && !$0.conflicted && $0.body.kind == .document && $0.body.status == .active && $0.body.sharedDestination == nil }.flatMap { document in
             MarkdownBlock.parse(document.body.notes).compactMap { block -> Self? in
@@ -38,7 +46,7 @@ public enum WorkspaceQuery {
         }
     }
     public static func occurs(_ record: Record, on day: LocalDay, timeZone: TimeZone = .current) -> Bool {
-        guard !record.deleted, record.body.sharedDestination == nil, ![.cancelled, .archived, .completed, .voided].contains(record.body.status) else { return false }
+        guard !record.deleted, record.body.sharedDestination == nil, record.body.status == .active else { return false }
         let b = record.body
         if b.kind == .event {
             if b.allDay { guard let start = b.date else { return false }; return start <= day && day <= (b.endDate ?? start) }

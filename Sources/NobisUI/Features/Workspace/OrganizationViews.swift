@@ -36,7 +36,7 @@ struct ScheduleWorkspace: View {
     @State private var create: RecordKind?
     private var visible: [Record] { WorkspaceQuery.search(search, in: model.records(in: scope)) }
     private var checklist: [NoteChecklistItem] {
-        NoteChecklistItem.items(in: model.records(in: scope), includeCompleted: completed).filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || $0.document.body.title.localizedCaseInsensitiveContains(search) }
+        NoteChecklistItem.search(search, in: NoteChecklistItem.items(in: model.records(in: scope), includeCompleted: completed))
     }
     var body: some View {
         LifePage {
