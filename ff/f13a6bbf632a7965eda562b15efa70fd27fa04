@@ -1,0 +1,88 @@
+Sources/NobisUI/App/AppModel.swift
+  s_da0010d1add54d::t_eb680fc61a9129 24-31,52-53,88-106,138-141,143,153,155,157,160,164-165,198,215
+  s_da0010d1add54d::t_86d2033606bfdf 146,149-150,202,206-207,210
+README.md
+  s_da0010d1add54d::t_2057c9ac03f539 5,17
+Sources/FamilyDomain/Models.swift
+  s_da0010d1add54d::t_942ce70ca4548f 229
+Sources/FamilyPersistence/PrivateCloudController.swift
+  s_da0010d1add54d::t_eb680fc61a9129 113-117
+docs/features/F-261015-ZB7RK-studio-account-cloud/TODO.md
+  s_da0010d1add54d::t_942ce70ca4548f 1,3,7,9,11,13,15,22
+  s_da0010d1add54d::t_1180d3cc8486b0 2,4,6,8,10,12,14,21
+  s_da0010d1add54d::t_52a5c8751e3a3b 16-20,23-28
+  s_da0010d1add54d::t_35bd153b7577d8 5,29
+docs/feature-inventory.md
+  s_da0010d1add54d::t_2057c9ac03f539 7-8,29
+docs/architecture.md
+  s_da0010d1add54d::t_2057c9ac03f539 9-10,54,58-64
+Sources/FamilyCore/PrivateCloudSnapshot.swift
+  s_da0010d1add54d::t_942ce70ca4548f 12-15,44-51,69
+  s_da0010d1add54d::t_b2f1c73c0d46f5 16-22,52-61,68
+  s_da0010d1add54d::t_eb680fc61a9129 62
+Sources/NobisUI/App/AccountDraftSync.swift
+  s_da0010d1add54d::t_b2f1c73c0d46f5 1-42
+Sources/NobisUI/Features/Onboarding/OnboardingView.swift
+  s_da0010d1add54d::t_0c91ded7ca4267 19,21,23-25
+docs/features/F-261015-ZB7RK-studio-account-cloud/PLAN.md
+  s_da0010d1add54d::t_50b707849f3e8b 1-22
+Sources/NobisUI/Features/Settings/SettingsView.swift
+  s_da0010d1add54d::t_0c91ded7ca4267 16,29,32-35,41,43,76-79
+  s_da0010d1add54d::t_b2f1c73c0d46f5 50-59
+Sources/FamilyPersistence/PrivateCloudRepository.swift
+  s_da0010d1add54d::t_50b707849f3e8b 21
+  s_da0010d1add54d::t_942ce70ca4548f 22-29,31-33,65
+  s_da0010d1add54d::t_b2f1c73c0d46f5 34-56
+  s_da0010d1add54d::t_eb680fc61a9129 30
+docs/verification.md
+  s_da0010d1add54d::t_52a5c8751e3a3b 513-521
+Sources/FamilyCore/LifeWorkspace.swift
+  s_da0010d1add54d::t_99913ded798657 14,16-18
+Sources/NobisUI/App/RootView.swift
+  s_da0010d1add54d::t_eb680fc61a9129 32
+  s_da0010d1add54d::t_b2f1c73c0d46f5 30,46
+  s_da0010d1add54d::t_0c91ded7ca4267 28,31
+  s_da0010d1add54d::t_5a8a9668871fd9 27
+Sources/FamilyCore/SpaceRepositoryRouter.swift
+  s_da0010d1add54d::t_f633a3351680ff 44
+  s_da0010d1add54d::t_99913ded798657 1-30,36-43,45-49
+  s_da0010d1add54d::t_50b707849f3e8b 31-35
+Sources/NobisUI/Features/Settings/FamilySharingView.swift
+  s_da0010d1add54d::t_72b04b186848f8 71
+docs/roadmap.md
+  s_da0010d1add54d::t_2057c9ac03f539 21,26
+  s_da0010d1add54d::t_0d54287a21b343 46
+docs/guides/minty-migration.md
+  s_da0010d1add54d::t_2057c9ac03f539 63
+Sources/NobisUI/Features/Settings/ProfileEditor.swift
+  s_da0010d1add54d::t_0c91ded7ca4267 8,18-19,42-43,58,71-72,80,82-84,86,88,90-111
+DESIGN.md
+  s_da0010d1add54d::t_2057c9ac03f539 11,57,106
+Sources/FamilyCore/RoutedRepository.swift
+  s_da0010d1add54d::t_99913ded798657 4,6-11
+Sources/FamilyDomain/AccountProfile.swift
+  s_da0010d1add54d::t_942ce70ca4548f 1-14,16-28,42-43
+  s_da0010d1add54d::t_b2f1c73c0d46f5 15,29-41
+Sources/NobisUI/App/LegacyCloudMigration.swift
+  s_da0010d1add54d::t_e4bc9501ad9d87 1-59
+Tests/FamilyCoreTests/CloudSyncProgressTests.swift
+  s_da0010d1add54d::t_f35d7c44b762ec 35,39,41-43,45-46
+Tests/FamilyCoreTests/StudioAccountTests.swift
+  s_da0010d1add54d::t_17bfc16c26bb3c 1-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fff13a6bbf632a7965eda562b15efa70fd27fa04",
+  "prompts": {},
+  "sessions": {
+    "s_da0010d1add54d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13dbd-a440-7fd3-a50c-b8b44d3df125",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
