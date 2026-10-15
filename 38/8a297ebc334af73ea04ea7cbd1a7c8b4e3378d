@@ -1,0 +1,21 @@
+docs/verification.md
+  s_2246b8b366389d::t_c8ff7bbd00c62a 12
+  s_2246b8b366389d::t_6fd52dfdf758b7 10-11
+  s_2246b8b366389d::t_439257e93cb647 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "388a297ebc334af73ea04ea7cbd1a7c8b4e3378d",
+  "prompts": {},
+  "sessions": {
+    "s_2246b8b366389d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13eab-b5ee-7be2-bf2a-7c3349461196",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
