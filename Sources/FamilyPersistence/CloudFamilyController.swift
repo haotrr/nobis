@@ -148,7 +148,7 @@ public struct CloudFamilyParticipant: Identifiable {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try Data().write(to: directory.appendingPathComponent("enabled"), options: .atomic)
     }
-    private func synchronize(ticket: UUID) async throws {
+    private func synchronize(ticket: UUID, participantMetadata suppliedMetadata: CKShare.Metadata? = nil) async throws {
         guard let stack = repository, let accountID, let ck = ckContainer else { return }
         if connection == nil {
             hasUnpreparedFamily = false
@@ -167,20 +167,38 @@ public struct CloudFamilyParticipant: Identifiable {
             }
         }
         guard let connection, connection.accountID == accountID else { throw NobisError.forbidden }
-        let database = connection.isOwner ? ck.privateCloudDatabase : ck.sharedCloudDatabase
-        let remote = try await database.record(for: connection.recordID)
-        guard ticket == epoch else { throw CancellationError() }
-        guard let share = remote as? CKShare else { throw NobisError.forbidden }
-        let grant = try verifiedGrant(share: share, connection: connection)
         let matches = try stack.roots().filter { (try? stack.space(of: $0).id) == connection.spaceID }
         guard matches.count <= 1 else { throw NobisError.conflict }
         guard let root = matches.first else {
             stack.block(); state = "正在准备家庭数据 · 等待共享根导入"; issue = nil; onChange?(); return
         }
         let rootShares = try stack.container.fetchShares(matching: [root.objectID])
-        guard rootShares[root.objectID]?.recordID == share.recordID else {
+        guard let localShare = rootShares[root.objectID] else {
             stack.block(); state = "正在准备家庭数据 · 等待共享关联导入"; onChange?(); return
         }
+        let share: CKShare
+        var participantMetadata = suppliedMetadata
+        if connection.isOwner {
+            let remote = try await ck.privateCloudDatabase.record(for: connection.recordID)
+            guard ticket == epoch else { throw CancellationError() }
+            guard let remoteShare = remote as? CKShare else { throw NobisError.forbidden }
+            share = remoteShare
+        } else {
+            // Core Data owns the shared-zone import. Reading the CKShare directly from
+            // CKDatabase can race that import immediately after invitation acceptance.
+            if localShare.currentUserParticipant?.acceptanceStatus == .accepted {
+                share = localShare
+            } else if let url = connection.invitationURL {
+                let metadata = try await ck.shareMetadata(for: url)
+                guard ticket == epoch else { throw CancellationError() }
+                participantMetadata = metadata
+                share = metadata.share
+            } else {
+                stack.block(); state = "正在核验家庭成员身份 · 等待共享元数据"; onChange?(); return
+            }
+        }
+        guard localShare.recordID == share.recordID, share.recordID == connection.recordID else { throw NobisError.forbidden }
+        let grant = try verifiedGrant(share: share, connection: connection, participantMetadata: participantMetadata)
         try stack.authorize(grant, root: root, generation: stack.policy.generation)
         // Imports can arrive out of order. Gate the business projection until references are available.
         do { _ = try stack.load() } catch { stack.block(); onChange?(); throw error }
@@ -191,11 +209,14 @@ public struct CloudFamilyParticipant: Identifiable {
         state = grant.members.count == 2 ? "两人已连接 · 自动同步" : pendingInvitationCount > 0 ? "跨设备同步已连接 · 邀请等待接受" : "跨设备同步已连接 · 可邀请另一位"
         issue = nil; onChange?()
     }
-    private func verifiedGrant(share: CKShare, connection: CloudFamilyConnection) throws -> FamilyGrant {
+    private func verifiedGrant(share: CKShare, connection: CloudFamilyConnection, participantMetadata: CKShare.Metadata? = nil) throws -> FamilyGrant {
         guard share.publicPermission == .none else { throw NobisError.validation("共享权限核验失败：不是私有共享。") }
-        guard share["nobisFormat"] as? String == "5",
-              share["nobisSpaceID"] as? String == connection.spaceID.uuidString else {
-            throw NobisError.validation("共享格式尚未就绪，请拥有者继续准备邀请。")
+        let format = share["nobisFormat"] as? String
+        let shareSpaceID = share["nobisSpaceID"] as? String
+        if connection.isOwner || format != nil || shareSpaceID != nil {
+            guard format == "5", shareSpaceID == connection.spaceID.uuidString else {
+                throw NobisError.validation("共享格式尚未就绪，请拥有者继续准备邀请。")
+            }
         }
         guard let current = share.currentUserParticipant,
               let currentRecord = current.userIdentity.userRecordID,
@@ -203,23 +224,33 @@ public struct CloudFamilyParticipant: Identifiable {
             throw NobisError.validation("共享身份尚未就绪，请稍后检查同步状态。")
         }
         guard let accountID else { throw NobisError.forbidden }
+        if let participantMetadata {
+            guard participantMetadata.containerIdentifier == identifier,
+                  participantMetadata.share.recordID == share.recordID,
+                  participantMetadata.participantStatus == .accepted,
+                  participantMetadata.participantRole == current.role else {
+                throw NobisError.validation("共享邀请尚未由当前 iCloud 账户接受。")
+            }
+        }
         let owner = try CloudParticipantIdentity.memberID(container: identifier!, recordName: ownerRecord.recordName,
             isCurrentParticipant: share.owner == current, verifiedAccountID: accountID)
         let me = try CloudParticipantIdentity.memberID(container: identifier!, recordName: currentRecord.recordName,
             isCurrentParticipant: true, verifiedAccountID: accountID)
         guard me == accountID else { throw NobisError.validation("共享身份与当前 iCloud 账户不一致。") }
-        guard current.role == .owner || current.acceptanceStatus == .accepted,
-              current.role == .owner || [.readOnly, .readWrite].contains(current.permission),
+        let acceptedCurrent = current.role == .owner || current.acceptanceStatus == .accepted || participantMetadata?.participantStatus == .accepted
+        let currentPermission = participantMetadata?.participantPermission ?? current.permission
+        guard acceptedCurrent,
+              current.role == .owner || [.readOnly, .readWrite].contains(currentPermission),
               connection.isOwner == (current.role == .owner) else {
             throw NobisError.validation("共享角色或接受状态尚未通过核验。")
         }
-        let accepted = share.participants.filter { $0.role == .owner || $0.acceptanceStatus == .accepted }
+        let accepted = share.participants.filter { $0.role == .owner || $0.acceptanceStatus == .accepted || ($0 == current && acceptedCurrent) }
         guard accepted.count <= 2 else { throw NobisError.validation("首版仅支持两位成员。请拥有者在系统共享管理中移除多余参与者。") }
         let members = try accepted.map { participant -> Member in
             guard let record = participant.userIdentity.userRecordID else { throw NobisError.validation("参与者身份尚未导入，请稍后重试。") }
             return Member(id: try CloudParticipantIdentity.memberID(container: identifier!, recordName: record.recordName, isCurrentParticipant: participant == current, verifiedAccountID: accountID), name: displayName(participant))
         }.sorted { $0.id.uuidString < $1.id.uuidString }
-        return try FamilyGrant(spaceID: connection.spaceID, accountID: me, ownerID: owner, members: members, writable: current.role == .owner || current.permission == .readWrite)
+        return try FamilyGrant(spaceID: connection.spaceID, accountID: me, ownerID: owner, members: members, writable: current.role == .owner || currentPermission == .readWrite)
     }
     public func createFamily(name: String, memberName: String) async {
         guard !isBusy else { return }; isBusy = true; defer { finishOperation() }; let ticket = epoch
@@ -277,10 +308,19 @@ public struct CloudFamilyParticipant: Identifiable {
             guard try stack.roots().allSatisfy({ (try? stack.space(of: $0).id) == spaceID }) else { throw NobisError.validation("已有另一家庭根，不能混入新的邀请。") }
             connection = descriptor(share: metadata.share, spaceID: spaceID, accountID: accountID, isOwner: false)
             try saveConnection()
-            try await stack.container.acceptShareInvitations(from: [metadata], into: store)
+            let acceptedMetadata: CKShare.Metadata
+            if metadata.participantStatus == .accepted {
+                acceptedMetadata = metadata
+            } else {
+                let accepted = try await stack.container.acceptShareInvitations(from: [metadata], into: store)
+                guard let result = accepted.first(where: { $0.share.recordID == metadata.share.recordID }) else {
+                    throw NobisError.validation("CloudKit 未返回已接受的家庭邀请，请稍后重试。")
+                }
+                acceptedMetadata = result
+            }
             guard ticket == epoch else { throw CancellationError() }
             invitation = nil; state = "正在准备家庭数据 · 已接受邀请"
-            try await synchronize(ticket: ticket)
+            try await synchronize(ticket: ticket, participantMetadata: acceptedMetadata)
         } catch { handle(error, ticket: ticket) }
     }
     public func retryInvitation() async {

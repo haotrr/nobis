@@ -32,6 +32,8 @@
 
 按改动选择验证，不为纯文档改动重复构建：
 
+本机构建若因 `xcode-select` 指向 Command Line Tools 而无法运行 `xcodebuild`，且 `/Applications/Xcode-beta.app` 可用，则仅为当前构建命令设置 `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer`，不要修改系统全局的开发者目录。
+
 ```sh
 swift test
 python3 scripts/test_export_minty.py
