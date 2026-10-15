@@ -159,6 +159,12 @@ import AppKit
         }
     }
 
+    func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        // NSHostingController replaces minSize with its inferred content minimum.
+        // Enforce the editing limit without rebuilding the live editor or IME.
+        NSSize(width: max(420, frameSize.width), height: max(400, frameSize.height))
+    }
+
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         requestClose?()
         return false // The editor owns the dirty-draft confirmation, including native ⌘W.

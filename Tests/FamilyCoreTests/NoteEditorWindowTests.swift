@@ -45,6 +45,8 @@ struct NoteEditorWindowTests {
         let session = windows.open(model: model, existing: record)
         defer { session.finish() }
         try await settle(session)
+        let constrained = session.window.delegate?.windowWillResize?(session.window, to: NSSize(width: 168, height: 200))
+        #expect(constrained == NSSize(width: 420, height: 400))
         let text = try #require(editor(in: session.window.contentView))
         text.setSelectedRange(NSRange(location: 0, length: 0))
         NobisMDTextView.apply("toggle", to: text)
