@@ -46,7 +46,9 @@ public struct LocalDay: Codable, Hashable, Comparable, Sendable, CustomStringCon
         year = c.component(.year, from: date); month = c.component(.month, from: date); day = c.component(.day, from: date)
     }
     public var description: String { String(format: "%04d-%02d-%02d", year, month, day) }
-    public static func < (lhs: Self, rhs: Self) -> Bool { lhs.description < rhs.description }
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
+    }
     public func date(timeZone: TimeZone = .current) -> Date {
         var c = Calendar(identifier: .gregorian); c.timeZone = timeZone
         return c.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!

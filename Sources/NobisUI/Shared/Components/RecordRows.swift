@@ -59,7 +59,7 @@ struct RecordRow: View {
         let body = record.body
         var parts = [body.transactionKind.title, body.category].filter { !$0.isEmpty }
         for id in body.projectIDs {
-            parts.append(model.activeRecords.first { $0.id == id }?.body.title ?? "项目不可用")
+            parts.append(model.ledgerIndex.recordsByID[id]?.body.title ?? "项目不可用")
         }
         if let finance = body.finance {
             if finance.consumption == .personal { parts.append("消费：" + finance.consumer) }

@@ -1,7 +1,7 @@
 import Foundation
 import FamilyDomain
 
-public struct LedgerFilter: Sendable {
+public struct LedgerFilter: Hashable, Sendable {
     public var search = ""
     public var from: LocalDay?
     public var through: LocalDay?
@@ -15,7 +15,9 @@ public struct LedgerFilter: Sendable {
     public var consumer: String?
     public init() {}
     public func matches(_ record: Record) -> Bool {
-        let terms = search.split(whereSeparator: \.isWhitespace).map(String.init)
+        matches(record, terms: search.split(whereSeparator: \.isWhitespace).map(String.init))
+    }
+    func matches(_ record: Record, terms: [String]) -> Bool {
         // Conflicting branches must remain visible when any branch matches.
         return record.heads.contains { revision in
             let b = revision.body

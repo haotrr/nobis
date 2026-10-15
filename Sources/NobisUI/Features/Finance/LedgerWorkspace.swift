@@ -14,12 +14,14 @@ struct LedgerWorkspace: View {
     @Bindable var model: AppModel
     private var scope: LifeScope { model.browsingScope }
     @State private var filter = LedgerFilter()
+    @State private var searchText = ""
     @State private var filtersExpanded = false
     @State private var selecting = false
     @State private var ledgerPage = 0
-    private let pageSize = 100
-    @State private var dates = false
-    @State private var from = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
+    private let pageSize = LedgerBrowseResult.pageSize
+    @State private var dates = true
+    @State private var usesToday = true
+    @State private var from = Calendar.current.startOfDay(for: Date())
     @State private var through = Date()
     @State private var minimum = ""
     @State private var maximum = ""
@@ -35,14 +37,17 @@ struct LedgerWorkspace: View {
         if category != nil { initial.transactionKinds = [.expense, .refund] }
         _filter = State(initialValue: initial)
         self.model = model
+        _from = State(initialValue: model.today.date())
+        _through = State(initialValue: model.today.date())
         if let bounds = try? period?.bounds() {
+            _usesToday = State(initialValue: false)
             _dates = State(initialValue: true)
             _from = State(initialValue: bounds.from.date())
             _through = State(initialValue: bounds.through.date())
         }
     }
     private var months: [LedgerPeriod] {
-        LedgerMonthGroup.groups(model.records(in: scope).filter { $0.body.kind == .transaction }).compactMap(\.period)
+        model.ledgerIndex.months(spaceIDs: model.workspace.ids(scope))
     }
     private var reportPeriod: LedgerPeriod? {
         guard dates else { return nil }
@@ -52,12 +57,19 @@ struct LedgerWorkspace: View {
     }
     private func selectPeriod(_ period: LedgerPeriod?) {
         selected.removeAll()
+        usesToday = false
         guard let period else { dates = false; return }
         do { let bounds = try period.bounds(); from = bounds.from.date(); through = bounds.through.date(); dates = true }
         catch { model.error = error.localizedDescription }
     }
-    private var projects: [Record] { model.records(in: scope).filter { $0.body.kind == .project } }
-    private var filterProjects: [Record] { model.records(in: .all).filter { $0.body.kind == .project } }
+    private var projects: [Record] {
+        let ids = model.workspace.ids(scope)
+        return model.ledgerIndex.projects.filter { ids.contains($0.latest.spaceID) }
+    }
+    private var filterProjects: [Record] {
+        let ids = model.workspace.ids(.all)
+        return model.ledgerIndex.projects.filter { ids.contains($0.latest.spaceID) }
+    }
     private func effectiveFilter() throws -> LedgerFilter {
         var f = filter; f.from = dates ? LocalDay(date: from) : nil; f.through = dates ? LocalDay(date: through) : nil
         guard !dates || from <= through else { throw NobisError.validation("起始日期不能晚于结束日期。") }
@@ -69,7 +81,16 @@ struct LedgerWorkspace: View {
         }
         return f
     }
-    private var result: Result<[Record], Error> { Result { if scope == .all && !model.pendingShares.isEmpty { throw NobisError.validation("有分享待完成，请在设置中核对后查看全部合计。") }; let f = try effectiveFilter(); return model.records(in: scope).filter { f.matches($0) }.sorted { ($0.body.date?.description ?? "") > ($1.body.date?.description ?? "") } } }
+    private var result: Result<LedgerBrowseResult, Error> {
+        Result { try model.ledgerResult(filter: effectiveFilter(), scope: scope) }
+    }
+    private func selectToday() {
+        selected.removeAll(); usesToday = true; dates = true
+        from = model.today.date(); through = model.today.date()
+    }
+    private func clearFilters() {
+        filter = LedgerFilter(); searchText = ""; dates = false; usesToday = false; minimum = ""; maximum = ""
+    }
     var body: some View {
         LifePage {
             LifeScopeControls(scope: $model.browsingScope)
@@ -82,6 +103,7 @@ struct LedgerWorkspace: View {
             }.buttonStyle(.plain)
             HStack {
                 Menu {
+                    Button("今天") { selectToday() }
                     Button("全部日期") { selectPeriod(nil) }
                     Button("本月") { let day = LocalDay(date: Date()); selectPeriod(LedgerPeriod(year: day.year, month: day.month)) }
                     ForEach(Array(Set(months.map(\.year))).sorted(by: >), id: \.self) { year in
@@ -92,20 +114,20 @@ struct LedgerWorkspace: View {
                             }
                         }
                     }
-                } label: { Label(dates ? "\(LocalDay(date: from)) 至 \(LocalDay(date: through))" : "全部日期", systemImage: "calendar") }
+                } label: { Label(dates ? (usesToday ? "今天" : "\(LocalDay(date: from)) 至 \(LocalDay(date: through))") : "全部日期", systemImage: "calendar") }
                 Spacer(minLength: 0)
             }
             VStack(alignment: .leading, spacing: 14) {
                 DisclosureGroup(isExpanded: $filtersExpanded) {
                     VStack(alignment: .leading, spacing: 16) {
-                        Toggle("限定日期", isOn: $dates)
+                        Toggle("限定日期", isOn: Binding(get: { dates }, set: { dates = $0; usesToday = false }))
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 20, alignment: .top)], alignment: .leading, spacing: 16) {
                             if dates {
-                                LedgerFilterField("开始日期") { DatePicker("从", selection: $from, displayedComponents: .date).labelsHidden() }
-                                LedgerFilterField("结束日期") { DatePicker("至", selection: $through, displayedComponents: .date).labelsHidden() }
+                                LedgerFilterField("开始日期") { DatePicker("从", selection: Binding(get: { from }, set: { from = $0; usesToday = false }), displayedComponents: .date).labelsHidden() }
+                                LedgerFilterField("结束日期") { DatePicker("至", selection: Binding(get: { through }, set: { through = $0; usesToday = false }), displayedComponents: .date).labelsHidden() }
                             }
                             LedgerFilterField("分类") {
-                                Picker("分类", selection: $filter.category) { Text("全部").tag(Optional<String>.none); ForEach(Array(Set(model.records(in: .all).filter { $0.body.kind == .transaction }.map { $0.body.category })).sorted(), id: \.self) { Text($0).tag(Optional($0)) } }.labelsHidden()
+                                Picker("分类", selection: $filter.category) { Text("全部").tag(Optional<String>.none); ForEach(model.ledgerIndex.categories, id: \.self) { Text($0).tag(Optional($0)) } }.labelsHidden()
                             }
                             LedgerFilterField("项目") {
                                 Picker("项目", selection: $filter.projectID) { Text("全部").tag(Optional<UUID>.none); ForEach(filterProjects) { Text($0.body.title).tag(Optional($0.id)) } }.labelsHidden()
@@ -119,7 +141,7 @@ struct LedgerWorkspace: View {
                                 Picker("消费归属", selection: $filter.consumption) { Text("全部").tag(Optional<ConsumptionKind>.none); ForEach(ConsumptionKind.allCases, id: \.self) { Text($0.title).tag(Optional($0)) } }.labelsHidden()
                             }
                             LedgerFilterField("归属称呼") {
-                                Picker("归属称呼", selection: $filter.consumer) { Text("全部").tag(Optional<String>.none); ForEach(Array(Set(model.records(in: .all).compactMap { $0.body.finance?.consumer }.filter { !$0.isEmpty })).sorted(), id: \.self) { Text($0).tag(Optional($0)) } }.labelsHidden()
+                                Picker("归属称呼", selection: $filter.consumer) { Text("全部").tag(Optional<String>.none); ForEach(model.ledgerIndex.consumers, id: \.self) { Text($0).tag(Optional($0)) } }.labelsHidden()
                             }
                         }
                     }.padding(.top, 16)
@@ -133,24 +155,25 @@ struct LedgerWorkspace: View {
                 if activeFilterCount > 0 {
                     Text(filterDescription).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                if activeFilterCount > 0 { Button("清除筛选") { filter = LedgerFilter(); dates = false; minimum = ""; maximum = "" } }
+                if activeFilterCount > 0 { Button("清除筛选") { clearFilters() } }
             }.padding(20).frame(maxWidth: .infinity, alignment: .leading).lifeCard()
+            if searchText != filter.search { ProgressView("正在筛选…") }
             switch result {
             case .failure(let error): InlineIssue(message: error.localizedDescription)
-            case .success(let records):
+            case .success(let result):
+                let records = result.records
                 LifeSection(title: "收支明细 · \(records.count) 笔", icon: "list.bullet.rectangle") {
                     ForEach(Currency.allCases, id: \.self) { currency in
-                        let entries = records.filter { $0.body.money?.currency == currency && !$0.conflicted && $0.body.status == .confirmed }
-                        if !entries.isEmpty { totals(entries, currency: currency) }
+                        if let amounts = result.totals[currency] { totals(amounts, currency: currency) }
                     }
-                    if records.contains(where: { $0.conflicted || $0.body.status == .draft }) { Text("草稿与冲突未计入合计。").foregroundStyle(.orange) }
+                    if result.hasUnresolved { Text("草稿与冲突未计入合计。").foregroundStyle(.orange) }
                     if records.isEmpty {
                         WorkspaceEmptyState(title: "没有符合条件的账单", icon: "tray", message: "调整筛选条件，或记下第一笔收支。", actionTitle: activeFilterCount > 0 ? "清除筛选" : "记一笔") {
-                            if activeFilterCount > 0 { filter = LedgerFilter(); dates = false; minimum = ""; maximum = "" } else { creating = true }
+                            if activeFilterCount > 0 { clearFilters() } else { creating = true }
                         }
                     }
                     Text("流水收入不含月度及非月度收入记录；完整收入与结余见财务报告。").font(.caption).foregroundStyle(.secondary)
-                    let pageCount = max(1, (records.count + pageSize - 1) / pageSize)
+                    let pageCount = result.pageCount
                     let currentPage = min(ledgerPage, pageCount - 1)
                     if pageCount > 1 {
                         HStack {
@@ -161,8 +184,8 @@ struct LedgerWorkspace: View {
                             Button("下一页") { ledgerPage = min(pageCount - 1, currentPage + 1) }.disabled(currentPage == pageCount - 1)
                         }
                     }
-                    VStack(alignment: .leading, spacing: 18) {
-                        ForEach(LedgerMonthGroup.groups(Array(records.dropFirst(currentPage * pageSize).prefix(pageSize)))) { group in
+                    LazyVStack(alignment: .leading, spacing: 18) {
+                        ForEach(LedgerMonthGroup.groups(result.page(currentPage))) { group in
                             VStack(alignment: .leading, spacing: 6) {
                                 Text((group.period?.title ?? "日期待核对") + (pageCount > 1 ? " · 本页小计" : "")).font(.headline)
                                 ForEach(Currency.allCases, id: \.self) { currency in
@@ -179,8 +202,8 @@ struct LedgerWorkspace: View {
                             }
                         }
                     }
-                    Button("导出当前结果 CSV") { model.perform { document = CSVDocument(data: try CSV.scoped(LedgerImport.expenseCSV(records), scope: scope.rawValue)); exporting = true } }.disabled(records.isEmpty)
-                }.onChange(of: records.map(\.id)) { _, _ in ledgerPage = 0 }
+                    Button("导出当前结果 CSV") { model.perform { document = CSVDocument(data: try CSV.scoped(LedgerImport.expenseCSV(records), scope: scope.rawValue)); exporting = true } }.disabled(records.isEmpty || searchText != filter.search)
+                }.onChange(of: ObjectIdentifier(result), initial: true) { _, _ in ledgerPage = 0 }
             }
             if !selected.isEmpty {
                 LifeSection(title: "已选 \(selected.count) 笔", icon: "checkmark.circle") {
@@ -189,7 +212,7 @@ struct LedgerWorkspace: View {
                     Button("取消选择") { selected.removeAll() }
                 }
             }
-        }.id(scope).navigationTitle("账本").searchable(text: $filter.search, prompt: "搜索名称、分类、账户或归属，空格分词")
+        }.id(scope).navigationTitle("账本").searchable(text: $searchText, prompt: "搜索名称、分类、账户或归属，空格分词")
         .toolbar {
             WorkspaceCreateAction(title: "记一笔") { creating = true }
             ToolbarItemGroup(placement: .automatic) {
@@ -197,6 +220,14 @@ struct LedgerWorkspace: View {
                 Button { importing = true } label: { Label("导入账单", systemImage: "square.and.arrow.down") }
             }
         }
+        .task(id: searchText) {
+            if !searchText.isEmpty {
+                do { try await Task.sleep(for: .milliseconds(200)) } catch { return }
+            }
+            guard !Task.isCancelled else { return }
+            filter.search = searchText
+        }
+        .onChange(of: model.today) { _, _ in if usesToday { selectToday() } }
         .onChange(of: scope) { _, _ in selected.removeAll(); target = nil; ledgerPage = 0 }
         .sheet(isPresented: $creating) { RecordEditor(model: model, kind: .transaction) }
         .sheet(isPresented: $importing) { NavigationStack { LedgerImportView(model: model, presentedAsSheet: true) }.editorDimensions() }
@@ -205,6 +236,7 @@ struct LedgerWorkspace: View {
     }
     private var filterDescription: String {
         var values: [String] = []
+        if dates { values.append(usesToday ? "今天" : "\(LocalDay(date: from)) 至 \(LocalDay(date: through))") }
         if filter.transactionKinds != nil { values.append("仅支出与退款") }
         if let category = filter.category { values.append("分类：" + category) }
         if let id = filter.projectID { values.append("项目：" + (filterProjects.first { $0.id == id }?.body.title ?? "不可用")) }
@@ -221,17 +253,13 @@ struct LedgerWorkspace: View {
          !minimum.isEmpty, !maximum.isEmpty, filter.consumption != nil, filter.consumer != nil,
          !filter.search.isEmpty].filter { $0 }.count
     }
-    private func totals(_ records: [Record], currency: Currency) -> some View {
+    private func totals(_ amounts: Result<LedgerBrowseResult.Amounts, Error>, currency: Currency) -> some View {
         Group {
-            switch Result(catching: {
-                let expense = try Money.sum(records.filter { [.expense, .refund].contains($0.body.transactionKind) }.map { ($0.body.money?.minor ?? 0) * ($0.body.transactionKind == .refund ? -1 : 1) })
-                let income = try Money.sum(records.filter { $0.body.transactionKind == .income }.compactMap { $0.body.money?.minor })
-                return (Money(minor: expense, currency: currency).formatted, Money(minor: income, currency: currency).formatted)
-            }) {
+            switch amounts {
             case .success(let values):
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 24, alignment: .leading)], alignment: .leading, spacing: 16) {
-                    amountSummary("净支出", value: values.0)
-                    amountSummary("流水收入", value: values.1)
+                    amountSummary("净支出", value: Money(minor: values.expense, currency: currency).formatted)
+                    amountSummary("流水收入", value: Money(minor: values.income, currency: currency).formatted)
                 }.padding(.vertical, 10)
             case .failure(let error): InlineIssue(message: error.localizedDescription)
             }

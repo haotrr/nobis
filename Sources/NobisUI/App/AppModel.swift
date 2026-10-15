@@ -17,7 +17,40 @@ import FamilyPersistence
     public var noteScope: LifeScope = .all
     public var scheduleScope: LifeScope = .all { didSet { if oldValue != scheduleScope { recordPanel.close() } } }
     public private(set) var today = LocalDay(date: Date())
-    public var records: [Record] = []
+    public var records: [Record] = [] {
+        didSet { cachedLedgerIndex = nil; ledgerQueries.removeAll() }
+    }
+    @ObservationIgnored private var cachedLedgerIndex: LedgerBrowseIndex?
+    @ObservationIgnored private var ledgerSpaceIDs = Set<UUID>()
+    @ObservationIgnored private var ledgerQueries: [LedgerQueryKey: LedgerBrowseResult] = [:]
+    private struct LedgerQueryKey: Hashable {
+        let filter: LedgerFilter
+        let spaceIDs: Set<UUID>
+    }
+    var ledgerIndex: LedgerBrowseIndex {
+        // Register the current projection as an Observation dependency, including same-ID edits.
+        let current = records
+        let ids = workspace.ids(.all)
+        if let cachedLedgerIndex, ledgerSpaceIDs == ids { return cachedLedgerIndex }
+        let index = LedgerBrowseIndex(records: current.filter { ids.contains($0.latest.spaceID) })
+        ledgerSpaceIDs = ids
+        ledgerQueries.removeAll()
+        cachedLedgerIndex = index
+        return index
+    }
+    func ledgerResult(filter: LedgerFilter, scope: LifeScope) throws -> LedgerBrowseResult {
+        if scope == .all && !pendingShares.isEmpty {
+            throw NobisError.validation("有分享待完成，请在设置中核对后查看全部合计。")
+        }
+        let index = ledgerIndex
+        let key = LedgerQueryKey(filter: filter, spaceIDs: workspace.ids(scope))
+        if let cached = ledgerQueries[key] { return cached }
+        let result = index.query(filter, spaceIDs: key.spaceIDs)
+        // Bound retained search results while keeping recent page switches cheap.
+        if ledgerQueries.count >= 8 { ledgerQueries.removeAll() }
+        ledgerQueries[key] = result
+        return result
+    }
     public var summaries: [LedgerSummary] = []
     public var error: String?
     public var notice: String?
@@ -214,7 +247,10 @@ import FamilyPersistence
     public var visibility: String { selectedSpaceID.map { visibility(for: $0) } ?? "未选择空间" }
     public var workspace: LifeWorkspace { LifeWorkspace(spaces: spaces, cloudID: cloud.grant?.spaceID, personalCloudID: privateCloud.spaceID, cloudOnly: cloudOnly) }
     public var activeRecords: [Record] { records.filter { !$0.deleted && $0.body.sharedDestination == nil } }
-    public func records(in scope: LifeScope) -> [Record] { activeRecords.filter { workspace.ids(scope).contains($0.latest.spaceID) } }
+    public func records(in scope: LifeScope) -> [Record] {
+        let ids = workspace.ids(scope)
+        return records.filter { !$0.deleted && $0.body.sharedDestination == nil && ids.contains($0.latest.spaceID) }
+    }
     public func space(for record: Record) -> Space? { spaces.first { $0.id == record.latest.spaceID } }
     public func report(in scope: LifeScope) throws -> (core: FamilyCore, spaceID: UUID) {
         guard let core else { throw NobisError.forbidden }
