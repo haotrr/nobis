@@ -60,6 +60,43 @@ import NobisUI
         model.records = try f.core.records(spaceID: f.family.id)
         #expect(model.unreadComments(for: doc.recordID) == 1)
     }
+    @Test func failedReadReceiptWritePreservesUnreadAndCanRetry() throws {
+        let f = Fixture()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let receipt = directory.appendingPathComponent("CommentReads.json")
+        let previousID = UUID()
+        let original = try JSONEncoder().encode(Set([previousID]))
+        try original.write(to: receipt)
+        let doc = try f.core.save(RecordBody(kind: .document, title: "笔记"), spaceID: f.family.id)
+        let partner = FamilyCore(repository: f.repository, session: AccessSession(memberID: f.b.id, allowedSpaceIDs: [f.family.id]))
+        var body = RecordBody(kind: .comment, title: "评注")
+        body.notes = "待阅读"; body.relatedRecordID = doc.recordID
+        let revision = try partner.save(body, spaceID: f.family.id)
+        let model = AppModel(directory: directory, cloudIdentifier: nil, notificationsEnabled: false)
+        model.core = f.core; model.records = try f.core.records(spaceID: f.family.id)
+        let comments = model.records.filter { $0.body.kind == .comment }
+        let before = f.repository.snapshot
+        let savedReceipt = directory.appendingPathComponent("previous.json")
+        try FileManager.default.moveItem(at: receipt, to: savedReceipt)
+        try FileManager.default.createDirectory(at: receipt, withIntermediateDirectories: false)
+        try Data("obstacle".utf8).write(to: receipt.appendingPathComponent("keep"))
+        model.markCommentsRead(comments)
+        #expect(model.error != nil)
+        #expect(model.readComments == [previousID])
+        #expect(model.unreadComments(for: doc.recordID) == 1)
+        #expect(try Data(contentsOf: savedReceipt) == original)
+        try FileManager.default.removeItem(at: receipt)
+        try FileManager.default.moveItem(at: savedReceipt, to: receipt)
+        model.error = nil
+        model.markCommentsRead(comments)
+        #expect(model.error == nil)
+        #expect(model.unreadComments(for: doc.recordID) == 0)
+        let reopened = AppModel(directory: directory, cloudIdentifier: nil, notificationsEnabled: false)
+        #expect(reopened.readComments == [previousID, revision.id])
+        #expect(f.repository.snapshot == before)
+    }
     @Test func localDisplayChangesPreserveIdentityAndSurviveRestart() throws {
         let f = Fixture()
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

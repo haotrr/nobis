@@ -55,3 +55,14 @@ public enum ReminderPlanning {
         return result.sorted { $0.fireDate == $1.fireDate ? $0.id < $1.id : $0.fireDate < $1.fireDate }
     }
 }
+
+/// Keep still-desired requests in place until their replacement is accepted by the system.
+public struct ReminderScheduleUpdate: Sendable {
+    public let scheduling: [PlannedReminder]
+    public let removingIDs: [String]
+    public init(planned: [PlannedReminder], pendingIDs: [String], limit: Int = 60) {
+        scheduling = Array(planned.prefix(max(0, limit)))
+        let desired = Set(scheduling.map(\.id))
+        removingIDs = pendingIDs.filter { $0.hasPrefix("nobis:") && !desired.contains($0) }
+    }
+}

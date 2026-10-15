@@ -28,12 +28,18 @@ public struct LocalDay: Codable, Hashable, Comparable, Sendable, CustomStringCon
     public let day: Int
     public init(_ year: Int, _ month: Int, _ day: Int) throws {
         var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(secondsFromGMT: 0)!
-        guard let date = c.date(from: DateComponents(year: year, month: month, day: day)),
+        guard (1...9999).contains(year), (1...12).contains(month), (1...31).contains(day),
+              let date = c.date(from: DateComponents(year: year, month: month, day: day)),
               c.component(.year, from: date) == year, c.component(.month, from: date) == month,
               c.component(.day, from: date) == day, (1...9999).contains(year) else {
             throw NobisError.validation("日期无效。")
         }
         self.year = year; self.month = month; self.day = day
+    }
+    private enum CodingKeys: String, CodingKey { case year, month, day }
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(values.decode(Int.self, forKey: .year), values.decode(Int.self, forKey: .month), values.decode(Int.self, forKey: .day))
     }
     public init(date: Date, timeZone: TimeZone = .current) {
         var c = Calendar(identifier: .gregorian); c.timeZone = timeZone
@@ -46,8 +52,8 @@ public struct LocalDay: Codable, Hashable, Comparable, Sendable, CustomStringCon
         return c.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
     }
     public func addingDays(_ count: Int) -> Self {
-        let c = Calendar(identifier: .gregorian)
-        return LocalDay(date: c.date(byAdding: .day, value: count, to: date())!)
+        var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(secondsFromGMT: 0)!
+        return LocalDay(date: c.date(byAdding: .day, value: count, to: date(timeZone: c.timeZone))!, timeZone: c.timeZone)
     }
     public func nextCycle(unit: CycleUnit, count: Int, anchor: LocalDay) throws -> LocalDay {
         guard (1...120).contains(count) else { throw NobisError.validation("周期须在 1–120 之间。") }

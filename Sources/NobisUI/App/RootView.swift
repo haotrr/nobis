@@ -33,10 +33,9 @@ public struct NobisRootView: View {
         }
         .onChange(of: page) { _, _ in model.recordPanel.close() }
         .onChange(of: model.selectedSpaceID) { _, _ in model.refresh() }
-        .onChange(of: scenePhase) { _, phase in if phase == .active { model.refresh(); Task { if model.cloud.enabled { await model.cloud.connect() }; await model.updateNotifications(requestPermission: false) } } }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { model.refresh(); Task { if model.cloud.enabled { await model.cloud.connect() } } } }
     }
     private func refreshCalendar() {
         model.refresh()
-        Task { await model.updateNotifications(requestPermission: false) }
     }
 }

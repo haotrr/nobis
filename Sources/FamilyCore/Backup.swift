@@ -43,30 +43,27 @@ public enum Backup {
             guard !space.name.isEmpty, members.count == space.members.count, members.contains(space.ownerID),
                   space.kind != .personal || members == [space.ownerID] else { throw NobisError.corruptBackup }
         }
-        for versions in Dictionary(grouping: snapshot.revisions, by: \.recordID).values {
+        let versionsByRecord = Dictionary(grouping: snapshot.revisions, by: \.recordID)
+        let records = versionsByRecord.compactMapValues(\.first)
+        for versions in versionsByRecord.values {
             guard Set(versions.map(\.spaceID)).count == 1, Set(versions.map { $0.body.kind }).count == 1 else { throw NobisError.corruptBackup }
         }
         for revision in snapshot.revisions {
             guard let space = spaces[revision.spaceID], space.members.contains(where: { $0.id == revision.actorID }),
                   revision.parents.allSatisfy({ revisions[$0]?.recordID == revision.recordID && revisions[$0]?.spaceID == revision.spaceID && $0 != revision.id }),
                   !revision.body.title.isEmpty else { throw NobisError.corruptBackup }
-            var visited = Set<UUID>(), pending = revision.parents
-            while let id = pending.popLast() {
-                guard id != revision.id else { throw NobisError.corruptBackup }
-                if visited.insert(id).inserted { pending += revisions[id]?.parents ?? [] }
-            }
             for project in revision.body.projectIDs {
-                guard snapshot.revisions.contains(where: { $0.recordID == project && $0.spaceID == revision.spaceID && $0.body.kind == .project }) else { throw NobisError.corruptBackup }
+                guard records[project].map { $0.spaceID == revision.spaceID && $0.body.kind == .project } == true else { throw NobisError.corruptBackup }
             }
             for related in ((revision.body.referenceIDs ?? []) + [revision.body.refundOfID, revision.body.subscriptionID, revision.body.relatedRecordID].compactMap({ $0 })) {
-                guard snapshot.revisions.contains(where: { $0.recordID == related && $0.spaceID == revision.spaceID }) else { throw NobisError.corruptBackup }
+                guard records[related]?.spaceID == revision.spaceID else { throw NobisError.corruptBackup }
             }
             for day in [revision.body.date, revision.body.endDate, revision.body.billingAnchor].compactMap({ $0 }) { _ = try LocalDay(day.year, day.month, day.day) }
             if let parent = revision.body.parentProjectID {
-                guard parent != revision.recordID, snapshot.revisions.contains(where: { $0.recordID == parent && $0.spaceID == revision.spaceID && $0.body.kind == .project }) else { throw NobisError.corruptBackup }
+                guard parent != revision.recordID, records[parent].map { $0.spaceID == revision.spaceID && $0.body.kind == .project } == true else { throw NobisError.corruptBackup }
             }
             if let plan = revision.body.finance?.planItemID {
-                guard snapshot.revisions.contains(where: { revision.body.projectIDs.contains($0.recordID) && $0.spaceID == revision.spaceID && $0.body.budget?.items.contains(where: { $0.id == plan && $0.amount.currency == revision.body.money?.currency }) == true }) else { throw NobisError.corruptBackup }
+                guard revision.body.projectIDs.contains(where: { project in (versionsByRecord[project] ?? []).contains { $0.spaceID == revision.spaceID && $0.body.budget?.items.contains(where: { $0.id == plan && $0.amount.currency == revision.body.money?.currency }) == true } }) else { throw NobisError.corruptBackup }
             }
             try revision.body.validateFinance()
             try revision.body.validateStatement()
@@ -80,6 +77,22 @@ public enum Backup {
                 if revision.body.accountingMode == .sharedSettlement && revision.body.transactionKind != .income { guard try Money.sum(revision.body.splits.map(\.minor)) == money.minor else { throw NobisError.corruptBackup } }
             }
         }
+        // Walk each history edge once, including disconnected branches and deleted records.
+        var remaining = Dictionary(uniqueKeysWithValues: snapshot.revisions.map { ($0.id, $0.parents.count) })
+        var children: [UUID: [UUID]] = [:]
+        for revision in snapshot.revisions {
+            for parent in revision.parents { children[parent, default: []].append(revision.id) }
+        }
+        var ready = snapshot.revisions.filter { $0.parents.isEmpty }.map(\.id)
+        var visited = 0
+        while let id = ready.popLast() {
+            visited += 1
+            for child in children[id] ?? [] {
+                remaining[child, default: 0] -= 1
+                if remaining[child] == 0 { ready.append(child) }
+            }
+        }
+        guard visited == snapshot.revisions.count else { throw NobisError.corruptBackup }
         guard snapshot.audits.allSatisfy({ revisions[$0.revisionID]?.operationID == $0.operationID && revisions[$0.revisionID]?.spaceID == $0.spaceID }) else { throw NobisError.corruptBackup }
         return snapshot
     }

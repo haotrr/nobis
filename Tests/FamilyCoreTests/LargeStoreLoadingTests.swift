@@ -112,6 +112,12 @@ import FamilyPersistence
                 let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
                 #expect(try encoder.encode(summaries) == encoder.encode(oldSummaries))
                 #expect(summaries.first?.expense == (try Money.sum(records.compactMap { $0.body.money?.minor })))
+                let backupStart = Date()
+                let backup = try Backup.encode(loaded)
+                let backupURL = root.appendingPathComponent("large-backup-\(name).json")
+                try backup.write(to: backupURL, options: .atomic)
+                #expect(try Backup.decode(Data(contentsOf: backupURL)) == loaded)
+                let backupSeconds = Date().timeIntervalSince(backupStart)
                 // A real append exercises the linear immutable-history guard with 100,000 existing revisions.
                 let extra = Revision(spaceID: f.family.id, actorID: f.a.id, body: RecordBody(kind: .task, title: "隔离追加样本"))
                 var appended = loaded; appended.revisions.append(extra); appended.audits.append(AuditEvent(revision: extra, action: "create"))
@@ -128,7 +134,8 @@ import FamilyPersistence
                 #expect(model.ready && model.error == nil && model.records.count == count + 1)
                 results.append(["case": name, "records": count, "revisions": count * depth, "legacyReadSeconds": oldRead, "bulkReadSeconds": read,
                     "legacyProjectionSeconds": oldProjection, "projectionSeconds": projection, "ledgerSeconds": summarySeconds, "legacyLedgerSeconds": oldSummarySeconds,
-                    "appendSeconds": saveSeconds, "appInitializationSeconds": appSeconds, "uiDirectory": ui.path])
+                    "appendSeconds": saveSeconds, "appInitializationSeconds": appSeconds, "uiDirectory": ui.path,
+                    "backupBytes": backup.count, "backupRoundTripSeconds": backupSeconds])
                 try JSONSerialization.data(withJSONObject: results, options: [.prettyPrinted, .sortedKeys]).write(to: root.appendingPathComponent("large-store-performance.json"))
             }
         }

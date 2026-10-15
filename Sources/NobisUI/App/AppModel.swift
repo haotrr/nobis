@@ -33,6 +33,7 @@ import FamilyPersistence
     private var notificationGeneration = 0
     private var schedulingNotifications = false
     private var permissionRequested = false
+    private var displayedSpaceID: UUID?
     public var core: FamilyCore?
     public let directory: URL
     public let cloud: CloudFamilyController
@@ -102,10 +103,12 @@ import FamilyPersistence
         }.count
     }
     public func markCommentsRead(_ comments: [Record]) {
-        let previous = readComments
-        readComments.formUnion(comments.map { $0.latest.id })
-        guard previous != readComments else { return }
-        perform { try JSONEncoder().encode(readComments).write(to: directory.appendingPathComponent("CommentReads.json"), options: LocalMetadataFile.writingOptions) }
+        let updated = readComments.union(comments.map { $0.latest.id })
+        guard updated != readComments else { return }
+        perform {
+            try JSONEncoder().encode(updated).write(to: directory.appendingPathComponent("CommentReads.json"), options: LocalMetadataFile.writingOptions)
+            readComments = updated
+        }
     }
     private func open(member: Member) throws {
         let repository = try CoreDataRepository(directory: directory.appendingPathComponent("Stores"))
@@ -187,12 +190,24 @@ import FamilyPersistence
     }
     private func refresh(initialSnapshot: Snapshot?, now: Date = Date(), timeZone: TimeZone = .current) {
         today = LocalDay(date: now, timeZone: timeZone)
-        guard let core, let id = selectedSpaceID else { return }
-        records = []; summaries = []
-        perform {
+        guard let core, let id = selectedSpaceID else {
+            records = []; summaries = []; displayedSpaceID = nil
+            return
+        }
+        do {
             let ids = workspace.ids(.all)
-            records = try core.workspaceRecords(spaceIDs: ids, renewingSpaceIDs: Set(ids.filter { canWrite(spaceID: $0) }), today: today, initialSnapshot: initialSnapshot)
-            summaries = try FamilyCore.ledger(records: records.filter { $0.latest.spaceID == id })
+            let updatedRecords = try core.workspaceRecords(spaceIDs: ids, renewingSpaceIDs: Set(ids.filter { canWrite(spaceID: $0) }), today: today, initialSnapshot: initialSnapshot)
+            let updatedSummaries = try FamilyCore.ledger(records: updatedRecords.filter { $0.latest.spaceID == id })
+            records = updatedRecords; summaries = updatedSummaries; displayedSpaceID = id
+            Task { await updateNotifications(requestPermission: false) }
+        } catch {
+            let accessFailure = (error as? NobisError) == .forbidden || (error as? NobisError) == .notFound
+            if !cloud.enabled && !accessFailure && displayedSpaceID == id {
+                self.error = "刷新失败，显示上次成功加载的内容：" + error.localizedDescription
+            } else {
+                records = []; summaries = []; displayedSpaceID = nil
+                self.error = error.localizedDescription
+            }
         }
     }
     public func perform(_ action: () throws -> Void) {
@@ -205,7 +220,6 @@ import FamilyPersistence
         }
         try core.save(body, spaceID: spaceID, recordID: existing?.id ?? recordID ?? UUID(), expected: expected ?? Set(existing?.heads.map(\.id) ?? []), deleted: deleted)
         notice = "已保存在此设备"; refresh()
-        Task { await updateNotifications(requestPermission: false) }
     }
     public var pendingShares: [SharingPlan] {
         let path = directory.appendingPathComponent("SharingPlans")
@@ -227,7 +241,6 @@ import FamilyPersistence
         try FileManager.default.moveItem(at: journal, to: folder.appendingPathComponent("\(plan.id).completed"))
         notice = "共同版本已保存在此设备；连接后同步。原私密历史仅保留在此设备。"
         refresh()
-        Task { await updateNotifications(requestPermission: false) }
     }
     public func changeStatus(_ record: Record, to status: RecordStatus) {
         perform {
@@ -297,8 +310,9 @@ import FamilyPersistence
                 notificationStatus = "系统通知未授权，应用内待办仍保留"; return
             }
             let planned = try reminderPreview()
-            center.removePendingNotificationRequests(withIdentifiers: pending.filter { $0.identifier.hasPrefix("nobis:") }.map(\.identifier))
-            for item in planned.prefix(60) {
+            let update = ReminderScheduleUpdate(planned: planned, pendingIDs: pending.map(\.identifier))
+            center.removePendingNotificationRequests(withIdentifiers: update.removingIDs)
+            for item in update.scheduling {
                 guard current() else { return }
                 let content = UNMutableNotificationContent(); content.title = item.title; content.body = item.body; content.sound = .default
                 var calendar = Calendar(identifier: .gregorian); calendar.timeZone = TimeZone(secondsFromGMT: 0)!
