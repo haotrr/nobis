@@ -1,0 +1,45 @@
+docs/roadmap.md
+  s_f050754e846b2e::t_7bed2d9bf1ce9e 24,37
+docs/verification.md
+  s_f050754e846b2e::t_7bed2d9bf1ce9e 3-8,10-12
+  s_f050754e846b2e::t_d1401e49a0b85a 9
+  s_f050754e846b2e::t_eac727b293f3ae 13
+DESIGN.md
+  s_f050754e846b2e::t_7bed2d9bf1ce9e 30
+docs/feature-inventory.md
+  s_f050754e846b2e::t_7bed2d9bf1ce9e 17
+Sources/NobisUI/App/AppModel.swift
+  s_f050754e846b2e::t_2cac90818c07e8 20-53,250-253
+Sources/FamilyCore/LedgerBrowseIndex.swift
+  s_f050754e846b2e::t_b498fa32f12a81 1-16,20,24-25,28-84
+  s_f050754e846b2e::t_9dc83c43abe610 17-19,21-23,26-27
+Sources/NobisUI/Features/Finance/LedgerWorkspace.swift
+  s_f050754e846b2e::t_c29798d3c5c603 17,21-24,40-41,43,50,60,65-72,84-93,106,117,123,126-127,130,144,158,160,163-164,167,169,172,176,187-188,205-206,215,223-230,239,256,258,261-262
+Sources/FamilyCore/FinanceQueries.swift
+  s_f050754e846b2e::t_ffb5931c4d684b 4,18-20
+Tests/FamilyCoreTests/LedgerBrowseTests.swift
+  s_f050754e846b2e::t_ed34a787221c46 1-31,33-130
+  s_f050754e846b2e::t_c29798d3c5c603 32
+docs/architecture.md
+  s_f050754e846b2e::t_7bed2d9bf1ce9e 84-89
+Sources/FamilyDomain/Models.swift
+  s_f050754e846b2e::t_a0988ef75c6050 49-51
+Sources/NobisUI/Shared/Components/RecordRows.swift
+  s_f050754e846b2e::t_d8822998eb3fc2 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfd5272f03076c06138c36ca44f8416c0bbb59c9",
+  "prompts": {},
+  "sessions": {
+    "s_f050754e846b2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f10-c80c-7230-a596-892512425a81",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
