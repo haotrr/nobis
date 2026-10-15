@@ -9,6 +9,7 @@ NobisMac / NobisIOS (SwiftUI)
   → RoutedRepository
     → CoreDataRepository（本地个人 / 家庭草稿）
     → CloudFamilyRepository（CloudKit private / shared，修订与审计同次 save）
+    → PrivateCloudRepository（独立个人快照，按已核验 Apple ID 隔离）
 
 nobis CLI → 显式导出包 → 校验 → 同一 FamilyCore（只读）
 NobisSharingSpike → 独立 NSPersistentCloudKitContainer → private / shared
@@ -47,6 +48,14 @@ SpaceRoot 的 payload 保存空间元数据；RecordRevision、AuditEvent 通过
 设备曾验证的 grant 可在同一账户的暂时网络失败时使用；账户身份未确认或已明确失权时不可使用。远端导入/导出事件和前台唤醒触发检查，事件合并并遵守重试间隔；“导出完成”不代表另一台设备收到了记录。
 
 Apple 的系统面板更新 share 后，主应用调用 persistUpdatedShare 更新本地 metadata。参与者退出通过删除自己 shared database 中的 share 完成；拥有者移除参与者通过更新 CKShare 完成。分享/撤权请求失败不显示成功；真实跨设备行为仍等待开发容器与真机验收。
+
+## 个人私密云存储
+
+用户在设置中显式启用后，`PrivateCloudController` 使用当前容器的 private database、独立 `NobisPersonalV1` zone 和单个 CKAsset 快照。个人记录不加入家庭关系图，不创建 CKShare；验证空间类型、唯一拥有者、修订作者和完整审计，拒绝带 share 或 parent 的远端记录。账号变化立即阻断旧 Repository，缓存按容器及核验身份隔离，原本地空间不自动上传。
+
+保存使用服务器 change tag 并发检查，合并不可变修订与审计，冲突保留分支。快照按稳定顺序编码，资产枚举键字典保持兼容格式并排序，避免设备间编码顺序导致重复上传。单快照限制 40 MB；保存后、回到前台及前台每 30 秒同步，无变化只读取摘要。后台及时送达、大库增量传输尚未保证。
+
+浏览“仅自己”合并本地与个人云；启用后新个人内容默认进入个人云，空间标签区分本地与云。家庭成员身份和财务归属不由此改变。
 
 ## 笔记与兼容格式
 

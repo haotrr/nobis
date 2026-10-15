@@ -37,6 +37,7 @@ import FamilyPersistence
     private var displayedSpaceID: UUID?
     public var core: FamilyCore?
     public let directory: URL
+    public let privateCloud: PrivateCloudController
     public let cloud: CloudFamilyController
     public var accessEpoch = UUID()
     public let recordPanel = RecordPanelState()
@@ -46,6 +47,7 @@ import FamilyPersistence
     public init(directory: URL? = nil, cloudIdentifier: String? = Bundle.main.object(forInfoDictionaryKey: "NobisCloudContainer") as? String, notificationsEnabled: Bool = true) {
         self.notificationsEnabled = notificationsEnabled
         self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Nobis", isDirectory: true)
+        privateCloud = PrivateCloudController(directory: self.directory.appendingPathComponent("PrivateCloud"), identifier: cloudIdentifier)
         cloud = CloudFamilyController(directory: self.directory.appendingPathComponent("CloudFamily"), identifier: cloudIdentifier)
         do {
             let identityURL = self.directory.appendingPathComponent("identity.json")
@@ -65,6 +67,10 @@ import FamilyPersistence
                 reminderSettingsError = "提醒设置读取失败，请核对并重新保存：\(error.localizedDescription)"
             }
         }
+        privateCloud.onChange = { [weak self] in self?.rebind() }
+        privateCloud.onAccessLost = { [weak self] id in
+            if let id { self?.invalidateCloudUI(spaceID: id) } else { self?.rebind() }
+        }
         cloud.onChange = { [weak self] in self?.rebind() }
         cloud.onAccessLost = { [weak self] id in self?.invalidateCloudUI(spaceID: id) }
         NobisCloudInvitation.receive = { [weak self] metadata in self?.cloud.receive(metadata) }
@@ -73,6 +79,7 @@ import FamilyPersistence
     }
     public func updateDisplay(spaceID: UUID, name: String, member: Member, expected: Space) throws {
         guard let core else { throw NobisError.forbidden }
+        if privateCloud.spaceID == spaceID { throw NobisError.validation("个人云空间使用启用时的称呼；暂不支持单独修改云端资料。") }
         if cloud.grant?.spaceID == spaceID {
             guard let repository = cloud.repository else { throw NobisError.forbidden }
             try repository.updateDisplay(name: name, member: member, expected: expected)
@@ -124,16 +131,20 @@ import FamilyPersistence
         records = []; summaries = []
         perform {
             let localSpaces = try localRepository.loadSpaces()
-            let repository: any Repository
+            var repository: any Repository
             var ids = Set(localSpaces.map(\.id)); var mapping: [UUID: UUID] = [:]
             if let shared = cloud.repository, let grant = cloud.grant {
                 repository = RoutedRepository(local: localRepository, shared: shared)
                 ids.insert(grant.spaceID); mapping[grant.spaceID] = grant.accountID
             } else { repository = localRepository }
+            if let personal = privateCloud.repository {
+                repository = RoutedRepository(local: repository, shared: personal)
+                ids.insert(personal.spaceID); mapping[personal.spaceID] = personal.ownerID
+            }
             core = FamilyCore(repository: repository, session: AccessSession(memberID: memberID, allowedSpaceIDs: ids, memberIDsBySpace: mapping))
             spaces = try core!.spaces().sorted { a, b in a.kind == b.kind ? a.name < b.name : a.kind == .personal }
             selectedSpaceID = workspace.commonID
-            refresh(initialSnapshot: cloud.repository == nil ? initialSnapshot : nil)
+            refresh(initialSnapshot: cloud.repository == nil && privateCloud.repository == nil ? initialSnapshot : nil)
         }
     }
     private func invalidateCloudUI(spaceID: UUID?) {
@@ -158,7 +169,7 @@ import FamilyPersistence
     }
     public func visibility(for spaceID: UUID) -> String {
         guard let space = spaces.first(where: { $0.id == spaceID }) else { return "空间访问已关闭" }
-        if space.kind == .personal { return "仅自己" }
+        if space.kind == .personal { return spaceID == privateCloud.spaceID ? "仅自己 · 个人 iCloud" : "仅自己 · 本地" }
         return cloud.grant?.spaceID == spaceID ? cloud.membershipDescription : "仅此设备 · 本地共同空间"
     }
     public func canWrite(spaceID: UUID) -> Bool { cloud.grant?.spaceID != spaceID || cloud.grant?.writable == true }
@@ -182,7 +193,7 @@ import FamilyPersistence
     }
     public var selectedSpace: Space? { spaces.first { $0.id == selectedSpaceID } }
     public var visibility: String { selectedSpaceID.map { visibility(for: $0) } ?? "未选择空间" }
-    public var workspace: LifeWorkspace { LifeWorkspace(spaces: spaces, cloudID: cloud.grant?.spaceID) }
+    public var workspace: LifeWorkspace { LifeWorkspace(spaces: spaces, cloudID: cloud.grant?.spaceID, personalCloudID: privateCloud.spaceID) }
     public var activeRecords: [Record] { records.filter { !$0.deleted && $0.body.sharedDestination == nil } }
     public func records(in scope: LifeScope) -> [Record] { activeRecords.filter { workspace.ids(scope).contains($0.latest.spaceID) } }
     public func space(for record: Record) -> Space? { spaces.first { $0.id == record.latest.spaceID } }
@@ -225,7 +236,9 @@ import FamilyPersistence
             throw NobisError.validation("此记录正在分享，请先在设置中完成分享核对。")
         }
         try core.save(body, spaceID: spaceID, recordID: existing?.id ?? recordID ?? UUID(), expected: expected ?? Set(existing?.heads.map(\.id) ?? []), deleted: deleted)
-        notice = cloud.grant?.spaceID == spaceID ? "已保存到本机，iCloud 将自动上传" : "已保存在此设备"; refresh()
+        if privateCloud.spaceID == spaceID { notice = "已保存到个人空间，iCloud 将私密同步" }
+        else { notice = cloud.grant?.spaceID == spaceID ? "已保存到本机，iCloud 将自动上传" : "已保存在此设备" }
+        refresh()
     }
     public var pendingShares: [SharingPlan] {
         let path = directory.appendingPathComponent("SharingPlans")

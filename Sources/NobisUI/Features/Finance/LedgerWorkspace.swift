@@ -16,6 +16,8 @@ struct LedgerWorkspace: View {
     @State private var filter = LedgerFilter()
     @State private var filtersExpanded = false
     @State private var selecting = false
+    @State private var ledgerPage = 0
+    private let pageSize = 100
     @State private var dates = false
     @State private var from = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
     @State private var through = Date()
@@ -148,10 +150,21 @@ struct LedgerWorkspace: View {
                         }
                     }
                     Text("流水收入不含月度及非月度收入记录；完整收入与结余见财务报告。").font(.caption).foregroundStyle(.secondary)
-                    LazyVStack(alignment: .leading, spacing: 18) {
-                        ForEach(LedgerMonthGroup.groups(records)) { group in
-                            LazyVStack(alignment: .leading, spacing: 6) {
-                                Text(group.period?.title ?? "日期待核对").font(.headline)
+                    let pageCount = max(1, (records.count + pageSize - 1) / pageSize)
+                    let currentPage = min(ledgerPage, pageCount - 1)
+                    if pageCount > 1 {
+                        HStack {
+                            Button("上一页") { ledgerPage = max(0, currentPage - 1) }.disabled(currentPage == 0)
+                            Spacer()
+                            Text("第 \(currentPage + 1) / \(pageCount) 页 · 每页最多 \(pageSize) 笔").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button("下一页") { ledgerPage = min(pageCount - 1, currentPage + 1) }.disabled(currentPage == pageCount - 1)
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 18) {
+                        ForEach(LedgerMonthGroup.groups(Array(records.dropFirst(currentPage * pageSize).prefix(pageSize)))) { group in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text((group.period?.title ?? "日期待核对") + (pageCount > 1 ? " · 本页小计" : "")).font(.headline)
                                 ForEach(Currency.allCases, id: \.self) { currency in
                                     let valid = group.records.filter { !$0.conflicted && $0.body.status == .confirmed && $0.body.money?.currency == currency }
                                     if !valid.isEmpty { LedgerMonthTotals(records: valid, currency: currency) }
@@ -167,7 +180,7 @@ struct LedgerWorkspace: View {
                         }
                     }
                     Button("导出当前结果 CSV") { model.perform { document = CSVDocument(data: try CSV.scoped(LedgerImport.expenseCSV(records), scope: scope.rawValue)); exporting = true } }.disabled(records.isEmpty)
-                }
+                }.onChange(of: records.map(\.id)) { _, _ in ledgerPage = 0 }
             }
             if !selected.isEmpty {
                 LifeSection(title: "已选 \(selected.count) 笔", icon: "checkmark.circle") {
@@ -176,7 +189,7 @@ struct LedgerWorkspace: View {
                     Button("取消选择") { selected.removeAll() }
                 }
             }
-        }.navigationTitle("账本").searchable(text: $filter.search, prompt: "搜索名称、分类、账户或归属，空格分词")
+        }.id(scope).navigationTitle("账本").searchable(text: $filter.search, prompt: "搜索名称、分类、账户或归属，空格分词")
         .toolbar {
             WorkspaceCreateAction(title: "记一笔") { creating = true }
             ToolbarItemGroup(placement: .automatic) {
@@ -184,7 +197,7 @@ struct LedgerWorkspace: View {
                 Button { importing = true } label: { Label("导入账单", systemImage: "square.and.arrow.down") }
             }
         }
-        .onChange(of: scope) { _, _ in selected.removeAll(); target = nil }
+        .onChange(of: scope) { _, _ in selected.removeAll(); target = nil; ledgerPage = 0 }
         .sheet(isPresented: $creating) { RecordEditor(model: model, kind: .transaction) }
         .sheet(isPresented: $importing) { NavigationStack { LedgerImportView(model: model, presentedAsSheet: true) }.editorDimensions() }
         .fileExporter(isPresented: $exporting, document: document, contentType: .commaSeparatedText, defaultFilename: "Nobis-\(scope.title)-收支-\(LocalDay(date: Date()))") { if case .failure(let error) = $0 { model.error = error.localizedDescription } }

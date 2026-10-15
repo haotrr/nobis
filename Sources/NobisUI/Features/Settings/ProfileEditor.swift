@@ -83,7 +83,7 @@ struct ProfileSettingsSection: View {
     @State private var selection: ProfileSelection?
     private struct ProfileSelection: Identifiable { let space: Space; let member: Member; var id: String { space.id.uuidString + member.id.uuidString } }
     private var profiles: [ProfileSelection] {
-        model.spaces.flatMap { space in
+        model.spaces.filter { $0.kind == .personal || $0.id == model.workspace.commonID }.flatMap { space in
             let actor = model.core?.session.actorID(in: space.id)
             return space.members.filter { member in
                 model.cloud.grant?.spaceID == space.id ? member.id == actor : space.ownerID == actor
@@ -98,9 +98,9 @@ struct ProfileSettingsSection: View {
                         MemberIdentityBadge(member: profile.member, showsAvatar: true)
                         Spacer()
                         Text(profile.space.name).font(.caption).foregroundStyle(.secondary)
-                        Image(systemName: "chevron.right").font(.caption)
+                        if profile.space.id != model.privateCloud.spaceID { Image(systemName: "chevron.right").font(.caption) }
                     }
-                }.buttonStyle(.plain).padding(.vertical, 6).disabled(!model.canWrite(spaceID: profile.space.id))
+                }.buttonStyle(.plain).padding(.vertical, 6).disabled(!model.canWrite(spaceID: profile.space.id) || profile.space.id == model.privateCloud.spaceID)
             }
         }.sheet(item: $selection) { item in ProfileEditor(model: model, space: item.space, member: item.member) }
     }

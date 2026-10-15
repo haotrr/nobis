@@ -10,12 +10,14 @@ public enum LifeScope: String, CaseIterable, Sendable {
 public struct LifeWorkspace: Sendable {
     public let spaces: [Space]
     public let commonID: UUID?
-    public init(spaces: [Space], cloudID: UUID?) {
+    private let personalCloudID: UUID?
+    public init(spaces: [Space], cloudID: UUID?, personalCloudID: UUID? = nil) {
+        self.personalCloudID = personalCloudID
         self.spaces = spaces
         commonID = spaces.first { $0.id == cloudID && $0.kind == .family }?.id
             ?? spaces.filter { $0.kind == .family }.sorted { $0.id.uuidString < $1.id.uuidString }.first?.id
     }
-    public var personalID: UUID? { spaces.first { $0.kind == .personal }?.id }
+    public var personalID: UUID? { spaces.first { $0.kind == .personal && $0.id == personalCloudID }?.id ?? spaces.first { $0.kind == .personal }?.id }
     public var pendingSpaces: [Space] { spaces.filter { $0.kind == .family && $0.id != commonID } }
     public func ids(_ scope: LifeScope) -> Set<UUID> {
         switch scope {

@@ -32,6 +32,16 @@ struct SettingsView: View {
             }
             ProfileSettingsSection(model: model)
             FamilySharingSection(model: model)
+            if model.privateCloud.configured {
+                LifeSection(title: "个人 iCloud", icon: "lock.icloud") {
+                    Text(model.privateCloud.status)
+                    Text("仅当前 Apple ID 可访问，家庭成员不可见。打开应用时自动同步；原有本地内容不会自动上传。").font(.caption).foregroundStyle(.secondary)
+                    if let issue = model.privateCloud.issue { Text(issue).font(.caption).foregroundStyle(.orange) }
+                    Button(model.privateCloud.enabled ? "检查个人同步" : "启用个人私密同步") {
+                        Task { await model.privateCloud.enable(name: model.localMemberName) }
+                    }.disabled(model.privateCloud.isBusy)
+                }
+            }
             LifeSection(title: "此设备与提醒", icon: "bell") {
                 LabeledContent("保存与同步", value: model.saveStatus)
                 LabeledContent("提醒", value: model.notificationStatus)

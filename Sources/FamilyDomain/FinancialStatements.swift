@@ -31,6 +31,16 @@ public struct AssetPosition: Codable, Equatable, Sendable {
     public var currency: Currency
     public var amounts: [AssetComponent: Int64]
     public init(currency: Currency, amounts: [AssetComponent: Int64]) { self.currency = currency; self.amounts = amounts }
+    private enum CodingKeys: String, CodingKey { case currency, amounts }
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(currency, forKey: .currency)
+        // Preserve the existing enum-keyed dictionary format, with stable pair ordering across devices.
+        var pairs = container.nestedUnkeyedContainer(forKey: .amounts)
+        for key in amounts.keys.sorted(by: { $0.rawValue < $1.rawValue }) {
+            try pairs.encode(key); try pairs.encode(amounts[key]!)
+        }
+    }
     public func validate() throws {
         guard Set(amounts.keys) == Set(AssetComponent.allCases), amounts.values.allSatisfy({ $0 >= 0 }) else { throw NobisError.validation("资产快照须填写全部资产及负债项目，未持有填零。") }
         _ = try assets(); _ = try liabilities(); _ = try net()
