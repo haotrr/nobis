@@ -46,7 +46,7 @@ struct ScheduleWorkspace: View {
             if mode == "待办" {
                 Toggle("显示已完成", isOn: $completed).font(.callout)
                 ForEach(TaskDateGroup.allCases) { group in
-                    let tasks = group.records(in: visible.filter { $0.body.kind == .task && (completed || $0.body.status == .active) }, today: LocalDay(date: Date()))
+                    let tasks = group.records(in: visible.filter { $0.body.kind == .task && (completed || $0.body.status == .active) }, today: model.today)
                     if !tasks.isEmpty {
                         LifeSection(title: "\(group.rawValue) · \(tasks.count)", icon: group == .overdue ? "exclamationmark.circle" : "checkmark.circle") {
                             LazyVStack(alignment: .leading, spacing: 8) { ForEach(tasks) { TaskRow(model: model, record: $0) } }
@@ -107,7 +107,7 @@ struct TodayWorkspace: View {
     @State private var searching = false
     @State private var create: RecordKind?
     @State private var note = false
-    private var today: LocalDay { LocalDay(date: Date()) }
+    private var today: LocalDay { model.today }
     private var dueTasks: [Record] { model.activeRecords.filter { $0.body.kind == .task && $0.body.status == .active && $0.body.date.map { $0 <= today } == true }.sorted { ($0.body.date ?? today) < ($1.body.date ?? today) } }
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var textSize
@@ -134,7 +134,7 @@ struct TodayWorkspace: View {
                     Image(systemName: "sun.horizon.fill")
                         .font(.system(size: 30, weight: .light)).foregroundStyle(accent)
                         .accessibilityHidden(true)
-                    Text(Date().formatted(.dateTime.month().day().weekday(.wide).locale(Locale(identifier: "zh_CN"))))
+                    Text(today.date().formatted(.dateTime.month().day().weekday(.wide).locale(Locale(identifier: "zh_CN"))))
                         .font(.subheadline).foregroundStyle(.secondary)
                     Text("一起过好今天").font(.largeTitle.weight(.semibold))
                 }.frame(maxWidth: .infinity).padding(.top, 18).padding(.bottom, 6)

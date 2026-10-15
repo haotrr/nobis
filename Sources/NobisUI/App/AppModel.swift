@@ -16,6 +16,7 @@ import FamilyPersistence
     public var projectScope: LifeScope = .all { didSet { if oldValue != projectScope { recordPanel.close() } } }
     public var noteScope: LifeScope = .all
     public var scheduleScope: LifeScope = .all { didSet { if oldValue != scheduleScope { recordPanel.close() } } }
+    public private(set) var today = LocalDay(date: Date())
     public var records: [Record] = []
     public var summaries: [LedgerSummary] = []
     public var error: String?
@@ -181,13 +182,16 @@ import FamilyPersistence
         if scope == .all && !pendingShares.isEmpty { throw NobisError.validation("有分享待完成，请在设置中核对后查看全部合计。") }
         return try core.reportView(spaceIDs: workspace.ids(scope))
     }
-    public func refresh() { refresh(initialSnapshot: nil) }
-    private func refresh(initialSnapshot: Snapshot?) {
+    public func refresh(now: Date = Date(), timeZone: TimeZone = .current) {
+        refresh(initialSnapshot: nil, now: now, timeZone: timeZone)
+    }
+    private func refresh(initialSnapshot: Snapshot?, now: Date = Date(), timeZone: TimeZone = .current) {
+        today = LocalDay(date: now, timeZone: timeZone)
         guard let core, let id = selectedSpaceID else { return }
         records = []; summaries = []
         perform {
             let ids = workspace.ids(.all)
-            records = try core.workspaceRecords(spaceIDs: ids, renewingSpaceIDs: Set(ids.filter { canWrite(spaceID: $0) }), initialSnapshot: initialSnapshot)
+            records = try core.workspaceRecords(spaceIDs: ids, renewingSpaceIDs: Set(ids.filter { canWrite(spaceID: $0) }), today: today, initialSnapshot: initialSnapshot)
             summaries = try FamilyCore.ledger(records: records.filter { $0.latest.spaceID == id })
         }
     }

@@ -27,6 +27,7 @@ public extension FamilyCore {
                 guard !known.contains(key) else { continue }
                 var task = RecordBody(kind: .task, title: "复核续费 · \(subscription.body.title)")
                 task.date = due; task.memberID = subscription.body.memberID; task.subscriptionID = subscription.id; task.projectIDs = subscription.body.projectIDs
+                task.timeZone = subscription.body.timeZone
                 task.occurrenceKey = key; task.notes = "确认继续订阅、已取消或需要处理。此任务不表示已经扣款。"
                 additions.append(RecordChange(body: task))
             }
