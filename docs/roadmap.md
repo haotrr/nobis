@@ -25,7 +25,7 @@
 | 外部工具 | XPC、在线 CLI、MCP、Agent 写入及可信审批；当前只有离线只读导出查询 |
 | 共享扩展 | 私密跨设备同步、跨家庭迁移、拥有者交接 |
 
-云容器启用、真实双 Apple ID 和专门的真机验收按用户既定优先级暂缓，不表示取消。发布须满足相应验收条件。
+云同步与两人协作已按用户新方向启动：先验同账号 Mac／iPhone，再验双 Apple ID；开发者团队和容器由用户配置。无关真机专项仍暂缓，发布须满足相应验收条件。
 
 ## 基础功能优先级
 
@@ -41,6 +41,7 @@
 <!-- codebase-workflow:tasks:start -->
 | ID | 类型 | 标题 | 状态 | 文档 | MR | 终态日期 |
 | --- | --- | --- | --- | --- | --- | --- |
+| F-261015-5XEV0 | Feature | CloudKit 自动同步与双人协作落地 | 验证中 | [features/F-261015-5XEV0-cloudkit-自动同步与双人协作落地/TODO.md](features/F-261015-5XEV0-cloudkit-自动同步与双人协作落地/TODO.md) | - | - |
 | T-261015-CKJ42 | Tech | 本地日常使用完整性与稳定性收尾 | 已完成 | [tech/T-261015-CKJ42-本地日常使用完整性与稳定性收尾/TODO.md](tech/T-261015-CKJ42-本地日常使用完整性与稳定性收尾/TODO.md) | - | 2026-10-15 |
 | T-261013-FH99S | Tech | 日常提醒的静默时段与设备选择 | 已完成 | [tech/T-261013-FH99S-daily-reminders/TODO.md](tech/T-261013-FH99S-daily-reminders/TODO.md) | - | 2026-10-13 |
 | T-261013-FXGYF | Tech | Minty 迁入后的财务体验完善 | 已完成 | [tech/T-261013-FXGYF-minty-迁入后的财务体验完善/TODO.md](tech/T-261013-FXGYF-minty-迁入后的财务体验完善/TODO.md) | - | 2026-10-13 |

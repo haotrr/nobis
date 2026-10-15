@@ -8,6 +8,7 @@ import FamilyCore
     public let container: NSPersistentCloudKitContainer
     public private(set) var policy = FamilyAccessPolicy()
     public private(set) var root: NSManagedObject?
+    public var onLocalSave: ((String) -> Void)?
     private let directory: URL
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
@@ -58,7 +59,7 @@ import FamilyCore
         do {
             let space = Space(name: name, kind: .family, ownerID: member.id, members: [member])
             context.assign(object, to: store); object.setValue(space.id.uuidString, forKey: "logicalID"); object.setValue(try encoder.encode(space), forKey: "payload")
-            try context.save(); return object
+            try context.save(); onLocalSave?(store.identifier); return object
         } catch { context.rollback(); throw error }
     }
     public func load() throws -> Snapshot {
@@ -126,7 +127,7 @@ import FamilyCore
         space.name = name
         space.members.removeAll { $0.id == member.id }; space.members.append(member)
         let context = container.viewContext
-        do { root.setValue(try encoder.encode(space), forKey: "payload"); try context.save() }
+        do { root.setValue(try encoder.encode(space), forKey: "payload"); try context.save(); if let store = root.objectID.persistentStore { onLocalSave?(store.identifier) } }
         catch { context.rollback(); throw error }
     }
     private func incomplete() -> NobisError { .validation("家庭内容正在同步，引用尚未到齐；暂不展示不完整的账务合计。") }
@@ -150,6 +151,7 @@ import FamilyCore
             for revision in additions { try insert(revision, id: revision.id, entity: "RecordRevision") }
             for audit in audits { try insert(audit, id: audit.id, entity: "AuditEvent") }
             try context.save()
+            if !additions.isEmpty || !audits.isEmpty { onLocalSave?(store.identifier) }
         } catch { context.rollback(); throw error }
     }
     /// Local-only destruction. Never call purgeObjectsAndRecordsInZone here: that also deletes server records.

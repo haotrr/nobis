@@ -36,7 +36,7 @@ struct AppNavigationView: View {
                     }.listStyle(.sidebar).listItemTint(.monochrome).scrollContentBackground(.hidden)
                     VStack(alignment: .leading, spacing: 8) {
                         spacePicker
-                        Label("已保存在此设备", systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
+                        Label(model.saveStatus, systemImage: model.cloud.enabled ? "icloud" : "internaldrive").font(.caption).foregroundStyle(.secondary)
                     }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .nobisGlass(radius: 16).padding(12)
                 }.background { LifeBackground() }

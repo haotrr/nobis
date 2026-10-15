@@ -13,6 +13,15 @@ import FamilyCore
         #expect(a != CloudIdentity.memberID(container: "iCloud.b", userRecordName: "_userA"))
         #expect(a != CloudIdentity.memberID(container: "iCloud.a", userRecordName: "_userB"))
     }
+    @Test func currentUserAliasRequiresServerCurrentParticipant() throws {
+        let account = CloudIdentity.memberID(container: "iCloud.test", userRecordName: "real-user")
+        #expect(try CloudParticipantIdentity.memberID(container: "iCloud.test", recordName: CKCurrentUserDefaultName, isCurrentParticipant: true, verifiedAccountID: account) == account)
+        #expect(throws: NobisError.self) {
+            try CloudParticipantIdentity.memberID(container: "iCloud.test", recordName: CKCurrentUserDefaultName, isCurrentParticipant: false, verifiedAccountID: account)
+        }
+        let other = try CloudParticipantIdentity.memberID(container: "iCloud.test", recordName: "other-user", isCurrentParticipant: true, verifiedAccountID: account)
+        #expect(other != account)
+    }
     @Test func nameEqualityDoesNotGrantMembership() {
         let a = Member(name: "同名"), b = Member(name: "同名")
         #expect(throws: NobisError.self) { try FamilyGrant(spaceID: UUID(), accountID: b.id, ownerID: a.id, members: [a], writable: true) }
@@ -39,6 +48,15 @@ import FamilyCore
         #expect(throws: NobisError.self) { try policy.requireWrite(spaceID: space, actorID: a.id) }
         policy.identify(b.id); #expect(policy.grant == nil)
         #expect(throws: NobisError.self) { try policy.requireWrite(spaceID: space, actorID: b.id) }
+    }
+    @Test func retryRespectsServerBackoffAndDoesNotRetryPermanentFailures() {
+        #expect(CloudFailurePolicy.retryDelay(for: CKError(.networkUnavailable)) == 30)
+        #expect(CloudFailurePolicy.retryDelay(for: CKError(.requestRateLimited, userInfo: [CKErrorRetryAfterKey: 120.0])) == 120)
+        #expect(CloudFailurePolicy.retryDelay(for: CKError(.zoneBusy, userInfo: [CKErrorRetryAfterKey: -1.0])) == 5)
+        #expect(CloudFailurePolicy.retryDelay(for: CKError(.serviceUnavailable, userInfo: [CKErrorRetryAfterKey: Double.infinity])) == 30)
+        for code: CKError.Code in [.permissionFailure, .notAuthenticated, .quotaExceeded, .badContainer, .unknownItem] {
+            #expect(CloudFailurePolicy.retryDelay(for: CKError(code)) == nil)
+        }
     }
     @Test func transientErrorsAreNotRevocation() {
         for code: CKError.Code in [.networkUnavailable, .networkFailure, .serviceUnavailable, .requestRateLimited, .zoneBusy, .accountTemporarilyUnavailable] {
@@ -130,6 +148,59 @@ import FamilyCore
         #expect(try core.spaces().count == 1)
         #expect(throws: NobisError.self) { try core.save(RecordBody(kind: .task, title: "不应写入"), spaceID: space.id) }
         try repo.closeAndClearLocalCache()
+    }
+    @Test func offlineBranchesDeletionAndRestartPreserveCloudHistory() async throws {
+        // Simulates remote Core Data imports; it does not claim to exercise CloudKit transport.
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let (repo, member, space) = try await makeCloud(at: url)
+        let session = AccessSession(memberID: member.id, allowedSpaceIDs: [space.id])
+        let core = FamilyCore(repository: repo, session: session)
+        let initial = try core.save(RecordBody(kind: .task, title: "初始"), spaceID: space.id)
+        var remoteBody = initial.body; remoteBody.title = "离线设备修改"
+        let remote = Revision(recordID: initial.recordID, spaceID: space.id, parents: [initial.id], actorID: member.id, body: remoteBody)
+        var localBody = initial.body; localBody.title = "在线设备修改"
+        let local = try core.save(localBody, spaceID: space.id, recordID: initial.recordID, expected: [initial.id])
+        let root = try #require(repo.roots().first), store = try #require(repo.privateStore)
+        func importRevision(_ revision: Revision) throws {
+            let context = repo.container.viewContext
+            for (entity, payload, id) in [
+                ("RecordRevision", try JSONEncoder().encode(revision), revision.id),
+                ("AuditEvent", try JSONEncoder().encode(AuditEvent(revision: revision, action: "update")), UUID())
+            ] {
+                let object = NSEntityDescription.insertNewObject(forEntityName: entity, into: context)
+                context.assign(object, to: store)
+                object.setValue(root, forKey: "root"); object.setValue(id.uuidString, forKey: "logicalID"); object.setValue(payload, forKey: "payload")
+            }
+            try context.save()
+        }
+        try importRevision(remote)
+        let conflict = try #require(Record.project(repo.load().revisions).first)
+        #expect(conflict.conflicted)
+        #expect(Set(conflict.heads.map(\.id)) == [local.id, remote.id])
+        #expect(throws: NobisError.self) {
+            try core.save(localBody, spaceID: space.id, recordID: initial.recordID, expected: [local.id])
+        }
+        let resolved = try core.save(localBody, spaceID: space.id, recordID: initial.recordID, expected: [local.id, remote.id])
+        let removed = try core.save(resolved.body, spaceID: space.id, recordID: initial.recordID, expected: [resolved.id], deleted: true)
+        let staleEdit = Revision(recordID: initial.recordID, spaceID: space.id, parents: [resolved.id], actorID: member.id, body: remoteBody)
+        try importRevision(staleEdit)
+        let deleted = try #require(Record.project(repo.load().revisions).first)
+        #expect(deleted.deleted)
+        #expect(Set(deleted.heads.map(\.id)) == [removed.id, staleEdit.id])
+        let expectedIDs = Set(try repo.load().revisions.map(\.id))
+        // Close without deleting, then reopen the physical cloud stores.
+        repo.container.viewContext.reset()
+        for store in repo.container.persistentStoreCoordinator.persistentStores {
+            try repo.container.persistentStoreCoordinator.remove(store)
+        }
+        let reopened = CloudFamilyRepository(directory: url, identifier: nil)
+        try await reopened.open(); reopened.identify(member.id)
+        let reloadedRoot = try #require(reopened.roots().first)
+        try reopened.authorize(FamilyGrant(spaceID: space.id, accountID: member.id, ownerID: member.id, members: [member], writable: true), root: reloadedRoot, generation: reopened.policy.generation)
+        #expect(Set(try reopened.load().revisions.map(\.id)) == expectedIDs)
+        #expect(try Record.project(reopened.load().revisions).first?.deleted == true)
+        try reopened.closeAndClearLocalCache()
     }
     @Test func pendingRootIsNotVisibleBeforeIdentityMapping() async throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

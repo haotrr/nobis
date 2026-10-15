@@ -252,15 +252,19 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					0FEB69B4B9769846745FC9CD = {
+						DevelopmentTeam = L43P5YF78U;
 						ProvisioningStyle = Automatic;
 					};
 					43E4D52F915890FAF4B2D847 = {
+						DevelopmentTeam = L43P5YF78U;
 						ProvisioningStyle = Automatic;
 					};
 					E03467A1C11505CBE7512E93 = {
+						DevelopmentTeam = L43P5YF78U;
 						ProvisioningStyle = Automatic;
 					};
 					E59496F5DC0B77AD4DF4F03E = {
+						DevelopmentTeam = L43P5YF78U;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -385,6 +389,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = L43P5YF78U;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -427,11 +432,12 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
+				INFOPLIST_FILE = Apps/Nobis/macOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tinyxxl.nobis.mac;
 				PRODUCT_NAME = Nobis;
 				SDKROOT = macosx;
 			};
@@ -475,6 +481,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = L43P5YF78U;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -548,6 +555,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = L43P5YF78U;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -614,6 +622,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = L43P5YF78U;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -654,7 +663,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tinyxxl.nobis.ios;
 				PRODUCT_NAME = Nobis;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -670,13 +679,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
+				INFOPLIST_FILE = Apps/Nobis/macOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				NOBIS_CLOUD_ENVIRONMENT = Production;
 				NOBIS_PUSH_ENVIRONMENT = production;
-				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tinyxxl.nobis.mac;
 				PRODUCT_NAME = Nobis;
 				SDKROOT = macosx;
 			};
@@ -698,7 +708,7 @@
 				);
 				NOBIS_CLOUD_ENVIRONMENT = Development;
 				NOBIS_PUSH_ENVIRONMENT = development;
-				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tinyxxl.nobis.ios;
 				PRODUCT_NAME = Nobis;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -712,11 +722,12 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
+				INFOPLIST_FILE = Apps/Nobis/macOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tinyxxl.nobis.mac;
 				PRODUCT_NAME = Nobis;
 				SDKROOT = macosx;
 			};
@@ -732,7 +743,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.editor-tests";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tinyxxl.nobis.editor-tests";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -754,7 +765,7 @@
 				);
 				NOBIS_CLOUD_ENVIRONMENT = Production;
 				NOBIS_PUSH_ENVIRONMENT = production;
-				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tinyxxl.nobis.ios;
 				PRODUCT_NAME = Nobis;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -775,8 +786,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				NOBIS_CLOUD_CONTAINER = iCloud.com.haotrr.nobis.dev;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.sharing-spike";
+				NOBIS_CLOUD_CONTAINER = iCloud.com.tinyxxl.nobis.spike;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tinyxxl.nobis.sharing-spike";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -792,7 +803,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.editor-tests";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tinyxxl.nobis.editor-tests";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -808,7 +819,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.editor-tests";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tinyxxl.nobis.editor-tests";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -828,8 +839,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				NOBIS_CLOUD_CONTAINER = iCloud.com.haotrr.nobis.dev;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.sharing-spike";
+				NOBIS_CLOUD_CONTAINER = iCloud.com.tinyxxl.nobis.spike;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tinyxxl.nobis.sharing-spike";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -849,8 +860,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				NOBIS_CLOUD_CONTAINER = iCloud.com.haotrr.nobis.dev;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.sharing-spike";
+				NOBIS_CLOUD_CONTAINER = iCloud.com.tinyxxl.nobis.spike;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tinyxxl.nobis.sharing-spike";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -868,7 +879,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tinyxxl.nobis.ios;
 				PRODUCT_NAME = Nobis;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -885,7 +896,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.editor-tests";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tinyxxl.nobis.editor-tests";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -900,13 +911,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
+				INFOPLIST_FILE = Apps/Nobis/macOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				NOBIS_CLOUD_ENVIRONMENT = Development;
 				NOBIS_PUSH_ENVIRONMENT = development;
-				PRODUCT_BUNDLE_IDENTIFIER = com.haotrr.nobis.mac;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tinyxxl.nobis.mac;
 				PRODUCT_NAME = Nobis;
 				SDKROOT = macosx;
 			};
@@ -926,8 +938,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				NOBIS_CLOUD_CONTAINER = iCloud.com.haotrr.nobis.dev;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.haotrr.nobis.sharing-spike";
+				NOBIS_CLOUD_CONTAINER = iCloud.com.tinyxxl.nobis.spike;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tinyxxl.nobis.sharing-spike";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

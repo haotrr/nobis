@@ -139,6 +139,12 @@ struct TodayWorkspace: View {
                     Text("一起过好今天").font(.largeTitle.weight(.semibold))
                 }.frame(maxWidth: .infinity).padding(.top, 18).padding(.bottom, 6)
 
+                if model.cloud.configured {
+                    Button { model.showingCloudSetup = true } label: {
+                        Label(model.cloud.enabled ? model.cloud.syncStatus : "连接 iCloud，在自己的设备间同步", systemImage: "icloud")
+                            .font(.callout).frame(maxWidth: .infinity, alignment: .leading)
+                    }.buttonStyle(.plain).foregroundStyle(.secondary)
+                }
                 if events.isEmpty && dueTasks.isEmpty {
                     Label("今天没有日程和到期待办，按自己的节奏来。", systemImage: "leaf")
                         .font(.callout).foregroundStyle(.secondary)

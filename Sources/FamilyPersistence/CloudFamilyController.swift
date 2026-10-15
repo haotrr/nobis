@@ -34,6 +34,33 @@ public struct CloudFamilyParticipant: Identifiable {
     public private(set) var participants: [CloudFamilyParticipant] = []
     public private(set) var lastImport: Date?
     public private(set) var lastExport: Date?
+    public private(set) var syncProgress = CloudSyncProgress()
+    private var syncFailures: [String: String] = [:]
+    private var syncStateIssue: String?
+    public var syncIssue: String? { syncStateIssue ?? syncFailures.values.sorted().first }
+    private var importedStores: Set<String> = []
+    private var hasFinishedInitialImport: Bool {
+        guard let repository else { return false }
+        let ids = repository.container.persistentStoreCoordinator.persistentStores.map(\.identifier)
+        return ids.count == 2 && Set(ids).isSubset(of: importedStores)
+    }
+    public private(set) var hasUnpreparedFamily = false
+    public private(set) var pendingInvitationCount = 0
+    private var activeImports: Set<UUID> = []
+    private var activeExports: Set<UUID> = []
+    public var syncStatus: String {
+        if syncIssue != nil { return "云端传输未完成 · 本机内容已保留" }
+        if !activeExports.isEmpty { return "正在上传到 iCloud" }
+        if !activeImports.isEmpty { return "正在接收 iCloud 更新" }
+        if syncProgress.hasPendingWrites { return "已保存到本机 · 等待上传" }
+        if issue != nil { return "连接需检查 · 本机内容已保留" }
+        if grant != nil { return "已连接 iCloud" }
+        return state
+    }
+    public var membershipDescription: String {
+        guard let grant else { return "尚未连接云家庭" }
+        return grant.members.count > 1 ? "两人共同使用 · iCloud 同步" : "自己的设备间同步"
+    }
     public var invitation: CKShare.Metadata?
     public var preparedShare: CKShare?
     public var onChange: (() -> Void)?
@@ -42,7 +69,7 @@ public struct CloudFamilyParticipant: Identifiable {
     public var configured: Bool { identifier?.hasPrefix("iCloud.") == true }
     public var grant: FamilyGrant? { repository?.policy.grant }
     public var isOwner: Bool { connection?.isOwner == true }
-    public var canCreateFamily: Bool { accountID != nil && connection == nil && lastImport != nil }
+    public var canCreateFamily: Bool { accountID != nil && connection == nil && hasFinishedInitialImport && !hasUnpreparedFamily }
     public var enabled: Bool { FileManager.default.fileExists(atPath: directory.appendingPathComponent("enabled").path) }
     public var ckContainer: CKContainer? { identifier.map { CKContainer(identifier: $0) } }
     private let directory: URL
@@ -57,9 +84,11 @@ public struct CloudFamilyParticipant: Identifiable {
         self.directory = directory.appendingPathComponent(CloudIdentity.namespace(identifier ?? "unconfigured"))
         if let data = try? LocalMetadataFile.read(from: self.directory.appendingPathComponent("connection.json")) { connection = try? JSONDecoder().decode(CloudFamilyConnection.self, from: data) }
         if FileManager.default.fileExists(atPath: self.directory.appendingPathComponent("access-denied").path) { connection?.grant = nil }
+        if let data = try? LocalMetadataFile.read(from: self.directory.appendingPathComponent("sync-progress.json")),
+           let progress = try? JSONDecoder().decode(CloudSyncProgress.self, from: data) { syncProgress = progress }
         if !configured { state = "待配置开发团队和 CloudKit 容器" }
-        let token = NotificationCenter.default.addObserver(forName: .CKAccountChanged, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.accountChanged() }
+        let token = NotificationCenter.default.addObserver(forName: .CKAccountChanged, object: nil, queue: nil) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.accountChanged() }
         }
         observers.append(token)
     }
@@ -85,7 +114,7 @@ public struct CloudFamilyParticipant: Identifiable {
         } catch { handle(error, ticket: ticket) }
     }
     private func ensureAccount(ticket: UUID) async throws {
-        guard let ck = ckContainer else { throw NobisError.validation("请先按 docs/cloudkit-setup.md 配置开发团队和容器，再重新构建。") }
+        guard let ck = ckContainer else { throw NobisError.validation("请先按 docs/guides/cloudkit-setup.md 配置开发团队和容器，再重新构建。") }
         let status = try await ck.accountStatus()
         guard ticket == epoch else { throw CancellationError() }
         guard status == .available else {
@@ -106,6 +135,11 @@ public struct CloudFamilyParticipant: Identifiable {
         if repository == nil {
             let stack = CloudFamilyRepository(directory: directory.appendingPathComponent("Stores"), identifier: identifier)
             observe(stack)
+            stack.onLocalSave = { [weak self] store in
+                guard let self else { return }
+                self.syncProgress.saved(store: store, at: Date())
+                self.saveSyncProgress()
+            }
             do { try await stack.open() } catch { try? stack.closeAndClearLocalCache(); throw error }
             guard ticket == epoch else { try? stack.closeAndClearLocalCache(); throw CancellationError() }
             repository = stack
@@ -117,9 +151,10 @@ public struct CloudFamilyParticipant: Identifiable {
     private func synchronize(ticket: UUID) async throws {
         guard let stack = repository, let accountID, let ck = ckContainer else { return }
         if connection == nil {
+            hasUnpreparedFamily = false
             let roots = try stack.roots()
             guard roots.count <= 1 else { stack.block(); onChange?(); throw NobisError.validation("发现多个家庭根，请先核对数据，暂不自动选择。") }
-            guard let root = roots.first else { state = lastImport == nil ? "正在检查已有家庭 · 等待首次导入完成" : "iCloud 已连接 · 可创建家庭或接受邀请"; issue = nil; onChange?(); return }
+            guard let root = roots.first else { state = !hasFinishedInitialImport ? "正在检查已有家庭 · 等待首次导入完成" : "iCloud 已连接 · 可创建家庭或接受邀请"; issue = nil; onChange?(); return }
             let space = try stack.space(of: root)
             let shares = try stack.container.fetchShares(matching: [root.objectID])
             if let share = shares[root.objectID] {
@@ -127,7 +162,8 @@ public struct CloudFamilyParticipant: Identifiable {
             } else {
                 guard space.ownerID == accountID, root.objectID.persistentStore == stack.privateStore else { throw NobisError.forbidden }
                 // Root exists but sharing creation/export hasn't completed. Never create a second root.
-                state = "家庭根已保存 · 请继续准备邀请"; issue = nil; onChange?(); return
+                hasUnpreparedFamily = true
+                state = "云家庭已保存 · 继续完成连接"; issue = nil; onChange?(); return
             }
         }
         guard let connection, connection.accountID == accountID else { throw NobisError.forbidden }
@@ -149,26 +185,39 @@ public struct CloudFamilyParticipant: Identifiable {
         // Imports can arrive out of order. Gate the business projection until references are available.
         do { _ = try stack.load() } catch { stack.block(); onChange?(); throw error }
         self.connection?.grant = grant; try saveConnection()
+        hasUnpreparedFamily = false
         participants = participantRows(share)
-        state = grant.members.count == 2 ? "已加入家庭 · 本地保存后自动同步" : "家庭已连接 · 等待另一位成员接受"
+        pendingInvitationCount = share.participants.filter { $0.role != .owner && $0.acceptanceStatus != .accepted }.count
+        state = grant.members.count == 2 ? "两人已连接 · 自动同步" : pendingInvitationCount > 0 ? "跨设备同步已连接 · 邀请等待接受" : "跨设备同步已连接 · 可邀请另一位"
         issue = nil; onChange?()
     }
     private func verifiedGrant(share: CKShare, connection: CloudFamilyConnection) throws -> FamilyGrant {
-        guard share.publicPermission == .none, share["nobisFormat"] as? String == "5",
-              share["nobisSpaceID"] as? String == connection.spaceID.uuidString,
-              let current = share.currentUserParticipant,
+        guard share.publicPermission == .none else { throw NobisError.validation("共享权限核验失败：不是私有共享。") }
+        guard share["nobisFormat"] as? String == "5",
+              share["nobisSpaceID"] as? String == connection.spaceID.uuidString else {
+            throw NobisError.validation("共享格式尚未就绪，请拥有者继续准备邀请。")
+        }
+        guard let current = share.currentUserParticipant,
               let currentRecord = current.userIdentity.userRecordID,
-              let ownerRecord = share.owner.userIdentity.userRecordID else { throw NobisError.forbidden }
-        let owner = CloudIdentity.memberID(container: identifier!, userRecordName: ownerRecord.recordName)
-        let me = CloudIdentity.memberID(container: identifier!, userRecordName: currentRecord.recordName)
-        guard me == accountID, current.role == .owner || current.acceptanceStatus == .accepted,
+              let ownerRecord = share.owner.userIdentity.userRecordID else {
+            throw NobisError.validation("共享身份尚未就绪，请稍后检查同步状态。")
+        }
+        guard let accountID else { throw NobisError.forbidden }
+        let owner = try CloudParticipantIdentity.memberID(container: identifier!, recordName: ownerRecord.recordName,
+            isCurrentParticipant: share.owner == current, verifiedAccountID: accountID)
+        let me = try CloudParticipantIdentity.memberID(container: identifier!, recordName: currentRecord.recordName,
+            isCurrentParticipant: true, verifiedAccountID: accountID)
+        guard me == accountID else { throw NobisError.validation("共享身份与当前 iCloud 账户不一致。") }
+        guard current.role == .owner || current.acceptanceStatus == .accepted,
               current.role == .owner || [.readOnly, .readWrite].contains(current.permission),
-              connection.isOwner == (current.role == .owner) else { throw NobisError.forbidden }
+              connection.isOwner == (current.role == .owner) else {
+            throw NobisError.validation("共享角色或接受状态尚未通过核验。")
+        }
         let accepted = share.participants.filter { $0.role == .owner || $0.acceptanceStatus == .accepted }
         guard accepted.count <= 2 else { throw NobisError.validation("首版仅支持两位成员。请拥有者在系统共享管理中移除多余参与者。") }
         let members = try accepted.map { participant -> Member in
             guard let record = participant.userIdentity.userRecordID else { throw NobisError.validation("参与者身份尚未导入，请稍后重试。") }
-            return Member(id: CloudIdentity.memberID(container: identifier!, userRecordName: record.recordName), name: displayName(participant))
+            return Member(id: try CloudParticipantIdentity.memberID(container: identifier!, recordName: record.recordName, isCurrentParticipant: participant == current, verifiedAccountID: accountID), name: displayName(participant))
         }.sorted { $0.id.uuidString < $1.id.uuidString }
         return try FamilyGrant(spaceID: connection.spaceID, accountID: me, ownerID: owner, members: members, writable: current.role == .owner || current.permission == .readWrite)
     }
@@ -177,12 +226,12 @@ public struct CloudFamilyParticipant: Identifiable {
         do {
             try await ensureAccount(ticket: ticket)
             guard connection == nil, let accountID, let stack = repository else { throw NobisError.validation("已有家庭连接，不能再创建一个。") }
-            guard lastImport != nil else { throw NobisError.validation("请等待首次云端导入完成，避免重复创建已有家庭。") }
+            guard hasFinishedInitialImport else { throw NobisError.validation("请等待首次云端导入完成，避免重复创建已有家庭。") }
             let root = try stack.createFamily(name: name, member: Member(id: accountID, name: memberName))
-            try await prepare(root: root, ticket: ticket)
+            try await prepare(root: root, ticket: ticket, presentInvitation: false)
         } catch { handle(error, ticket: ticket) }
     }
-    public func prepareInvitation() async {
+    public func prepareInvitation(presentInvitation: Bool = true) async {
         guard !isBusy else { return }; isBusy = true; defer { finishOperation() }; let ticket = epoch
         do {
             try await ensureAccount(ticket: ticket)
@@ -193,17 +242,17 @@ public struct CloudFamilyParticipant: Identifiable {
                 guard connection.isOwner, let ck = ckContainer else { throw NobisError.forbidden }
                 guard let share = try await ck.privateCloudDatabase.record(for: connection.recordID) as? CKShare else { throw NobisError.forbidden }
                 guard ticket == epoch else { throw CancellationError() }
-                preparedShare = share; return
+                try await prepare(root: root, ticket: ticket, existingShare: share, presentInvitation: presentInvitation); return
             }
-            try await prepare(root: root, ticket: ticket)
+            try await prepare(root: root, ticket: ticket, presentInvitation: presentInvitation)
         } catch { handle(error, ticket: ticket) }
     }
-    private func prepare(root: NSManagedObject, ticket: UUID) async throws {
+    private func prepare(root: NSManagedObject, ticket: UUID, existingShare: CKShare? = nil, presentInvitation: Bool = true) async throws {
         guard let stack = repository, let accountID else { throw NobisError.forbidden }
         let space = try stack.space(of: root)
         guard space.ownerID == accountID, root.objectID.persistentStore == stack.privateStore else { throw NobisError.forbidden }
         state = "正在准备邀请 · 等待 CloudKit"
-        let existing = try stack.container.fetchShares(matching: [root.objectID])[root.objectID]
+        let existing = try existingShare ?? stack.container.fetchShares(matching: [root.objectID])[root.objectID]
         let share: CKShare
         if let existing { share = existing } else { (_, share, _) = try await stack.container.share([root], to: nil) }
         guard ticket == epoch else { throw CancellationError() }
@@ -214,8 +263,9 @@ public struct CloudFamilyParticipant: Identifiable {
         try await stack.container.persistUpdatedShare(share, in: store)
         guard ticket == epoch else { throw CancellationError() }
         connection = descriptor(share: share, spaceID: space.id, accountID: accountID, isOwner: true)
-        try saveConnection(); preparedShare = share
+        try saveConnection()
         try await synchronize(ticket: ticket)
+        if presentInvitation { preparedShare = share }
     }
     public func acceptInvitation() async {
         guard !isBusy, let metadata = invitation else { return }; isBusy = true; defer { finishOperation() }; let ticket = epoch
@@ -291,9 +341,10 @@ public struct CloudFamilyParticipant: Identifiable {
             return
         }
         let transient = disposition == .retry
-        if transient {
-            let retry = (error as? CKError)?.userInfo[CKErrorRetryAfterKey] as? Double ?? 30
-            nextRefreshAfter = Date().addingTimeInterval(max(5, retry))
+        if let delay = CloudFailurePolicy.retryDelay(for: error) {
+            nextRefreshAfter = Date().addingTimeInterval(delay)
+            // finishOperation schedules this even when the cached grant path returns early.
+            refreshAgain = true
         }
         if transient, let connection, let cached = connection.grant, cached.accountID == accountID, let stack = repository,
            let root = try? stack.roots().first(where: { (try? stack.space(of: $0).id) == cached.spaceID }) {
@@ -303,10 +354,6 @@ public struct CloudFamilyParticipant: Identifiable {
             } catch { stack.block() }
         } else if !transient {
             repository?.block(); self.connection?.grant = nil; try? saveConnection()
-        }
-        if let cloud = error as? CKError {
-            let retry = cloud.userInfo[CKErrorRetryAfterKey] as? Double ?? 30
-            nextRefreshAfter = Date().addingTimeInterval(max(5, retry))
         }
         state = "连接未就绪"; issue = error.localizedDescription; onChange?()
     }
@@ -331,6 +378,9 @@ public struct CloudFamilyParticipant: Identifiable {
         try CloudFamilyRepository.clearDetachedCache(directory: directory.appendingPathComponent("Stores"))
         repository = nil; accountID = nil; participants = []; connection = nil; preparedShare = nil
         lastImport = nil; lastExport = nil
+        activeImports = []; activeExports = []; syncProgress = CloudSyncProgress(); syncFailures = [:]; syncStateIssue = nil; importedStores = []
+        hasUnpreparedFamily = false; pendingInvitationCount = 0
+        saveSyncProgress()
         let url = directory.appendingPathComponent("connection.json")
         if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
         if removeEnabled {
@@ -340,21 +390,52 @@ public struct CloudFamilyParticipant: Identifiable {
         try FileManager.default.removeItem(at: directory.appendingPathComponent("access-denied"))
         onChange?()
     }
+    private func saveSyncProgress() {
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try JSONEncoder().encode(syncProgress).write(to: directory.appendingPathComponent("sync-progress.json"), options: LocalMetadataFile.writingOptions)
+            syncStateIssue = nil
+        } catch { syncStateIssue = "同步状态记录未保存，业务内容仍保留在本机。" }
+    }
     private func observe(_ stack: CloudFamilyRepository) {
-        let remote = NotificationCenter.default.addObserver(forName: .NSPersistentStoreRemoteChange, object: stack.container.persistentStoreCoordinator, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.requestRefresh() }
+        let ticket = epoch
+        // Never synchronously dispatch Core Data notifications to main: share() may wait on that queue.
+        let remote = NotificationCenter.default.addObserver(forName: .NSPersistentStoreRemoteChange, object: stack.container.persistentStoreCoordinator, queue: nil) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.epoch == ticket else { return }
+                self.requestRefresh()
+            }
         }
-        let event = NotificationCenter.default.addObserver(forName: NSPersistentCloudKitContainer.eventChangedNotification, object: stack.container, queue: .main) { [weak self] notification in
-            guard let event = notification.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey] as? NSPersistentCloudKitContainer.Event,
-                  let end = event.endDate else { return }
+        let event = NotificationCenter.default.addObserver(forName: NSPersistentCloudKitContainer.eventChangedNotification, object: stack.container, queue: nil) { [weak self] notification in
+            guard let event = notification.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey] as? NSPersistentCloudKitContainer.Event else { return }
+            let end = event.endDate, start = event.startDate, id = event.identifier, store = event.storeIdentifier
             let succeeded = event.succeeded, isImport = event.type == .import, isExport = event.type == .export
-            let message = event.error?.localizedDescription
-            MainActor.assumeIsolated {
-                guard let self else { return }
+            let failureKey = "\(store):\(event.type.rawValue)"
+            let error = event.error
+            Task { @MainActor [weak self] in
+                guard let self, self.epoch == ticket else { return }
+                if end == nil {
+                    if isImport { self.activeImports.insert(id) }
+                    if isExport { self.activeExports.insert(id) }
+                    return
+                }
+                self.activeImports.remove(id); self.activeExports.remove(id)
+                guard let end else { return }
                 if succeeded {
-                    if isImport { self.lastImport = end; self.requestRefresh() }
-                    if isExport { self.lastExport = end }
-                } else { self.issue = message; self.requestRefresh() }
+                    if isImport { self.importedStores.insert(store); self.lastImport = end; self.syncProgress.imported(at: end) }
+                    if isExport {
+                        self.lastExport = end
+                        self.syncProgress.exported(store: store, started: start, ended: end, succeeded: true)
+                    }
+                    self.syncFailures.removeValue(forKey: failureKey)
+                    if isImport || isExport { self.saveSyncProgress(); self.requestRefresh() }
+                } else {
+                    self.syncFailures[failureKey] = error?.localizedDescription ?? "云端传输未完成，请稍后重试。"
+                    if let error, let delay = CloudFailurePolicy.retryDelay(for: error) {
+                        self.nextRefreshAfter = max(self.nextRefreshAfter, Date().addingTimeInterval(delay))
+                    }
+                    self.requestRefresh()
+                }
             }
         }
         observers += [remote, event]
@@ -366,7 +447,10 @@ public struct CloudFamilyParticipant: Identifiable {
         refreshTask = Task { [weak self] in
             do { try await Task.sleep(for: .seconds(delay)) } catch { return }
             guard let self else { return }
-            self.refreshTask = nil; await self.connect()
+            self.refreshTask = nil
+            // A later CloudKit event may extend the backoff while this task sleeps.
+            if self.nextRefreshAfter > Date() { self.requestRefresh(); return }
+            await self.connect()
         }
     }
     private func finishOperation() {

@@ -22,7 +22,8 @@ public struct NobisRootView: View {
             }
         }
         .id(model.accessEpoch)
-        .sheet(isPresented: Binding(get: { model.cloud.invitation != nil }, set: { if !$0 { model.cloud.invitation = nil } })) { FamilyInvitationView(model: model) }
+        .sheet(isPresented: Binding(get: { model.cloud.invitation != nil && !model.showingCloudSetup }, set: { if !$0 { model.cloud.invitation = nil } })) { FamilyInvitationView(model: model) }
+        .sheet(isPresented: $model.showingCloudSetup) { CloudSetupView(model: model) }
         .tint(NobisTheme.accent)
         .alert("操作未完成", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button("知道了", role: .cancel) { model.error = nil } } message: { Text(model.error ?? "") }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in

@@ -23,6 +23,7 @@ import FamilyPersistence
     public var notice: String?
     public var ready = false
     public var setupRequired = false
+    public var showingCloudSetup = false
     public var startupDiagnostic = ""
     public var readComments: Set<UUID> = []
     public var draftStore: DocumentDraftStore { DocumentDraftStore(directory: directory.appendingPathComponent("DocumentDrafts")) }
@@ -158,10 +159,15 @@ import FamilyPersistence
     public func visibility(for spaceID: UUID) -> String {
         guard let space = spaces.first(where: { $0.id == spaceID }) else { return "空间访问已关闭" }
         if space.kind == .personal { return "仅自己" }
-        return cloud.grant?.spaceID == spaceID ? "两人共享 · 已连接 iCloud" : "共同生活 · 尚未连接另一位"
+        return cloud.grant?.spaceID == spaceID ? cloud.membershipDescription : "仅此设备 · 本地共同空间"
     }
     public func canWrite(spaceID: UUID) -> Bool { cloud.grant?.spaceID != spaceID || cloud.grant?.writable == true }
 
+    public var saveStatus: String { cloud.enabled ? cloud.syncStatus : "仅保存在此设备" }
+    public func setupAndConnect(name: String, familyName: String) {
+        setup(name: name, familyName: familyName, partnerName: "")
+        if ready { showingCloudSetup = true }
+    }
     public func setup(name: String, familyName: String, partnerName: String, demo: Bool = false) {
         perform {
             guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw NobisError.validation("请填写你的称呼。") }
@@ -219,7 +225,7 @@ import FamilyPersistence
             throw NobisError.validation("此记录正在分享，请先在设置中完成分享核对。")
         }
         try core.save(body, spaceID: spaceID, recordID: existing?.id ?? recordID ?? UUID(), expected: expected ?? Set(existing?.heads.map(\.id) ?? []), deleted: deleted)
-        notice = "已保存在此设备"; refresh()
+        notice = cloud.grant?.spaceID == spaceID ? "已保存到本机，iCloud 将自动上传" : "已保存在此设备"; refresh()
     }
     public var pendingShares: [SharingPlan] {
         let path = directory.appendingPathComponent("SharingPlans")
