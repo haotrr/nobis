@@ -39,6 +39,14 @@ struct RecordRow: View {
                         VStack(alignment: .leading, spacing: 4) { metadata }
                     }.font(.caption).foregroundStyle(.secondary)
                 }
+                if record.body.kind == .transaction {
+                    Text(transactionSummary).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !record.body.notes.isEmpty {
+                        Text(record.body.notes).font(.caption).foregroundStyle(.secondary)
+                            .lineLimit(textSize.isAccessibilitySize ? nil : 2)
+                    }
+                }
                 if stacked { amount }
             }.frame(maxWidth: .infinity, alignment: .leading)
             if !stacked { amount }
@@ -46,6 +54,21 @@ struct RecordRow: View {
             if record.body.kind == .project { Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary).accessibilityHidden(true) }
             #endif
         }.padding(.vertical, 14).contentShape(Rectangle())
+    }
+    private var transactionSummary: String {
+        let body = record.body
+        var parts = [body.transactionKind.title, body.category].filter { !$0.isEmpty }
+        for id in body.projectIDs {
+            parts.append(model.activeRecords.first { $0.id == id }?.body.title ?? "项目不可用")
+        }
+        if let finance = body.finance {
+            if finance.consumption == .personal { parts.append("消费：" + finance.consumer) }
+            else if finance.consumption == .family { parts.append("家庭消费") }
+            if !finance.originalRecorder.isEmpty { parts.append("记录：" + finance.originalRecorder) }
+        }
+        if body.subscriptionID != nil && body.category != "订阅" { parts.append("订阅") }
+        if !body.account.isEmpty && body.account != "默认账户" { parts.append(body.account) }
+        return parts.joined(separator: " · ")
     }
     @ViewBuilder private var metadata: some View {
         if showsOwnership {

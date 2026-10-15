@@ -23,6 +23,8 @@ struct RecordEditor: View {
     @State private var validation: String?
     @State private var initialDraft: Draft?
     @State private var confirmingDiscard = false
+    @State private var showingMore = false
+    @State private var customCategory = false
     @State private var budgetLimit: String
     @State private var budgetCurrency: Currency
     @State private var budgetItemName = ""
@@ -42,9 +44,12 @@ struct RecordEditor: View {
         self.model = model; self.kind = kind; self.existing = existing; self.onFinish = onFinish
         let initialSpace = existing?.latest.spaceID ?? project?.latest.spaceID ?? model.selectedSpaceID ?? UUID()
         _spaceID = State(initialValue: initialSpace)
-        var value = existing?.body ?? RecordBody(kind: kind, title: "", status: kind == .transaction ? .draft : .active)
+        var value = existing?.body ?? RecordBody(kind: kind, title: "", status: kind == .transaction ? .confirmed : .active)
         if let project { if kind == .project { value.parentProjectID = project.id } else { value.projectIDs = [project.id] } }
-        if existing == nil && kind == .transaction { value.finance = FinanceDetails() }
+        if existing == nil && kind == .transaction {
+            value.finance = FinanceDetails()
+            if model.spaces.first(where: { $0.id == initialSpace })?.kind == .family { value.finance?.consumption = .family }
+        }
         if value.memberID == nil && (kind != .transaction || value.accountingMode == .sharedSettlement) { value.memberID = model.core?.session.actorID(in: initialSpace) ?? model.selectedSpace?.members.first?.id }
         _bodyValue = State(initialValue: value)
         _budgetLimit = State(initialValue: value.budget.map { (Decimal($0.limit.minor) / Decimal($0.limit.currency.factor)).description } ?? "")
@@ -70,57 +75,7 @@ struct RecordEditor: View {
     var body: some View {
         VStack(spacing: 0) {
             LifeDetail {
-                LifeFormSection(title: "基本信息", icon: kind.icon) {
-                    RecordVisibilityField(model: model,
-                        spaceID: Binding(get: { Optional(spaceID) }, set: { if let value = $0 { spaceID = value } }),
-                        editable: existing == nil,
-                        inherited: !bodyValue.projectIDs.isEmpty || bodyValue.parentProjectID != nil || bodyValue.refundOfID != nil || bodyValue.subscriptionID != nil)
-                    LifeTextField("\(kind.title)名称", text: $bodyValue.title)
-                    LifePicker("状态", selection: $bodyValue.status) { ForEach(statuses, id: \.self) { Text($0.title).tag($0) } }
-                    if kind == .task || kind == .subscription || kind == .transaction {
-                        LifePicker(kind == .task ? "负责人" : "付款 / 收款人", selection: $bodyValue.memberID) { Text("未分配").tag(Optional<UUID>.none); ForEach(space?.members ?? []) { Text($0.name).tag(Optional($0.id)) } }
-                    }
-                }
-                if kind == .transaction || kind == .subscription { moneySection }
-                if kind == .project {
-                    ProjectBudgetEditor(value: $bodyValue, projects: projects, currentID: existing?.id, limit: $budgetLimit, currency: $budgetCurrency, itemName: $budgetItemName, itemAmount: $budgetItemAmount)
-                }
-                if kind == .event {
-                    LifeFormSection(title: "时间与地点", icon: "calendar") {
-                        Toggle("全天", isOn: $bodyValue.allDay)
-                        if bodyValue.allDay { DatePicker("日期", selection: $day, displayedComponents: .date); DatePicker("结束日期", selection: $endDay, displayedComponents: .date) }
-                        else { DatePicker("开始", selection: $startAt); DatePicker("结束", selection: $endAt) }
-                        LifeTextField("时区", text: $bodyValue.timeZone)
-                        LifeTextField("地点（可选）", text: $bodyValue.location)
-                    }
-                } else if hasDate || kind == .task || kind == .project || kind == .subscription {
-                    LifeFormSection(title: kind == .subscription ? "续费" : "日期", icon: "calendar") {
-                        if kind == .task || kind == .project { Toggle("设置日期", isOn: $hasDate) }
-                        if hasDate { DatePicker(kind == .subscription ? "下次计费日" : "发生 / 截止日期", selection: $day, displayedComponents: .date) }
-                        if kind == .project { Toggle("设置结束日期", isOn: $hasEnd); if hasEnd { DatePicker("结束日期", selection: $endDay, displayedComponents: .date) } }
-                        if kind == .subscription {
-                            LabeledContent("间隔") { LifeIntegerControl(value: $bodyValue.cycleCount, range: 1...120, suffix: bodyValue.cycleUnit.title, label: "续费间隔") }
-                            LifePicker("周期", selection: $bodyValue.cycleUnit) { ForEach(CycleUnit.allCases, id: \.self) { Text($0.title).tag($0) } }
-                            Toggle("提前 7 天提醒", isOn: reminder(7)); Toggle("提前 1 天提醒", isOn: reminder(1))
-                            Text("保持原始锚点日：1 月 31 日 → 2 月末 → 3 月 31 日。").font(.caption).foregroundStyle(.secondary)
-                            if bodyValue.status == .cancelled { Text("请确认已经在供应商处完成取消；Nobis 不会代为取消服务。").font(.caption).foregroundStyle(.orange) }
-                        }
-                    }
-                }
-                if kind != .project && !projects.isEmpty {
-                    LifeFormSection(title: "所属项目（可选）", icon: "folder") {
-                        if bodyValue.projectIDs.count > 1 {
-                            Text("旧记录关联了多个项目，当前保留原关联；请核对后选择一个所属项目。")
-                        }
-                        LifePicker("项目", selection: Binding(get: { bodyValue.projectIDs.count == 1 ? bodyValue.projectIDs.first : nil }, set: { bodyValue.projectIDs = $0.map { [$0] } ?? []; bodyValue.finance?.planItemID = nil })) {
-                            Text(bodyValue.projectIDs.count > 1 ? "保留原多项目关联" : "无").tag(Optional<UUID>.none)
-                            ForEach(projects) { Text($0.body.title).tag(Optional($0.id)) }
-                        }
-                    }
-                }
-
-                LifeFormSection(title: "关联内容", icon: "link") { ReferenceFields(model: model, spaceID: spaceID, recordID: existing?.id, ids: $bodyValue.referenceIDs) }
-                LifeFormSection(title: bodyValue.status == .voided ? "作废原因（必填）" : "备注", icon: "text.alignleft") { LifeTextField("补充说明", text: $bodyValue.notes, axis: .vertical).lineLimit(3...8) }
+                if kind == .transaction { transactionFields } else { generalFields }
                 if let validation { InlineIssue(message: validation) }
                 if existing?.body.status == .confirmed && kind == .transaction { Text("已确认账单可调整分类、项目、归属和备注；修改金额、日期、付款人或分摊须先作废。").font(.caption).foregroundStyle(.secondary) }
             }
@@ -128,8 +83,8 @@ struct RecordEditor: View {
             .modifier(LifeEditorChrome(
                 title: existing != nil ? "编辑" + kind.title : kind == .transaction ? "记一笔" : kind == .event ? "添加安排" : "新建" + kind.title,
                 icon: kind.icon, embedded: onFinish != nil, cancel: cancel, save: save,
-                hasChanges: onFinish != nil ? model.recordPanel.hasChanges : existing == nil || hasLocalChanges,
-                saveTitle: existing == nil ? "保存" : "保存修改"))
+                hasChanges: (kind == .transaction && existing?.body.status == .draft) || (onFinish != nil ? model.recordPanel.hasChanges : existing == nil || hasLocalChanges),
+                saveTitle: kind == .transaction && bodyValue.status == .draft ? "保存并记账" : existing == nil ? "保存" : "保存修改"))
         }
         .tint(lifeTint)
         .interactiveDismissDisabled(onFinish == nil && hasLocalChanges)
@@ -143,54 +98,213 @@ struct RecordEditor: View {
                 model.recordPanel.updateChanges(value != initialDraft, recordID: existing.id)
             }
         }
+        .onChange(of: bodyValue.transactionKind) { _, type in
+            if type == .settlement {
+                var finance = bodyValue.finance ?? FinanceDetails()
+                finance.mode = .sharedSettlement; bodyValue.finance = finance
+                showingMore = true
+            }
+            if type != .refund { bodyValue.refundOfID = nil }
+        }
         .onChange(of: spaceID) { _, _ in
             bodyValue.referenceIDs = nil
             bodyValue.memberID = nil; bodyValue.splits = []; fixedSplits = [:]
             bodyValue.finance?.planItemID = nil
+            if kind == .transaction && existing == nil {
+                bodyValue.finance?.consumption = space?.kind == .family ? .family : .unassigned
+                bodyValue.finance?.consumer = ""
+            }
         }.editorDimensions(width: onFinish == nil ? 600 : 440, height: onFinish == nil ? 640 : 0)
     }
-    private var moneySection: some View {
-        LifeFormSection(title: kind == .subscription ? "预计费用" : "实际账单", icon: "creditcard") {
-            LifeTextField(kind == .subscription ? "价格（留空表示待核实）" : "金额", text: $amount)
-            LifePicker("币种", selection: $currency) { ForEach(Currency.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-            if kind == .transaction {
-                LifePicker("类型", selection: $bodyValue.transactionKind) { ForEach(TransactionKind.allCases, id: \.self) { Text($0.title).tag($0) } }
-                LifeTextField("分类", text: $bodyValue.category)
-                Menu("选择已有分类") {
-                    ForEach(Array(Set(model.activeRecords.filter { $0.latest.spaceID == spaceID && $0.body.kind == .category && $0.body.status == .active }.map { $0.body.title } + model.activeRecords.filter { $0.latest.spaceID == spaceID && $0.body.kind == .transaction }.map { $0.body.category })).sorted(), id: \.self) { name in Button(name) { bodyValue.category = name } }
-                }
-                LifeTextField("账户名称", text: $bodyValue.account)
-                LifePicker("记账方式", selection: Binding(get: { bodyValue.accountingMode }, set: { mode in var f = bodyValue.finance ?? FinanceDetails(mode: mode); f.mode = mode; bodyValue.finance = f })) { ForEach(AccountingMode.allCases, id: \.self) { Text($0.title).tag($0) } }
-                if bodyValue.accountingMode == .ledgerOnly { Text("统计收入与支出，不产生成员之间的待收待付。付款人可留空。").font(.caption).foregroundStyle(.secondary) }
-                if space?.kind == .family {
-                    LifePicker("为谁消费", selection: Binding(get: { bodyValue.finance?.consumption ?? .unassigned }, set: { kind in var f = bodyValue.finance ?? FinanceDetails(mode: bodyValue.accountingMode); f.consumption = kind; if kind != .personal { f.consumer = "" }; bodyValue.finance = f })) { ForEach(ConsumptionKind.allCases, id: \.self) { Text($0.title).tag($0) } }
-                    if bodyValue.finance?.consumption == .personal { LifeTextField("消费归属称呼", text: Binding(get: { bodyValue.finance?.consumer ?? "" }, set: { bodyValue.finance?.consumer = $0 })) }
-                }
-                LifePicker("预算计划项", selection: Binding(get: { bodyValue.finance?.planItemID }, set: { id in var f = bodyValue.finance ?? FinanceDetails(mode: bodyValue.accountingMode); f.planItemID = id; bodyValue.finance = f })) {
-                    Text("无").tag(Optional<UUID>.none)
-                    ForEach(projects.filter { bodyValue.projectIDs.contains($0.id) }.flatMap { $0.body.budget?.items ?? [] }) { item in Text(item.name).tag(Optional(item.id)) }
-                }
-                if bodyValue.transactionKind == .refund {
-                    LifePicker("原支出", selection: $bodyValue.refundOfID) {
-                        Text("请选择").tag(Optional<UUID>.none)
-                        ForEach(model.activeRecords.filter { $0.latest.spaceID == spaceID && $0.body.kind == .transaction && $0.body.transactionKind == .expense && $0.body.status == .confirmed && $0.body.money?.currency == currency && !$0.conflicted }) { Text($0.body.title).tag(Optional($0.id)) }
-                    }
-                }
-                LifePicker("关联订阅（可选）", selection: $bodyValue.subscriptionID) {
-                    Text("无").tag(Optional<UUID>.none)
-                    ForEach(model.activeRecords.filter { $0.latest.spaceID == spaceID && $0.body.kind == .subscription }) { Text($0.body.title).tag(Optional($0.id)) }
-                }
-                if bodyValue.accountingMode == .sharedSettlement && bodyValue.transactionKind != .income {
-                    if bodyValue.transactionKind != .settlement { LifePicker("分摊方式", selection: $splitMode) { Text("平均分摊").tag("平均分摊"); Text("固定金额").tag("固定金额") } }
-                    if splitMode == "固定金额" || bodyValue.transactionKind == .settlement {
-                        ForEach(space?.members ?? []) { member in LifeTextField("\(member.name)\(bodyValue.transactionKind == .settlement ? "收到" : "承担")的金额", text: Binding(get: { fixedSplits[member.id] ?? "" }, set: { fixedSplits[member.id] = $0 })) }
-                    }
-                    if let money = try? Money.parse(amount, currency: currency), let splits = try? computeSplits(money) {
-                        ForEach(splits, id: \.memberID) { share in Text("\(space?.members.first { $0.id == share.memberID }?.name ?? "成员")：\(Money(minor: share.minor, currency: currency).formatted)").font(.caption) }
-                    }
-                    Text("平均分摊的最小单位余数按固定成员顺序分配；请核对后确认账单。").font(.caption).foregroundStyle(.secondary)
+    @ViewBuilder private var generalFields: some View {
+        LifeFormSection(title: "基本信息", icon: kind.icon) {
+            RecordVisibilityField(model: model,
+                spaceID: Binding(get: { Optional(spaceID) }, set: { if let value = $0 { spaceID = value } }),
+                editable: existing == nil,
+                inherited: !bodyValue.projectIDs.isEmpty || bodyValue.parentProjectID != nil || bodyValue.refundOfID != nil || bodyValue.subscriptionID != nil)
+            LifeTextField("\(kind.title)名称", text: $bodyValue.title)
+            LifePicker("状态", selection: $bodyValue.status) { ForEach(statuses, id: \.self) { Text($0.title).tag($0) } }
+            if kind == .task || kind == .subscription {
+                LifePicker(kind == .task ? "负责人" : "付款 / 收款人", selection: $bodyValue.memberID) { Text("未分配").tag(Optional<UUID>.none); ForEach(space?.members ?? []) { Text($0.name).tag(Optional($0.id)) } }
+            }
+        }
+        if kind == .subscription { moneySection }
+        if kind == .project {
+            ProjectBudgetEditor(value: $bodyValue, projects: projects, currentID: existing?.id, limit: $budgetLimit, currency: $budgetCurrency, itemName: $budgetItemName, itemAmount: $budgetItemAmount)
+        }
+        if kind == .event {
+            LifeFormSection(title: "时间与地点", icon: "calendar") {
+                Toggle("全天", isOn: $bodyValue.allDay)
+                if bodyValue.allDay { DatePicker("日期", selection: $day, displayedComponents: .date); DatePicker("结束日期", selection: $endDay, displayedComponents: .date) }
+                else { DatePicker("开始", selection: $startAt); DatePicker("结束", selection: $endAt) }
+                LifeTextField("时区", text: $bodyValue.timeZone)
+                LifeTextField("地点（可选）", text: $bodyValue.location)
+            }
+        } else if hasDate || kind == .task || kind == .project || kind == .subscription {
+            LifeFormSection(title: kind == .subscription ? "续费" : "日期", icon: "calendar") {
+                if kind == .task || kind == .project { Toggle("设置日期", isOn: $hasDate) }
+                if hasDate { DatePicker(kind == .subscription ? "下次计费日" : "发生 / 截止日期", selection: $day, displayedComponents: .date) }
+                if kind == .project { Toggle("设置结束日期", isOn: $hasEnd); if hasEnd { DatePicker("结束日期", selection: $endDay, displayedComponents: .date) } }
+                if kind == .subscription {
+                    LabeledContent("间隔") { LifeIntegerControl(value: $bodyValue.cycleCount, range: 1...120, suffix: bodyValue.cycleUnit.title, label: "续费间隔") }
+                    LifePicker("周期", selection: $bodyValue.cycleUnit) { ForEach(CycleUnit.allCases, id: \.self) { Text($0.title).tag($0) } }
+                    Toggle("提前 7 天提醒", isOn: reminder(7)); Toggle("提前 1 天提醒", isOn: reminder(1))
+                    Text("保持原始锚点日：1 月 31 日 → 2 月末 → 3 月 31 日。").font(.caption).foregroundStyle(.secondary)
+                    if bodyValue.status == .cancelled { Text("请确认已经在供应商处完成取消；Nobis 不会代为取消服务。").font(.caption).foregroundStyle(.orange) }
                 }
             }
+        }
+        if kind != .project && !projects.isEmpty {
+            LifeFormSection(title: "所属项目（可选）", icon: "folder") {
+                if bodyValue.projectIDs.count > 1 {
+                    Text("旧记录关联了多个项目，当前保留原关联；请核对后选择一个所属项目。")
+                }
+                LifePicker("项目", selection: Binding(get: { bodyValue.projectIDs.count == 1 ? bodyValue.projectIDs.first : nil }, set: { bodyValue.projectIDs = $0.map { [$0] } ?? []; bodyValue.finance?.planItemID = nil })) {
+                    Text(bodyValue.projectIDs.count > 1 ? "保留原多项目关联" : "无").tag(Optional<UUID>.none)
+                    ForEach(projects) { Text($0.body.title).tag(Optional($0.id)) }
+                }
+            }
+        }
+
+        LifeFormSection(title: "关联内容", icon: "link") { ReferenceFields(model: model, spaceID: spaceID, recordID: existing?.id, ids: $bodyValue.referenceIDs) }
+        LifeFormSection(title: bodyValue.status == .voided ? "作废原因（必填）" : "备注", icon: "text.alignleft") { LifeTextField("补充说明", text: $bodyValue.notes, axis: .vertical).lineLimit(3...8) }
+    }
+    private var moneySection: some View {
+        LifeFormSection(title: "预计费用", icon: "creditcard") {
+            LifeTextField("价格（留空表示待核实）", text: $amount)
+            LifePicker("币种", selection: $currency) { ForEach(Currency.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+        }
+    }
+    private var financialFieldsLocked: Bool { existing?.body.status == .confirmed }
+    private var categoryNames: [String] {
+        Array(Set([bodyValue.category] + model.activeRecords.filter {
+            $0.latest.spaceID == spaceID && ($0.body.kind == .transaction || ($0.body.kind == .category && $0.body.status == .active))
+        }.map { $0.body.kind == .category ? $0.body.title : $0.body.category })).filter { !$0.isEmpty }.sorted()
+    }
+    private var consumerNames: [String] {
+        Array(Set((space?.members.map(\.name) ?? []) + model.activeRecords.filter { $0.latest.spaceID == spaceID }
+            .compactMap { $0.body.finance?.consumer } + [bodyValue.finance?.consumer ?? ""]))
+            .filter { !$0.isEmpty }.sorted()
+    }
+    private var planItems: [BudgetItem] {
+        projects.filter { bodyValue.projectIDs.contains($0.id) }.flatMap { $0.body.budget?.items ?? [] }
+    }
+    @ViewBuilder private var transactionFields: some View {
+        LifeFormSection(title: "收支信息", icon: "creditcard") {
+            RecordVisibilityField(model: model,
+                spaceID: Binding(get: { Optional(spaceID) }, set: { if let value = $0 { spaceID = value } }),
+                editable: existing == nil,
+                inherited: !bodyValue.projectIDs.isEmpty || bodyValue.refundOfID != nil || bodyValue.subscriptionID != nil)
+            LifePicker("类型", selection: $bodyValue.transactionKind) {
+                ForEach(TransactionKind.allCases, id: \.self) { Text($0.title).tag($0) }
+            }.disabled(financialFieldsLocked)
+            LifeTextField("金额（\(currency.rawValue)）", text: $amount).disabled(financialFieldsLocked)
+            LifeTextField("名称", text: $bodyValue.title)
+            if customCategory {
+                LifeTextField("新分类", text: $bodyValue.category)
+                Button("选择已有分类") { customCategory = false }
+            } else {
+                LifePicker("分类", selection: $bodyValue.category) {
+                    if bodyValue.category.isEmpty { Text("未分类").tag("") }
+                    ForEach(categoryNames, id: \.self) { Text($0).tag($0) }
+                }
+                Button("新建分类") { customCategory = true }
+            }
+            DatePicker("日期", selection: $day, displayedComponents: .date).disabled(financialFieldsLocked)
+            if space?.kind == .family { consumptionField }
+            if bodyValue.transactionKind == .refund {
+                LifePicker("原支出", selection: $bodyValue.refundOfID) {
+                    Text("请选择").tag(Optional<UUID>.none)
+                    ForEach(model.activeRecords.filter { $0.latest.spaceID == spaceID && $0.body.kind == .transaction && $0.body.transactionKind == .expense && $0.body.status == .confirmed && $0.body.money?.currency == currency && !$0.conflicted }) { Text($0.body.title).tag(Optional($0.id)) }
+                }.disabled(financialFieldsLocked)
+            }
+        }
+        LifeFormSection(title: "补充信息", icon: "text.alignleft") {
+            LifeTextField(bodyValue.status == .voided ? "作废原因（必填）" : "备注（可选）", text: $bodyValue.notes, axis: .vertical).lineLimit(1...4)
+            if !projects.isEmpty {
+                LifePicker("项目", selection: Binding(get: { bodyValue.projectIDs.count == 1 ? bodyValue.projectIDs.first : nil }, set: { bodyValue.projectIDs = $0.map { [$0] } ?? []; bodyValue.finance?.planItemID = nil })) {
+                    Text(bodyValue.projectIDs.count > 1 ? "保留原多项目关联" : "不关联").tag(Optional<UUID>.none)
+                    ForEach(projects) { Text($0.body.title).tag(Optional($0.id)) }
+                }
+            }
+            if !planItems.isEmpty || bodyValue.finance?.planItemID != nil {
+                LifePicker("预算计划项", selection: Binding(get: { bodyValue.finance?.planItemID }, set: { id in
+                    var finance = bodyValue.finance ?? FinanceDetails(mode: bodyValue.accountingMode)
+                    finance.planItemID = id; bodyValue.finance = finance
+                })) {
+                    Text("不关联").tag(Optional<UUID>.none)
+                    ForEach(planItems) { Text($0.name).tag(Optional($0.id)) }
+                    if let id = bodyValue.finance?.planItemID, !planItems.contains(where: { $0.id == id }) {
+                        Text("原计划项（不可用）").tag(Optional(id))
+                    }
+                }
+            }
+        }
+        LifeFormSection(title: "更多选项", icon: "ellipsis") {
+            DisclosureGroup(isExpanded: $showingMore) { transactionOptions } label: {
+                Text("账户、币种与关联")
+            }
+            if existing == nil || existing?.body.status == .draft {
+                Button("存为草稿") { persist(status: .draft) }.lifeSecondaryAction()
+                Text("草稿不计入收支合计。").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        if bodyValue.accountingMode == .sharedSettlement && bodyValue.transactionKind != .income {
+            LifeFormSection(title: "成员结算", icon: "person.2") {
+                if bodyValue.transactionKind != .settlement { LifePicker("分摊方式", selection: $splitMode) { Text("平均分摊").tag("平均分摊"); Text("固定金额").tag("固定金额") } }
+                if splitMode == "固定金额" || bodyValue.transactionKind == .settlement {
+                    ForEach(space?.members ?? []) { member in LifeTextField("\(member.name)\(bodyValue.transactionKind == .settlement ? "收到" : "承担")的金额", text: Binding(get: { fixedSplits[member.id] ?? "" }, set: { fixedSplits[member.id] = $0 })) }
+                }
+                if let money = try? Money.parse(amount, currency: currency), let splits = try? computeSplits(money) {
+                    ForEach(splits, id: \.memberID) { share in Text("\(space?.members.first { $0.id == share.memberID }?.name ?? "成员")：\(Money(minor: share.minor, currency: currency).formatted)").font(.caption) }
+                }
+                Text("平均分摊的最小单位余数按固定成员顺序分配；请核对后确认账单。").font(.caption).foregroundStyle(.secondary)
+            }.disabled(financialFieldsLocked)
+        }
+    }
+    private var consumptionField: some View {
+        LifePicker("消费归属", selection: Binding(get: {
+            let finance = bodyValue.finance
+            return finance?.consumption == .personal ? "person:" + (finance?.consumer ?? "") : finance?.consumption.rawValue ?? "unassigned"
+        }, set: { selection in
+            var finance = bodyValue.finance ?? FinanceDetails(mode: bodyValue.accountingMode)
+            if selection.hasPrefix("person:") {
+                finance.consumption = .personal; finance.consumer = String(selection.dropFirst(7))
+            } else {
+                finance.consumption = ConsumptionKind(rawValue: selection) ?? .unassigned; finance.consumer = ""
+            }
+            bodyValue.finance = finance
+        })) {
+            Text("家庭").tag("family")
+            ForEach(consumerNames, id: \.self) { Text($0).tag("person:" + $0) }
+            Text("未标注").tag("unassigned")
+        }
+    }
+    @ViewBuilder private var transactionOptions: some View {
+        if space?.kind == .family {
+            LifeTextField("其他消费归属称呼", text: Binding(get: { bodyValue.finance?.consumer ?? "" }, set: { name in
+                var finance = bodyValue.finance ?? FinanceDetails(mode: bodyValue.accountingMode)
+                finance.consumer = name
+                finance.consumption = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .unassigned : .personal
+                bodyValue.finance = finance
+            }))
+        }
+        LifeTextField("账户", text: $bodyValue.account).disabled(financialFieldsLocked)
+        LifePicker("币种", selection: $currency) { ForEach(Currency.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.disabled(financialFieldsLocked)
+        LifePicker("付款 / 收款人", selection: $bodyValue.memberID) {
+            Text("未分配").tag(Optional<UUID>.none)
+            ForEach(space?.members ?? []) { Text($0.name).tag(Optional($0.id)) }
+        }.disabled(financialFieldsLocked)
+        LifePicker("记账方式", selection: Binding(get: { bodyValue.accountingMode }, set: { mode in
+            var finance = bodyValue.finance ?? FinanceDetails(mode: mode); finance.mode = mode; bodyValue.finance = finance
+        })) { ForEach(AccountingMode.allCases, id: \.self) { Text($0.title).tag($0) } }.disabled(financialFieldsLocked || bodyValue.transactionKind == .settlement)
+        LifePicker("关联订阅", selection: $bodyValue.subscriptionID) {
+            Text("不关联").tag(Optional<UUID>.none)
+            ForEach(model.activeRecords.filter { $0.latest.spaceID == spaceID && $0.body.kind == .subscription }) { Text($0.body.title).tag(Optional($0.id)) }
+        }
+        ReferenceFields(model: model, spaceID: spaceID, recordID: existing?.id, ids: $bodyValue.referenceIDs)
+        if existing != nil {
+            LifePicker("状态", selection: $bodyValue.status) { ForEach(statuses, id: \.self) { Text($0.title).tag($0) } }
         }
     }
     private func reminder(_ days: Int) -> Binding<Bool> { Binding(get: { bodyValue.reminderDays.contains(days) }, set: { on in if on { bodyValue.reminderDays.append(days) } else { bodyValue.reminderDays.removeAll { $0 == days } } }) }
@@ -210,8 +324,12 @@ struct RecordEditor: View {
     }
     private func finish() { if let onFinish { onFinish() } else { dismiss() } }
     private func save() {
+        persist(status: kind == .transaction && bodyValue.status == .draft ? .confirmed : nil)
+    }
+    private func persist(status: RecordStatus? = nil) {
         do {
             var value = bodyValue
+            if let status { value.status = status }
             if kind == .project {
                 if budgetLimit.trimmingCharacters(in: .whitespaces).isEmpty {
                     guard value.budget?.items.isEmpty ?? true, budgetItemName.isEmpty, budgetItemAmount.isEmpty else { throw NobisError.validation("有计划项时，请填写预算金额。") }
@@ -234,7 +352,9 @@ struct RecordEditor: View {
                 value.billingAnchor = previous?.date == value.date && previous?.cycleUnit == value.cycleUnit && previous?.cycleCount == value.cycleCount ? previous?.billingAnchor ?? value.date : value.date
                 value.unknownPriceCurrency = value.money == nil ? currency : nil
             }
-            if kind == .transaction, let money = value.money { value.splits = try computeSplits(money) }
+            if kind == .transaction, let original = existing?.body, financialFieldsLocked {
+                value.money = original.money; value.date = original.date; value.splits = original.splits
+            } else if kind == .transaction, let money = value.money { value.splits = try computeSplits(money) }
             if kind == .transaction && existing?.body.status == .confirmed && value.status == .voided {
                 var original = existing!.body; original.status = .voided; original.notes = value.notes; value = original
             }
