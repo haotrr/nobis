@@ -1,0 +1,26 @@
+DESIGN.md
+  s_d6e2f8ed764d2e::t_ae88d289dd498d 54-55
+docs/verification.md
+  s_d6e2f8ed764d2e::t_ae88d289dd498d 5-8,10-11
+  s_d6e2f8ed764d2e::t_99e8323be0ab9c 9,18
+Sources/NobisUI/Features/Notes/Editor/NoteEditorWindows.swift
+  s_d6e2f8ed764d2e::t_e0af824a3cba25 162-167
+Tests/FamilyCoreTests/NoteEditorWindowTests.swift
+  s_d6e2f8ed764d2e::t_2ed2d30cfdcb95 48-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "efaf38526ccf909c4e32dd048e7c9fb792f5f75d",
+  "prompts": {},
+  "sessions": {
+    "s_d6e2f8ed764d2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13a40-c85a-70e0-98a4-49c27a69da6f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
