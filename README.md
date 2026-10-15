@@ -6,6 +6,12 @@
 
 视觉与交互规范见 [Nobis Design](DESIGN.md)。
 
+## 日常使用与测试入口
+
+Mac 与 iPhone 的日常应用统一命名为 **Nobis**；Mac 使用应用程序目录中的 Nobis，沿用云版应用身份与现有数据。当前日常安装仍采用 CloudDebug 开发云配置，不代表 App Store 发布版或 Production 云环境。
+
+更新时覆盖同一日常入口，不再另建 Nobis Cloud。旧版与测试应用以不可启动的归档副本保留，避免重复入口；归档应用不删除其数据库、草稿或迁移资料。测试继续使用独立身份与隔离数据，完成后撤销测试入口。
+
 ## 运行
 
 最低系统为 iOS 17 / macOS 14。当前使用 Xcode 27、Swift 6.4 验证，源码语言模式 Swift 6；本地 MDTextKit 包要求 Swift 6.2+。Mac 笔记编辑器的 MIT 源码已内置到 `Vendor/MDTextKit`，构建无需拉取远程依赖。
