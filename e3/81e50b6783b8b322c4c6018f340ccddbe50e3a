@@ -1,0 +1,30 @@
+Sources/NobisUI/Features/Records/RecordEditor.swift
+  s_2246b8b366389d::t_d3cfb0ef1c0ed5 193,208,215-220,254-256,258-259,261,306
+  s_2246b8b366389d::t_a317b020680381 78,86,113-116,119,130,134,142,155,166-168,171,252,284-291,355-357
+  s_2246b8b366389d::t_3d01c2c5fe392f 26-27,47,49-52,87,101-108,173-174,176-192,194-207,209,211-214,221-227,229-238,241-251,253,262-274,276-283,292-305,307,327-329,332
+  s_2246b8b366389d::t_6224f763f9850c 120-129,131-133,135-141,143-154,156-165,169-170
+docs/verification.md
+  s_2246b8b366389d::t_ff783c5d244ec8 5-11
+DESIGN.md
+  s_2246b8b366389d::t_beadd3efcab22a 29
+Sources/NobisUI/Shared/Components/RecordRows.swift
+  s_2246b8b366389d::t_8c8cd20cfeb45c 42-49,58-72
+docs/feature-inventory.md
+  s_2246b8b366389d::t_c24d37ab41752b 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e381e50b6783b8b322c4c6018f340ccddbe50e3a",
+  "prompts": {},
+  "sessions": {
+    "s_2246b8b366389d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13eab-b5ee-7be2-bf2a-7c3349461196",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
